@@ -7,7 +7,7 @@
 Planneer is a self-hosted productivity application that combines task management, rich note-taking, and structured collections into a unified experience. Built with privacy and offline-first principles at its core.
 
 <p align="center">
-  <img src="screenshots/home.png" alt="Planneer Home" width="800">
+  <img src="frontend/public/icons/icon-512.png" alt="Planneer" width="120">
 </p>
 
 ## Features
@@ -209,6 +209,44 @@ make restore FILE=x     # Restore from backup
 | [docs/operations/DEPLOYMENT.md](docs/operations/DEPLOYMENT.md) | Production deployment guide |
 | [docs/operations/SECURITY_AUDIT.md](docs/operations/SECURITY_AUDIT.md) | Current security audit summary |
 | [deploy/README.md](deploy/README.md) | Production deployment guide |
+
+## Screenshots
+
+**Home** — Dashboard showing today's agenda, recently edited pages, and favorited items at a glance.
+
+<p align="center">
+  <img src="screenshots/01-home.png" alt="Home dashboard" width="800">
+</p>
+
+**Pages** — Gallery view of all pages in a collection, with rich content previews and metadata.
+
+<p align="center">
+  <img src="screenshots/02-pages.png" alt="Pages gallery view" width="800">
+</p>
+
+**Tasks — Upcoming** — Calendar-grouped task view spanning today through next week, with priorities and subtask progress.
+
+<p align="center">
+  <img src="screenshots/03-tasks-upcoming.png" alt="Tasks upcoming view" width="800">
+</p>
+
+**Graph** — Interactive relationship graph of pages and tasks, with a side inspector showing connections for a selected node.
+
+<p align="center">
+  <img src="screenshots/04-graph.png" alt="Graph view" width="800">
+</p>
+
+**Note Editor** — Block-based rich text editor with a cover image, page metadata, and the Yoopta slash-command editor.
+
+<p align="center">
+  <img src="screenshots/05-note-editor.png" alt="Note editor" width="800">
+</p>
+
+**Task Detail** — Tasks page with sections grouped by date, and an inline task detail panel for editing properties and subtasks.
+
+<p align="center">
+  <img src="screenshots/06-task-detail.png" alt="Task detail panel" width="800">
+</p>
 
 ## Contributing
 
