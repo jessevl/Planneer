@@ -1,0 +1,2240 @@
+/* =============================================================================
+   PLANNEER GLOBALS
+   
+   Design system (tokens, base styles, glass, scrollbar, typography, etc.)
+   is provided by Frameer. This file contains only Planneer-specific overrides.
+   
+   Import order matters:
+   1. Frameer base.css - includes tailwindcss, @custom-variant, base resets,
+      animations, glass effects, paper-surface, scrollbar, typography,
+      layout-background, paper-canvas, card-hover, transitions, focus-ring
+   2. Frameer tokens.css - all design tokens and accent color classes
+   3. This file - Planneer-specific overrides (Yoopta, nav, etc.)
+   ============================================================================= */
+@import "../../frameer/src/styles/base.css";
+@import "../../frameer/src/styles/tokens.css";
+
+html.theme-eink {
+  color-scheme: light;
+}
+
+html.dark.theme-eink {
+  color-scheme: dark;
+}
+
+html.theme-eink * {
+  text-shadow: none !important;
+}
+
+html.theme-eink [class*="shadow"] {
+  box-shadow: none !important;
+}
+
+html.theme-eink [class*="backdrop-blur"] {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+html.theme-eink .eink-shell-surface {
+  background: var(--color-surface-primary) !important;
+  border-color: var(--color-border-default) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+  background-image: none !important;
+}
+
+html.theme-eink .eink-shell-surface-secondary {
+  background: var(--color-surface-secondary) !important;
+  border-color: var(--color-border-default) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+  background-image: none !important;
+}
+
+html.theme-eink .eink-expanded-sidebar-item {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+html.theme-eink .eink-expanded-sidebar-item:hover,
+html.theme-eink .eink-expanded-sidebar-item:focus-visible,
+html.theme-eink .eink-expanded-sidebar-item-active {
+  background: var(--color-surface-primary) !important;
+  border-color: var(--color-border-default) !important;
+  box-shadow: none !important;
+}
+
+html.theme-eink .eink-modal-backdrop {
+  background: var(--color-surface-base) !important;
+  opacity: 1 !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+html.theme-eink .eink-modal-surface,
+html.theme-eink .eink-modal-surface-secondary {
+  border-color: var(--color-border-emphasis) !important;
+  box-shadow: none !important;
+}
+
+html.theme-eink .eink-modal-surface {
+  background: var(--color-surface-base) !important;
+}
+
+html.theme-eink .eink-modal-surface-secondary {
+  background: var(--color-surface-secondary) !important;
+}
+
+html.theme-eink .eink-header-button:hover {
+  background: var(--color-surface-hover) !important;
+}
+
+html.theme-eink .eink-header-button[data-active='true'] {
+  background: var(--color-surface-secondary) !important;
+  color: var(--color-text-primary) !important;
+  border-color: var(--color-border-default) !important;
+  box-shadow: none !important;
+}
+
+html.theme-eink .settings-toggle[aria-checked='true'],
+html.theme-eink .settings-toggle[data-state='checked'] {
+  background: var(--color-control-checked-bg) !important;
+  border-color: var(--color-control-checked-border) !important;
+}
+
+html.theme-eink .settings-toggle[aria-checked='false'],
+html.theme-eink .settings-toggle[data-state='unchecked'] {
+  background: var(--color-control-unchecked-bg) !important;
+  border-color: var(--color-control-unchecked-border) !important;
+}
+
+html.theme-eink .settings-toggle-thumb {
+  box-shadow: none !important;
+}
+
+html.theme-eink .settings-toggle[aria-checked='true'] .settings-toggle-thumb,
+html.theme-eink .settings-toggle[data-state='checked'] .settings-toggle-thumb {
+  background: var(--color-control-checked-fg) !important;
+  border-color: var(--color-control-checked-fg) !important;
+}
+
+html.theme-eink .settings-toggle[aria-checked='false'] .settings-toggle-thumb,
+html.theme-eink .settings-toggle[data-state='unchecked'] .settings-toggle-thumb {
+  background: var(--color-text-primary) !important;
+  border-color: var(--color-control-unchecked-border) !important;
+}
+
+html.theme-eink .settings-segmented-control {
+  background: var(--color-surface-secondary) !important;
+  border-color: var(--color-border-default) !important;
+}
+
+html.theme-eink .settings-segmented-control-option {
+  box-shadow: none !important;
+}
+
+html.theme-eink .settings-segmented-control-option[data-selected='true'],
+html.theme-eink .settings-segmented-control-option[data-state='checked'] {
+  background: var(--color-interactive-bg-strong) !important;
+  color: var(--color-interactive-text-strong) !important;
+  border-color: var(--color-interactive-border) !important;
+}
+
+html.theme-eink .settings-segmented-control-option[data-selected='false'],
+html.theme-eink .settings-segmented-control-option[data-state='unchecked'] {
+  background: transparent !important;
+  color: var(--color-text-secondary) !important;
+  border-color: transparent !important;
+}
+
+html.theme-eink .settings-segmented-control-option[data-selected='false']:hover,
+html.theme-eink .settings-segmented-control-option[data-state='unchecked']:hover,
+html.theme-eink .settings-segmented-control-option[data-selected='false']:focus-visible,
+html.theme-eink .settings-segmented-control-option[data-state='unchecked']:focus-visible {
+  background: var(--color-interactive-bg) !important;
+  color: var(--color-interactive-text) !important;
+  border-color: var(--color-interactive-border) !important;
+}
+
+html.theme-eink .eink-sfv-trigger {
+  background: var(--color-surface-primary) !important;
+  color: var(--color-text-secondary) !important;
+  border-color: var(--color-border-default) !important;
+}
+
+html.theme-eink .eink-sfv-trigger:hover,
+html.theme-eink .eink-sfv-trigger[data-open='true'] {
+  background: var(--color-surface-secondary) !important;
+  color: var(--color-text-primary) !important;
+  border-color: var(--color-border-emphasis) !important;
+}
+
+html.theme-eink .eink-sfv-trigger[data-active='true'] {
+  background: var(--color-surface-inverse) !important;
+  color: var(--color-surface-primary) !important;
+  border-color: var(--color-surface-inverse) !important;
+}
+
+html.theme-eink .eink-sfv-trigger[data-active='true'][data-open='true'] {
+  background: var(--color-surface-inverse) !important;
+  color: var(--color-surface-primary) !important;
+}
+
+html.theme-eink .eink-sfv-badge {
+  background: var(--color-surface-primary) !important;
+  color: var(--color-surface-inverse) !important;
+}
+
+html.theme-eink .eink-sfv-indicator {
+  background: var(--color-surface-primary) !important;
+  border-color: var(--color-surface-inverse) !important;
+}
+
+html.theme-eink .eink-sfv-option-row[data-active='true'] {
+  background: var(--color-surface-secondary) !important;
+  color: var(--color-text-primary) !important;
+  font-weight: 600 !important;
+}
+
+html.theme-eink .eink-sfv-option-row[data-active='true'] svg {
+  color: var(--color-surface-inverse) !important;
+}
+
+html.theme-eink .eink-sfv-view-button {
+  border-color: var(--color-border-default) !important;
+}
+
+html.theme-eink .eink-sfv-view-button[data-active='true'] {
+  background: var(--color-surface-inverse) !important;
+  color: var(--color-surface-primary) !important;
+  border-color: var(--color-surface-inverse) !important;
+}
+
+html.theme-eink .eink-sfv-pill[data-active='true'] {
+  background: var(--color-surface-inverse) !important;
+  color: var(--color-surface-primary) !important;
+  border-color: var(--color-surface-inverse) !important;
+}
+
+html.theme-eink .eink-sfv-pill[data-active='true'] svg {
+  color: var(--color-surface-primary) !important;
+}
+
+html.theme-eink .eink-sfv-tab[data-active='true'] {
+  color: var(--color-text-primary) !important;
+  border-bottom-color: var(--color-surface-inverse) !important;
+}
+
+html.theme-eink .eink-sfv-tab[data-active='true'] .bg-\[var\(--color-interactive-bg-strong\)\] {
+  background: var(--color-surface-inverse) !important;
+  color: var(--color-surface-primary) !important;
+}
+
+html.theme-eink .eink-content-card {
+  background: var(--color-surface-primary) !important;
+  border-color: var(--color-border-default) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+  background-image: none !important;
+}
+
+html.theme-eink .eink-content-card-secondary {
+  background: var(--color-surface-secondary) !important;
+  border-color: var(--color-border-default) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+  background-image: none !important;
+}
+
+html.theme-eink .eink-overlay-control {
+  background: var(--color-surface-primary) !important;
+  color: var(--color-text-primary) !important;
+  border-color: var(--color-border-default) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+
+html.theme-eink .eink-chip {
+  background: var(--color-surface-secondary) !important;
+  color: var(--color-text-primary) !important;
+  border-color: var(--color-border-default) !important;
+  box-shadow: none !important;
+  background-image: none !important;
+}
+
+html.theme-eink .eink-chip-subtle {
+  background: var(--color-surface-primary) !important;
+  color: var(--color-text-secondary) !important;
+  border-color: var(--color-border-default) !important;
+  box-shadow: none !important;
+  background-image: none !important;
+}
+
+html.theme-eink .eink-graph-node {
+  background: var(--color-surface-primary) !important;
+  border-color: var(--color-border-default) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+
+html.theme-eink .eink-graph-node-icon {
+  background: var(--color-surface-secondary) !important;
+  border-color: var(--color-border-default) !important;
+  box-shadow: none !important;
+}
+
+html.theme-eink .eink-graph-stack-layer {
+  background: var(--color-surface-secondary) !important;
+  border-color: var(--color-border-default) !important;
+  box-shadow: none !important;
+}
+
+html.theme-eink .eink-canvas-flat {
+  background: var(--color-surface-primary) !important;
+  background-image: none !important;
+}
+
+html.theme-eink .eink-dropzone {
+  background: var(--color-surface-primary) !important;
+  border-color: var(--color-border-default) !important;
+  box-shadow: none !important;
+}
+
+html.theme-eink .eink-dropzone:hover {
+  background: var(--color-surface-secondary) !important;
+  border-color: var(--color-border-emphasis) !important;
+}
+
+html.theme-eink .eink-graph-accent-dot {
+  background: var(--color-text-primary) !important;
+}
+
+html.theme-eink .eink-graph-accent-icon {
+  color: var(--color-text-primary) !important;
+}
+
+/* =============================================================================
+   YOOPTA EDITOR v6 CSS OVERRIDES
+   
+   In v6, @yoopta/editor is headless (no CSS injection). However, @yoopta/ui
+   (slash menu, floating toolbar, block actions) injects CSS via style-inject
+   with --yoopta-ui-* custom properties. Those use HSL values like
+   hsl(var(--yoopta-ui-background)) which can't be directly mapped to our
+   hex/rgba design tokens.
+   
+   Strategy:
+   1. Override --yoopta-ui-* CSS variables to blend with the app's palette
+   2. Use direct property overrides on .yoopta-ui-* classes for exact matches
+   3. Add left gutter padding for the floating block handle (+ / drag)
+   ============================================================================= */
+
+/*
+  Defensive border reset for Yoopta editor UI chrome (menus, toolbars).
+  Excludes contenteditable blocks and their children — applying border-style
+  to every inline span inside Slate causes sub-pixel layout shifts in Safari
+  that break caret positioning and list counter rendering.
+*/
+:where(.yoopta-block-actions, .yoopta-toolbar, .yoopta-action-menu) {
+  border-style: solid;
+  border-width: 0;
+  border-color: var(--color-border-default);
+}
+
+/*
+  Suppress unwanted borders/outlines on editor blocks.
+  
+  The `.yoopta-block` divs and their contenteditable children can show
+  stray borders from:
+  1. The defensive reset above (border-style: solid means any border-width shows)
+  2. Browser default focus styles on [contenteditable]
+  3. Slate's internal selection/focus management
+  
+  We explicitly remove borders and outlines so blocks look clean when
+  selected, focused, or active. Intentional borders (e.g. on tables, code
+  blocks, blockquotes) are added by their own rules further down.
+*/
+.yoopta-block,
+.yoopta-block:focus,
+.yoopta-block:focus-within,
+.yoopta-block [contenteditable],
+.yoopta-block [contenteditable]:focus,
+.yoopta-block [contenteditable]:focus-visible,
+.yoopta-block [data-slate-editor],
+.yoopta-block [data-slate-editor]:focus,
+[data-block-selected="true"] {
+  border-width: 0 !important;
+  outline: none !important;
+  box-shadow: none;
+}
+
+/*
+  Override Yoopta's contentVisibility: "auto" on Block components.
+  
+  Yoopta sets `style="content-visibility: auto"` on every .yoopta-block for
+  a rendering performance optimisation.  Safari's implementation of
+  content-visibility: auto is buggy — when blocks are rapidly inserted (e.g.
+  pressing Enter), Safari incorrectly determines recently-shifted blocks are
+  off-screen, collapses them to zero height, and never re-paints them.  This
+  makes the second-to-last block appear invisible.
+  
+  Disabling it has negligible performance impact for typical document sizes
+  (< 500 blocks) and eliminates the Safari rendering glitch.
+*/
+.yoopta-block {
+  content-visibility: visible !important;
+}
+
+/*
+  Multi-block selection highlight.
+  When users drag across blocks or use Shift+Arrow to select multiple blocks,
+  the editor sets data-block-selected="true" on each selected block.
+  We apply a subtle blue highlight so selected blocks are visually distinct.
+*/
+[data-block-selected="true"] {
+  background-color: rgba(35, 131, 226, 0.14) !important;
+  border-radius: 4px;
+}
+
+.dark [data-block-selected="true"] {
+  background-color: rgba(56, 139, 253, 0.15) !important;
+}
+
+.yoopta-editor .yoopta-plugin-card {
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 0.75rem !important;
+  background-color: var(--color-surface-base);
+  border-color: var(--color-border-default);
+}
+
+.yoopta-editor .yoopta-plugin-card.yoopta-plugin-card--dashed {
+  background-color: color-mix(in srgb, var(--color-surface-secondary) 55%, transparent);
+  border-color: var(--color-border-secondary);
+}
+
+.yoopta-editor .yoopta-plugin-card:hover {
+  background-color: var(--color-surface-secondary);
+  border-color: var(--color-border-default);
+}
+
+.yoopta-editor .yoopta-plugin-card.yoopta-plugin-card--dashed:hover {
+  border-color: var(--color-border-default);
+}
+
+.yoopta-editor .yoopta-transcription .yoopta-transcription-card {
+  border-width: 1px !important;
+  border-style: solid !important;
+  border-color: var(--color-border-default) !important;
+  background-color: var(--color-surface-base) !important;
+}
+
+.yoopta-editor [data-block-selected="true"] .yoopta-plugin-card,
+.yoopta-editor .yoopta-block:focus-within .yoopta-plugin-card {
+  border-color: var(--color-accent-primary);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-accent-primary) 65%, transparent);
+}
+
+/*
+  Override @yoopta/ui CSS custom properties to approximate the app's theme.
+  The @yoopta/ui package injects --yoopta-ui-* variables at :root via
+  style-inject. We override them here so the slash menu, floating toolbar,
+  and block actions blend with the app's design system.
+  
+  Light mode: warm neutrals matching Planneer's stik palette
+  Dark mode: dark neutrals matching Planneer's dark palette
+*/
+:root {
+  /* Light mode: warm ivory tones (Capacities-inspired) */
+  --yoopta-ui-background: 42 22% 98%;         /* warm ivory, close to paper */
+  --yoopta-ui-foreground: 30 3% 10%;           /* warm near-black text */
+  --yoopta-ui-muted: 42 12% 95%;              /* subtle warm muted bg */
+  --yoopta-ui-muted-foreground: 30 2% 48%;     /* warm medium gray text */
+  --yoopta-ui-border: 40 10% 89%;              /* warm ivory border */
+  --yoopta-ui-ring: 30 3% 30%;                 /* focus ring */
+  --yoopta-ui-accent: 42 12% 95%;              /* hover/selected bg */
+  --yoopta-ui-accent-foreground: 30 3% 10%;    /* hover/selected text */
+  --yoopta-ui-primary: 30 3% 40%;              /* accent primary */
+  --yoopta-ui-primary-foreground: 0 0% 98%;   /* accent primary text */
+}
+
+.dark {
+  /* Dark mode: dark warm neutrals */
+  --yoopta-ui-background: 20 6% 9%;           /* dark bg, matches app */
+  --yoopta-ui-foreground: 30 10% 90%;         /* warm white text */
+  --yoopta-ui-muted: 20 4% 15%;               /* subtle dark muted bg */
+  --yoopta-ui-muted-foreground: 30 5% 60%;    /* muted text */
+  --yoopta-ui-border: 20 4% 18%;              /* dark border */
+  --yoopta-ui-ring: 30 5% 60%;                /* focus ring */
+  --yoopta-ui-accent: 20 4% 15%;              /* hover/selected bg */
+  --yoopta-ui-accent-foreground: 30 10% 90%;  /* hover/selected text */
+  --yoopta-ui-primary: 30 5% 60%;             /* accent primary */
+  --yoopta-ui-primary-foreground: 20 6% 9%;   /* accent primary text */
+}
+
+/*
+  shadcn/ui-compatible CSS variable aliases required by @yoopta/themes-shadcn
+  components (code block pickers, tabs list, callout dropdown, etc.).
+  These map to our existing --yoopta-ui-* values so they stay in sync with
+  the app's design system without any duplication.
+*/
+:root {
+  --background:          42 22% 98%;  /* = --yoopta-ui-background */
+  --foreground:          30  3% 10%;  /* = --yoopta-ui-foreground */
+  --muted:               42 12% 85%;  /* = --yoopta-ui-muted  (tab-bar needs strong contrast vs white) */
+  --muted-foreground:    30  2% 45%;  /* = --yoopta-ui-muted-foreground */
+  --border:              40 12% 79%;  /* = --yoopta-ui-border  (darkened for visibility) */
+  --input:               40 12% 73%;  /* checkbox border — must contrast against white bg */
+  --ring:                30  3% 30%;  /* = --yoopta-ui-ring */
+  --accent:              42 12% 91%;  /* = --yoopta-ui-accent */
+  --accent-foreground:   30  3% 10%;  /* = --yoopta-ui-accent-foreground */
+  --popover:              0  0% 100%; /* white — elevated above warm bg */
+  --popover-foreground:  30  3%  10%; /* warm near-black */
+  --primary:            217 91% 60%;  /* blue-500 — fallback; overridden by --color-accent-primary in @theme */
+  --primary-foreground:   0  0% 98%;  /* near-white text on primary bg */
+}
+
+.dark {
+  --background:          20  6%  9%;  /* = --yoopta-ui-background */
+  --foreground:          30 10% 90%;  /* = --yoopta-ui-foreground */
+  --muted:               20  5% 18%;  /* = --yoopta-ui-muted  (tab-bar contrast vs dark bg) */
+  --muted-foreground:    30  5% 60%;  /* = --yoopta-ui-muted-foreground */
+  --border:              20  5% 24%;  /* = --yoopta-ui-border  (slightly brighter for visibility) */
+  --input:               20  5% 32%;  /* checkbox border — must contrast against dark bg */
+  --ring:                30  5% 60%;  /* = --yoopta-ui-ring */
+  --accent:              20  5% 16%;  /* = --yoopta-ui-accent */
+  --accent-foreground:   30 10% 90%;  /* = --yoopta-ui-accent-foreground */
+  --popover:             20  6% 13%;  /* slightly elevated from dark bg */
+  --popover-foreground:  30 10% 90%;  /* warm white */
+  --primary:            213 97% 67%;  /* blue-400 — fallback; overridden by --color-accent-primary in @theme */
+  --primary-foreground:  222 47% 11%; /* dark navy text on primary bg */
+}
+
+/*
+  Tailwind v4 @theme — expose the shadcn-compatible tokens as utility classes.
+  These reference the CSS vars defined above so they adapt to dark/light mode.
+  Required for @yoopta/themes-shadcn: bg-muted, bg-primary, bg-popover, etc.
+  These names intentionally share prefixes with existing tokens but they generate
+  separate, non-conflicting utilities (bg-accent vs bg-accent-primary, etc.)
+*/
+@theme {
+  --color-background:            hsl(var(--background));
+  --color-foreground:            hsl(var(--foreground));
+  --color-muted:                 hsl(var(--muted));
+  --color-muted-foreground:      hsl(var(--muted-foreground));
+  --color-popover:               hsl(var(--popover));
+  --color-popover-foreground:    hsl(var(--popover-foreground));
+  --color-border:                hsl(var(--border));
+  --color-input:                 hsl(var(--input));
+  --color-ring:                  hsl(var(--ring));
+  --color-accent:                hsl(var(--accent));
+  --color-accent-foreground:     hsl(var(--accent-foreground));
+  /* Bridge shadcn primary → app's theme accent, so TodoList checkboxes,
+     tabs, and other themed components follow the user's chosen accent color */
+  --color-primary:               var(--color-accent-primary, hsl(var(--primary)));
+  --color-primary-foreground:    #ffffff;
+}
+
+/*
+  Direct style overrides for Yoopta UI floating components.
+  This ensures borders, backgrounds, and shadows use the app's exact tokens
+  instead of relying on HSL approximations.
+*/
+.yoopta-ui-slash-command-content,
+.yoopta-ui-floating-block-actions,
+.yoopta-ui-highlight-color-picker,
+.yoopta-ui-block-options,
+.yoopta-ui-action-menu-list,
+.yoopta-ui-action-menu-list-overlay {
+  background-color: var(--color-surface-primary) !important;
+  border-color: var(--color-border-default) !important;
+  box-shadow: var(--shadow-popover, 0 4px 12px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04)) !important;
+  z-index: 9999 !important;
+}
+
+.dark .yoopta-ui-slash-command-content,
+.dark .yoopta-ui-floating-block-actions,
+.dark .yoopta-ui-highlight-color-picker,
+.dark .yoopta-ui-block-options,
+.dark .yoopta-ui-action-menu-list,
+.dark .yoopta-ui-action-menu-list-overlay {
+  background-color: var(--color-surface-primary) !important;
+  border-color: var(--color-border-default) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), 0 1px 4px rgba(0, 0, 0, 0.2) !important;
+  z-index: 9999 !important;
+}
+
+/* Column position correction: applied by useColumnPositionFix hook.
+   Uses CSS custom properties to offset the floating element to the correct
+   column block, avoiding React style reconciliation conflicts. */
+.yoopta-ui-floating-block-actions.column-corrected {
+  margin-left: var(--col-offset-x, 0px) !important;
+  margin-top: var(--col-offset-y, 0px) !important;
+}
+
+/* Yoopta floating toolbar — glass-toolbar aesthetic applied via overrides */
+.yoopta-ui-floating-toolbar {
+  background-color: color-mix(in srgb, var(--color-surface-base) 80%, transparent) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  backdrop-filter: blur(20px) !important;
+  border: 1px solid var(--color-border-default) !important;
+  border-radius: 9999px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+  z-index: 9999 !important;
+  padding: 4px 8px !important;
+}
+
+.dark .yoopta-ui-floating-toolbar {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), 0 1px 4px rgba(0, 0, 0, 0.2) !important;
+}
+
+.yoopta-ui-slash-command-root {
+  z-index: 9999 !important;
+}
+
+body.excalidraw-whiteboard-open [data-yoopta-editor-id] {
+  pointer-events: none !important;
+}
+
+/* Hide Excalidraw's built-in UI — replaced by our custom unified toolbar */
+.excalidraw-fullscreen-container .excalidraw .App-toolbar-container,
+.excalidraw-fullscreen-container .excalidraw .HintViewer,
+.excalidraw-fullscreen-container .excalidraw .HelpDialog__islands-container,
+.excalidraw-fullscreen-container .excalidraw .shapes-section,
+.excalidraw-fullscreen-container .excalidraw .welcome-screen-center,
+.excalidraw-fullscreen-container .excalidraw .welcome-screen-decor,
+.excalidraw-fullscreen-container .excalidraw .App-menu_left,
+.excalidraw-fullscreen-container .excalidraw .App-menu__left,
+.excalidraw-fullscreen-container .excalidraw .App-menu,
+.excalidraw-fullscreen-container .excalidraw .App-menu_bottom,
+.excalidraw-fullscreen-container .excalidraw .layer-ui__wrapper__top-right,
+.excalidraw-fullscreen-container .excalidraw .layer-ui__wrapper__footer-left,
+.excalidraw-fullscreen-container .excalidraw .layer-ui__wrapper__footer-right,
+.excalidraw-fullscreen-container .excalidraw .default-sidebar,
+.excalidraw-fullscreen-container .excalidraw .library-button,
+.excalidraw-fullscreen-container .excalidraw .main-menu-trigger,
+.excalidraw-fullscreen-container .excalidraw .dropdown-menu-button {
+  display: none !important;
+}
+
+body.excalidraw-whiteboard-open .yoopta-ui-slash-command-content,
+body.excalidraw-whiteboard-open .yoopta-ui-floating-toolbar,
+body.excalidraw-whiteboard-open .yoopta-ui-floating-block-actions,
+body.excalidraw-whiteboard-open .yoopta-ui-highlight-color-picker,
+body.excalidraw-whiteboard-open .yoopta-ui-block-options,
+body.excalidraw-whiteboard-open .yoopta-ui-action-menu-list,
+body.excalidraw-whiteboard-open .yoopta-ui-action-menu-list-overlay,
+body.excalidraw-whiteboard-open .yoopta-ui-slash-command-root,
+body.excalidraw-whiteboard-open [id^="yoopta-ui-block-options-portal-"],
+body.excalidraw-whiteboard-open [id^="yoopta-ui-action-menu-list-portal-"],
+body.excalidraw-whiteboard-open [id^="yoopta-ui-floating-toolbar-portal-"],
+body.excalidraw-whiteboard-open [id^="table-block-options-"] {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Portal roots need explicit stacking so block/slash/action menus aren't trapped under hero layers */
+[id^="yoopta-ui-block-options-portal-"],
+[id^="yoopta-ui-action-menu-list-portal-"],
+[id^="yoopta-ui-floating-toolbar-portal-"],
+[id^="table-block-options-"] {
+  position: relative;
+  z-index: 9999 !important;
+}
+
+/* Slash menu item hover/selected states */
+.yoopta-ui-slash-command-item[data-selected="true"],
+.yoopta-ui-slash-command-item:hover {
+  background-color: var(--color-accent-muted) !important;
+}
+
+/* Block options button overrides — match slash menu styling */
+.yoopta-ui-block-options-button {
+  background-color: transparent !important;
+  color: var(--color-text-primary) !important;
+}
+
+.yoopta-ui-block-options-button:hover,
+.yoopta-ui-block-options-button:active {
+  background-color: var(--color-accent-muted) !important;
+}
+
+.yoopta-ui-block-options-button-destructive,
+.yoopta-ui-block-options-button-destructive:hover {
+  color: var(--color-danger, hsl(0, 84%, 60%)) !important;
+}
+
+.yoopta-ui-block-options-separator {
+  background-color: var(--color-border-default) !important;
+}
+
+.yoopta-ui-slash-command-item-title {
+  color: var(--color-text-primary) !important;
+}
+
+.yoopta-ui-slash-command-item-description {
+  color: var(--color-text-secondary) !important;
+}
+
+.yoopta-ui-slash-command-group-heading {
+  color: var(--color-text-tertiary, var(--color-text-secondary)) !important;
+}
+
+.yoopta-ui-slash-command-item-icon {
+  background-color: var(--color-surface-secondary, var(--color-surface-inset)) !important;
+  border-color: var(--color-border-default) !important;
+  color: var(--color-text-secondary) !important;
+}
+
+.yoopta-ui-slash-command-item[data-selected="true"] .yoopta-ui-slash-command-item-icon {
+  border-color: var(--color-accent-primary) !important;
+  color: var(--color-accent-primary) !important;
+}
+
+/* Floating toolbar button states — matches ToolbarFormatButton component */
+.yoopta-ui-floating-toolbar-button {
+  color: var(--color-text-secondary) !important;
+  border-radius: 9999px !important;
+  transition: all 150ms ease-out !important;
+}
+
+.yoopta-ui-floating-toolbar-button:hover:not(:disabled) {
+  background-color: var(--color-accent-muted) !important;
+  color: var(--color-text-primary) !important;
+}
+
+.yoopta-ui-floating-toolbar-button[data-active="true"] {
+  background-color: var(--color-accent-primary) !important;
+  color: #fff !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12) !important;
+}
+
+.yoopta-ui-floating-toolbar-separator {
+  background-color: var(--color-border-default) !important;
+  opacity: 0.5 !important;
+}
+
+/* Floating block actions (+ and drag handle) button states */
+.yoopta-ui-floating-action-button {
+  color: var(--color-text-secondary) !important;
+}
+
+.yoopta-ui-floating-action-button:hover {
+  background-color: var(--color-accent-muted) !important;
+  color: var(--color-text-primary) !important;
+}
+
+/* Slash menu footer */
+.yoopta-ui-slash-command-footer {
+  background-color: var(--color-surface-inset, var(--color-surface-secondary)) !important;
+  border-color: var(--color-border-default) !important;
+}
+
+/* Slash menu input */
+.yoopta-ui-slash-command-input {
+  color: var(--color-text-primary) !important;
+}
+
+.yoopta-ui-slash-command-input::placeholder {
+  color: var(--color-text-secondary) !important;
+}
+
+.yoopta-ui-slash-command-input-wrapper {
+  border-color: var(--color-border-default) !important;
+}
+
+.yoopta-ui-slash-command-kbd {
+  background-color: var(--color-surface-secondary, var(--color-surface-inset)) !important;
+  border-color: var(--color-border-default) !important;
+  color: var(--color-text-secondary) !important;
+}
+
+/* Empty state */
+.yoopta-ui-slash-command-empty {
+  color: var(--color-text-secondary) !important;
+}
+
+/*
+  Editor block handle gutter.
+  The floating block actions (+ / drag) use position:fixed and translateX(-width)
+  to appear to the left of each block. We need left padding in the editor
+  container so the handles don't clip outside the visible area.
+  
+  The --yoopta-ui-floating-offset variable controls the expected handle width
+  used in the translateX calculation. We set it to 46px to match the default,
+  and provide 48px of padding to give 2px breathing room.
+*/
+:root {
+  --yoopta-ui-floating-offset: 36px;
+}
+
+.yoopta-editor-container .yoopta-editor {
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
+/* In the reading-pane split view, the right panel starts immediately at the
+   left panel's right edge. The drag handle is positioned --yoopta-ui-floating-offset
+   (36px) to the LEFT of block content, but the default padding-left is only 24px,
+   so the handle extends 12px outside the panel bounds. In Safari this can cause
+   the handle to be clipped or partially covered. Increase padding to 42px so
+   the handle stays fully within the panel's left boundary. */
+.side-panel .yoopta-editor-container .yoopta-editor {
+  padding-left: 42px;
+}
+
+/* Keep Yoopta block actions above PageHero layers (z-10) but below
+   the floating UnifiedHeader (z-20) so content scrolls behind the header.
+   Portal-based menus (slash, action menu) get their own z-index via their portal elements. */
+.yoopta-editor-container {
+  position: relative;
+  z-index: 15;
+  /* Do NOT use isolation:isolate — it creates a stacking context that breaks
+     Safari's contenteditable layer compositing, causing disappearing content. */
+}
+
+/* On mobile, hide the block actions (they're replaced by the mobile toolbar) */
+@media (max-width: 768px) {
+  .yoopta-editor-container .yoopta-editor {
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
+/*
+  Yoopta Action Menu Portal - Ensure proper z-index
+  The action menu uses a portal and needs to render above other content.
+  Let Yoopta handle positioning logic based on the selectionBoxRoot.
+*/
+#yoo-action-menu-list-portal {
+  z-index: 9999;
+  pointer-events: none;
+}
+
+#yoo-action-menu-list-portal > * {
+  pointer-events: auto;
+}
+
+/* Ensure action menu has high z-index */
+.yoopta-ui-action-menu-list,
+.yoopta-ui-action-menu-list-overlay {
+  z-index: 9999 !important;
+}
+
+/*
+  Radix UI Select portals (code block language/theme pickers, callout dropdown).
+  These render outside the editor DOM via a portal and need explicit surface
+  colors because our app does not use shadcn's global CSS reset.
+*/
+[data-radix-popper-content-wrapper] [role="listbox"],
+[data-radix-select-viewport] {
+  background-color: var(--color-surface-primary);
+  border-color: var(--color-border-default);
+}
+
+.dark [data-radix-popper-content-wrapper] [role="listbox"],
+.dark [data-radix-select-viewport] {
+  background-color: var(--color-surface-primary);
+  border-color: var(--color-border-default);
+}
+
+/* =============================================================================
+   YOOPTA EDITOR v6 — BLOCK-LEVEL CONTENT TYPOGRAPHY
+   
+   In v6 the editor is headless: plugins render bare semantic HTML (h1, h2, h3,
+   p, blockquote, ul, ol, li, pre, code, hr, a, table …) with NO inline styles
+   and NO CSS classes. Tailwind v4's preflight resets ALL browser defaults
+   (font-size: inherit, font-weight: inherit, list-style: none, margin: 0 …).
+   
+   Previously @yoopta/themes-shadcn injected CSS that provided these styles,
+   but the main entry also injects a destructive Tailwind v3 preflight (via
+   style-inject) that conflicts with our Tailwind v4 setup. We import only
+   the sub-path modules (@yoopta/themes-shadcn/code, /callout) for their
+   inline element options (language selector, theme picker) without the CSS.
+   These scoped rules restore proper typography inside the editor.
+   
+   All selectors are scoped to `.yoopta-editor` to avoid affecting the rest
+   of the application.
+   ============================================================================= */
+
+/* ---- Headings ---- */
+.yoopta-editor h1 {
+  font-size: 2.25rem;
+  line-height: 2.5rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.yoopta-editor h2 {
+  font-size: 1.875rem;
+  line-height: 2.25rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin-top: 1.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.yoopta-editor h3 {
+  font-size: 1.5rem;
+  line-height: 2rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  margin-top: 1.25rem;
+  margin-bottom: 0.25rem;
+}
+
+/*
+  Floating block actions compute Y-position from the first [data-element-type]
+  node's marginTop. Keep heading top spacing at 0 so drag handles align with
+  heading/title blocks instead of rendering lower than the text baseline.
+*/
+.yoopta-editor [data-element-type="heading-one"],
+.yoopta-editor [data-element-type="heading-two"],
+.yoopta-editor [data-element-type="heading-three"] {
+  margin-top: 0 !important;
+}
+
+/* ---- Paragraph ---- */
+.yoopta-editor .yoopta-block > [data-element-type] {
+  margin-bottom: 0.4rem !important;
+}
+
+.yoopta-editor .yoopta-block:last-child > [data-element-type] {
+  margin-bottom: 0 !important;
+}
+.yoopta-editor p {
+  font-size: 1rem;
+  line-height: 1.75;
+  margin-top: 0;
+  margin-bottom: 0.25rem;
+}
+
+/* ---- Blockquote ---- */
+.yoopta-editor blockquote {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  border-left: 3px solid var(--color-border-emphasis, #d1d5db);
+  padding-left: 1rem;
+  font-style: italic;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+.dark .yoopta-editor blockquote {
+  border-left-color: var(--color-border-emphasis, #4b5563);
+  color: var(--color-text-secondary, #9ca3af);
+}
+
+/* ---- Lists ---- */
+.yoopta-editor ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+  line-height: 1.75;
+}
+
+.yoopta-editor ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+  line-height: 1.75;
+}
+
+.yoopta-editor li {
+  margin-top: 0.25rem;
+  padding-left: 0.25rem;
+}
+
+/* ---- Callout ---- */
+/* Default callout variant uses bg-muted (warm gray). Override to accent color
+   so it stands out visually like info/warning/error variants do. The other
+   variants (info, success, warning, error) handle their own bg/border via
+   hard-coded Tailwind color classes, so we only target the default. */
+.yoopta-editor [data-element-type="callout"].bg-muted {
+  background-color: var(--color-accent-muted) !important;
+  border-left-color: var(--color-accent-primary) !important;
+  color: var(--color-text-primary) !important;
+}
+
+/* ---- Code / Pre ---- */
+.yoopta-editor pre {
+  background-color: var(--color-surface-inset, #f3f4f6);
+  border: 1px solid var(--color-border-default, #e5e7eb);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  overflow-x: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  tab-size: 2;
+}
+
+.dark .yoopta-editor pre {
+  background-color: var(--color-surface-inset, #1e1e1e);
+  border-color: var(--color-border-default, #333);
+}
+
+/* Inline code (mark) */
+.yoopta-editor code {
+  background-color: var(--color-surface-inset, #f3f4f6);
+  border-radius: 0.25rem;
+  font-size: 0.85em;
+  padding: 0.15em 0.4em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.dark .yoopta-editor code {
+  background-color: var(--color-surface-inset, #2d2d2d);
+}
+
+/* Don't double-style code inside pre */
+.yoopta-editor pre code {
+  background-color: transparent;
+  border-radius: 0;
+  padding: 0;
+  font-size: inherit;
+}
+
+/* ---- Divider / HR ---- */
+.yoopta-editor hr {
+  border: none;
+  border-top: 1px solid var(--color-border-default, #e5e7eb);
+  margin: 1.5rem 0;
+}
+
+.dark .yoopta-editor hr {
+  border-top-color: var(--color-border-default, #333);
+}
+
+/* ---- Links ---- */
+.yoopta-editor a {
+  color: var(--color-accent-primary, #3b82f6);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.yoopta-editor a:hover {
+  color: var(--color-accent-hover, #2563eb);
+}
+
+.dark .yoopta-editor a {
+  color: var(--color-accent-primary, #58a6ff);
+}
+
+.dark .yoopta-editor a:hover {
+  color: var(--color-accent-hover, #79b8ff);
+}
+
+/* ---- Tables ---- */
+.yoopta-editor table:not(.yoopta-advanced-table) {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  font-size: 0.9375rem;
+  border: 1px solid var(--color-border-default, #e5e7eb);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  background: var(--color-surface-primary, #fff);
+}
+
+.yoopta-editor table:not(.yoopta-advanced-table) th,
+.yoopta-editor table:not(.yoopta-advanced-table) td {
+  border-right: 1px solid var(--color-border-default, #e5e7eb);
+  border-bottom: 1px solid var(--color-border-default, #e5e7eb);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.yoopta-editor table:not(.yoopta-advanced-table) tr:last-child td {
+  border-bottom: none;
+}
+
+.yoopta-editor table:not(.yoopta-advanced-table) th:last-child,
+.yoopta-editor table:not(.yoopta-advanced-table) td:last-child {
+  border-right: none;
+}
+
+.yoopta-editor table:not(.yoopta-advanced-table) th {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-size: 0.78rem;
+  color: var(--color-text-secondary, #52525b);
+  background-color: var(--color-surface-inset, #f8fafc);
+}
+
+.yoopta-editor table:not(.yoopta-advanced-table) tbody tr:nth-child(even) td {
+  background-color: var(--color-surface-secondary, rgba(0, 0, 0, 0.015));
+}
+
+.yoopta-editor table:not(.yoopta-advanced-table) tbody tr:hover td {
+  background-color: var(--color-surface-hover, rgba(0, 0, 0, 0.035));
+}
+
+.dark .yoopta-editor table:not(.yoopta-advanced-table) th,
+.dark .yoopta-editor table:not(.yoopta-advanced-table) td {
+  border-color: var(--color-border-default, #333);
+}
+
+.dark .yoopta-editor table:not(.yoopta-advanced-table) th {
+  background-color: var(--color-surface-inset, #1e1e1e);
+  color: var(--color-text-secondary, #a8a29e);
+}
+
+.dark .yoopta-editor table:not(.yoopta-advanced-table) tbody tr:nth-child(even) td {
+  background-color: rgba(255, 255, 255, 0.015);
+}
+
+.dark .yoopta-editor table:not(.yoopta-advanced-table) tbody tr:hover td {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+/* ---- Images ---- */
+.yoopta-editor img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+}
+
+/* ---- Bold / Strong ---- */
+.yoopta-editor strong,
+.yoopta-editor b {
+  font-weight: 700;
+}
+
+/* ---- Italic ---- */
+.yoopta-editor em,
+.yoopta-editor i {
+  font-style: italic;
+}
+
+/* ---- Strikethrough ---- */
+.yoopta-editor s,
+.yoopta-editor del {
+  text-decoration: line-through;
+}
+
+/* ---- Underline ---- */
+.yoopta-editor u {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ---- Block depth indentation ---- */
+.yoopta-editor [data-meta-depth="1"] { padding-left: 1.5rem; }
+.yoopta-editor [data-meta-depth="2"] { padding-left: 3rem; }
+.yoopta-editor [data-meta-depth="3"] { padding-left: 4.5rem; }
+.yoopta-editor [data-meta-depth="4"] { padding-left: 6rem; }
+
+/* ---- Block alignment ---- */
+.yoopta-editor [data-meta-align="center"] { text-align: center; }
+.yoopta-editor [data-meta-align="right"] { text-align: right; }
+
+/* ---- Placeholder styling ---- */
+.yoopta-editor .yoopta-placeholder[data-placeholder]::before {
+  content: attr(data-placeholder);
+  color: var(--color-text-tertiary, #9ca3af);
+  pointer-events: none;
+  position: absolute;
+  opacity: 0.5;
+}
+
+/* ---- Responsive heading sizes ---- */
+@media (min-width: 1024px) {
+  .yoopta-editor h1 {
+    font-size: 2.5rem;
+    line-height: 1.1;
+  }
+}
+
+@media (max-width: 640px) {
+  .yoopta-editor h1 {
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+  }
+
+  .yoopta-editor h2 {
+    font-size: 1.5rem;
+    line-height: 2rem;
+  }
+
+  .yoopta-editor h3 {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+  }
+}
+
+/* Standalone PWA specific adjustments */
+@media screen and (display-mode: standalone) {
+  html, body {
+    min-height: 100lvh;
+    height: 100lvh;
+  }
+  
+  #root {
+    min-height: 100lvh;
+    height: 100lvh;
+  }
+}
+
+/*
+ * iOS KEYBOARD ACCESSORY BAR
+ *
+ * Do NOT use -webkit-user-modify: read-write-plaintext-only here.
+ * This is the internal WebKit property that implements contenteditable.
+ * Setting it on ANY element on the page (even input/textarea) can cause
+ * Safari to break caret movement, list numbering, and content painting
+ * in nearby Slate/Yoopta contenteditable blocks.
+ *
+ * For hiding the iOS accessory bar, use inputMode="none" on specific
+ * inputs where needed instead.
+ */
+
+/* Animations & transitions are provided by Frameer base.css */
+
+/* =============================================================================
+   PLANNEER DESIGN SYSTEM - THEME VARIABLES
+   Define semantic color tokens as Tailwind theme variables.
+   
+   USAGE: Use classes like bg-canvas, text-fg, border-border etc.
+   In dark mode, add dark: prefix: dark:bg-canvas-subtle, dark:text-fg-muted
+   
+   The gh-* prefix colors are ONLY for dark mode.
+   Light mode uses standard Tailwind colors (white, gray-*, blue-*, etc.)
+   ============================================================================= */
+@theme {
+  /* ==========================================================================
+     LIGHT MODE COLORS (lt-* prefix)
+     Standard light mode using clean grays and blues
+     ========================================================================== */
+  
+  /* Light Mode - Canvas (Background) Colors */
+  --color-lt-canvas-default: #ffffff;      /* Main background - white */
+  --color-lt-canvas-inset: #f6f8fa;        /* Inset/recessed areas - very light gray */
+  --color-lt-canvas-subtle: #f6f8fa;       /* Elevated surfaces (cards) */
+  --color-lt-canvas-overlay: #f3f4f6;      /* Hover states - gray-100 */
+  
+  /* Light Mode - Foreground (Text) Colors */
+  --color-lt-fg-default: #1f2937;          /* Primary text - gray-800 */
+  --color-lt-fg-muted: #4b5563;            /* Secondary text - gray-600 */
+  --color-lt-fg-subtle: #6b7280;           /* Tertiary text - gray-500 */
+  --color-lt-fg-disabled: #9ca3af;         /* Disabled text - gray-400 */
+  
+  /* Light Mode - Border Colors */
+  --color-lt-border-default: #e5e7eb;      /* Default borders - gray-200 */
+  --color-lt-border-muted: #f3f4f6;        /* Subtle borders - gray-100 */
+  --color-lt-border-emphasis: #d1d5db;     /* Strong borders - gray-300 */
+  
+  /* Light Mode - Accent Colors (Blue) */
+  --color-lt-accent-fg: #2563eb;           /* Links, active - blue-600 */
+  --color-lt-accent-emphasis: #1d4ed8;     /* Strong accent - blue-700 */
+  --color-lt-accent-muted: #dbeafe;        /* Accent backgrounds - blue-100 */
+  --color-lt-accent-subtle: #eff6ff;       /* Very subtle accent - blue-50 */
+  
+  /* Light Mode - State Colors */
+  --color-lt-success-fg: #16a34a;          /* Success text - green-600 */
+  --color-lt-success-muted: #dcfce7;       /* Success backgrounds - green-100 */
+  --color-lt-danger-fg: #dc2626;           /* Danger text - red-600 */
+  --color-lt-danger-muted: #fee2e2;        /* Danger backgrounds - red-100 */
+  --color-lt-warning-fg: #d97706;          /* Warning text - amber-600 */
+  --color-lt-warning-muted: #fef3c7;       /* Warning backgrounds - amber-100 */
+
+  /* ==========================================================================
+     DARK MODE COLORS (gh-* prefix) - GitHub Inspired
+     ========================================================================== */
+  
+  /* GitHub Dark Mode - Canvas (Background) Colors */
+  --color-gh-canvas-default: #0d1117;      /* Main background */
+  --color-gh-canvas-inset: #010409;        /* Inset/recessed areas */
+  --color-gh-canvas-subtle: #161b22;       /* Elevated surfaces (cards, modals) */
+  --color-gh-canvas-overlay: #21262d;      /* Hover states, overlays */
+  
+  /* GitHub Dark Mode - Foreground (Text) Colors */
+  --color-gh-fg-default: #e6edf3;          /* Primary text (bright) */
+  --color-gh-fg-muted: #8b949e;            /* Secondary/muted text */
+  --color-gh-fg-subtle: #6e7681;           /* Tertiary/placeholder text */
+  --color-gh-fg-disabled: #484f58;         /* Disabled text */
+  
+  /* GitHub Dark Mode - Border Colors */
+  --color-gh-border-default: #30363d;      /* Default borders */
+  --color-gh-border-muted: #21262d;        /* Subtle borders */
+  --color-gh-border-subtle: #161b22;       /* Very subtle borders */
+  
+  /* GitHub Dark Mode - Accent Colors */
+  --color-gh-accent-fg: #58a6ff;           /* Links, active states */
+  --color-gh-accent-emphasis: #1f6feb;     /* Strong accent */
+  --color-gh-accent-muted: #388bfd26;      /* Accent backgrounds (26 = 15% opacity) */
+  --color-gh-accent-subtle: #388bfd1a;     /* Very subtle accent bg (1a = 10% opacity) */
+  
+  /* GitHub Dark Mode - State Colors */
+  --color-gh-success-fg: #3fb950;          /* Success text */
+  --color-gh-success-muted: #23863626;     /* Success backgrounds */
+  --color-gh-danger-fg: #f85149;           /* Danger/error text */
+  --color-gh-danger-muted: #f8514926;      /* Danger backgrounds */
+  --color-gh-warning-fg: #d29922;          /* Warning text */
+  --color-gh-warning-muted: #d2992226;     /* Warning backgrounds */
+
+  /* ==========================================================================
+     ENHANCED DARK MODE - Richer contrast & visual depth
+     ========================================================================== */
+  
+  /* Elevated surface gradients for depth in dark mode */
+  --color-gh-surface-raised: linear-gradient(145deg, #1c2128, #161b22);
+  --color-gh-surface-float: linear-gradient(145deg, #21262d, #1c2128);
+  
+  /* Enhanced glow colors for interactive elements */
+  --color-gh-glow-blue: rgba(56, 139, 253, 0.4);
+  --color-gh-glow-green: rgba(63, 185, 80, 0.4);
+  --color-gh-glow-purple: rgba(163, 113, 247, 0.4);
+  --color-gh-glow-orange: rgba(210, 153, 34, 0.4);
+  
+  /* Richer foreground variants */
+  --color-gh-fg-onEmphasis: #ffffff;        /* White text on accent backgrounds */
+  --color-gh-fg-highlight: #f0f6fc;         /* Extra bright text for emphasis */
+
+  /* ==========================================================================
+     ANIMATIONS (Tailwind 4)
+     ========================================================================== */
+  --animate-fade-in: fadeIn 0.2s ease-in-out;
+  /*
+   * IMPORTANT: Do NOT use `forwards` fill-mode on animations that wrap
+   * the editor (PageTransition, paper-surface). It pins opacity as an active
+   * animation property, keeping a persistent compositor layer in Safari.
+   * Safari then fails to repaint child contenteditable blocks when focus
+   * moves between them, causing blocks to vanish.
+   */
+  --animate-fade-in-fast: fadeIn 0.1s ease-in-out;
+  --animate-fade-out: fadeOut 0.2s ease-in-out;
+  --animate-slide-up: slideUp 0.3s ease-out;
+  --animate-slide-down: slideDown 0.3s ease-out;
+  --animate-slide-in-left: slideInLeft 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-slide-in-right: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-slide-in-bottom: slideInBottom 0.3s ease-out;
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+  @keyframes slideUp {
+    from { transform: translateY(10px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  @keyframes slideDown {
+    from { transform: translateY(-10px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  /* slideInLeft/slideInRight: opacity only to avoid breaking fixed positioning.
+     Transforms create a containing block for position:fixed descendants,
+     which breaks Yoopta's FloatingBlockActions positioning. */
+  @keyframes slideInLeft {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes slideInRight {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes slideInBottom {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+}
+
+/* =============================================================================
+   DARK MODE ENHANCEMENTS
+   Improved visual depth, contrast, and polish for dark theme
+   ============================================================================= */
+
+/* Dark mode elevated cards with subtle gradient */
+.dark .card-elevated {
+  background: linear-gradient(145deg, #1c2128, #161b22);
+  border-color: rgba(48, 54, 61, 0.8);
+}
+
+/* Dark mode floating elements with extra depth */
+.dark .card-floating {
+  background: linear-gradient(145deg, #21262d, #1c2128);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 1px rgba(255, 255, 255, 0.1) inset;
+}
+
+/* Enhanced dark mode focus states with glow */
+.dark .focus-glow:focus,
+.dark .focus-glow:focus-visible {
+  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.3);
+  border-color: #fbbf24;
+}
+
+/* Dark mode interactive element hover glow */
+.dark .hover-glow:hover {
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.15);
+}
+
+/* Dark mode scrollbar is provided by Frameer base.css */
+
+@layer utilities {
+  .bg-noise {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23noiseFilter)' opacity='0.08'/%3E%3C/svg%3E");
+  }
+  /* Nav square utilities for sidebar nav items */
+  .nav-square {
+    position: relative;
+    overflow: hidden;
+    color: #ffffff; /* white text/icons */
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    /* subtle inner highlight like the screenshot */
+    outline: 1px solid rgba(255,255,255,0.2);
+    outline-offset: -1px;
+  }
+  .nav-square .icon-wrapper svg { width: 20px; height: 20px; }
+  .nav-count {
+    display: inline-block;
+    font-size: 1.1rem;
+    line-height: 1;
+    font-weight: 800;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.25);
+  }
+
+  /* Active nav tile: thinner 2px semi-opaque grey stroke rendered inset so it isn't clipped by overflow. */
+  .nav-square--active {
+    /* keep the drop shadow for depth, then draw an inset stroke for the active border */
+  /* slightly lighter, slightly larger inset stroke */
+  box-shadow: 0 6px 16px rgba(0,0,0,0.12), inset 0 0 0 3px rgba(200,200,200,0.45);
+  }
+
+  .nav-icon-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    width: auto;
+    height: 24px;
+    border-radius: 8px;
+    background: transparent; /* separate background removed */
+    color: #fff;
+    /* slightly bigger, lighter glow */
+    filter: drop-shadow(0 3px 8px rgba(255,255,255,0.16));
+  }
+  .nav-icon-badge svg { width: 18px; height: 18px; stroke: currentColor; margin-left: 0; }
+
+  .nav-label { font-size: 0.78rem; }
+
+  /* gradient variants: subtle hazy radial in top-left + soft tint */
+  /* darker hazy radial variants with white foreground */
+  /* Screenshot-like: subtle white haze at top-left + brand linear gradient */
+  /* toned-down subtle radial + softer gradients to match screenshot */
+  .nav-square--today {
+    background:
+      radial-gradient(circle at 16% 18%, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.08) 20%, rgba(255,255,255,0) 50%),
+      linear-gradient(135deg, #8FC3FF 0%, #4F8EF8 100%);
+  }
+  .nav-square--upcoming {
+    background:
+      radial-gradient(circle at 16% 18%, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.06) 20%, rgba(255,255,255,0) 50%),
+      linear-gradient(135deg, #f77878 0%, #d55555 100%);
+  }
+  .nav-square--inbox {
+    background:
+      radial-gradient(circle at 16% 18%, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.06) 20%, rgba(255,255,255,0) 50%),
+      linear-gradient(135deg, #cacaca 0%, #a3a3a3 100%);
+  }
+  .nav-square--all {
+    background:
+      radial-gradient(circle at 16% 18%, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.06) 20%, rgba(255,255,255,0) 50%),
+      linear-gradient(135deg, #393939 0%, #222222 100%);
+  }
+  .nav-square--completed {
+    background:
+      radial-gradient(circle at 16% 18%, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.06) 20%, rgba(255,255,255,0) 50%),
+      linear-gradient(135deg, #80e481 0%, #29ad3a 100%);
+  }
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #000000;
+  --header-height: 4.125rem; /* 66px - actual mobile header height */
+  --header-safe-pt: env(safe-area-inset-top);
+}
+
+@media (min-width: 768px) {
+  :root {
+    --header-height: 4rem; /* 64px - actual desktop header height */
+  }
+}
+
+.dark {
+  --background: #121111;  /* Near-black, barely warm */
+  --foreground: #E8E6E3;  /* Clean warm white */
+}
+
+body {
+  background: var(--color-surface-app, var(--color-stone-50));
+  /*
+   * Grain texture applied as a background layer on body itself.
+   * Previously this was a body::before pseudo-element with position:fixed
+   * at z-index:9999, which forced Safari to composite ALL page content into
+   * separate layers. This caused contenteditable blocks to vanish when moving
+   * focus between them (Safari skipped repainting the layers).
+   * Using background-image directly avoids creating a separate compositor layer.
+   * The opacity is baked into the SVG rect element (0.015 light / 0.008 dark).
+   */
+  background-image: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48ZmlsdGVyIGlkPSJub2lzZSI+PGZlVHVyYnVsZW5jZSB0eXBlPSJmcmFjdGFsTm9pc2UiIGJhc2VGcmVxdWVuY3k9IjAuOSIgbnVtT2N0YXZlcz0iNCIgLz48ZmVDb2xvck1hdHJpeCB0eXBlPSJzYXR1cmF0ZSIgdmFsdWVzPSIwIi8+PC9maWx0ZXI+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbHRlcj0idXJsKCNub2lzZSkiIG9wYWNpdHk9IjAuMDE1Ii8+PC9zdmc+');
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+  position: relative;
+}
+
+.dark body {
+  background: var(--color-surface-app, var(--color-gh-canvas-inset));
+  background-image: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48ZmlsdGVyIGlkPSJub2lzZSI+PGZlVHVyYnVsZW5jZSB0eXBlPSJmcmFjdGFsTm9pc2UiIGJhc2VGcmVxdWVuY3k9IjAuOSIgbnVtT2N0YXZlcz0iNCIgLz48ZmVDb2xvck1hdHJpeCB0eXBlPSJzYXR1cmF0ZSIgdmFsdWVzPSIwIi8+PC9maWx0ZXI+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbHRlcj0idXJsKCNub2lzZSkiIG9wYWNpdHk9IjAuMDA4Ii8+PC9zdmc+');
+}
+
+/* Dark overrides for surfaces and borders - GitHub dark theme inspired */
+@layer utilities {
+  /* Only invert these utility classes when the element opts-in via the `invert-neutrals` marker. */
+  .dark .invert-neutrals.bg-gray-50 { background-color: #0d1117 !important; }  /* GitHub: canvas default */
+  .dark .invert-neutrals.text-gray-900 { color: #e6edf3 !important; }  /* GitHub: fg default */
+  .dark .invert-neutrals.text-gray-700 { color: #e6edf3 !important; }  /* GitHub: fg default */
+  .dark .invert-neutrals.text-gray-600 { color: #8b949e !important; }  /* GitHub: fg muted */
+  .dark .invert-neutrals.text-gray-500 { color: #8b949e !important; }  /* GitHub: fg muted */
+  .dark .invert-neutrals.border-gray-200 { border-color: #30363d !important; }  /* GitHub: border default */
+  .dark .invert-neutrals.hover\:bg-gray-100:hover { background-color: #21262d !important; }  /* GitHub: canvas overlay */
+  .dark .invert-neutrals.bg-white { background-color: #0d1117 !important; }  /* GitHub: canvas default */
+  .dark .invert-neutrals.text-gray-400 { color: #8b949e !important; }  /* GitHub: fg muted */
+  .dark .invert-neutrals.shadow-sm { box-shadow: 0 1px 0 rgba(27,31,36,0.04), 0 1px 3px rgba(1,4,9,0.12) !important; }
+
+  /* iOS Safe Area Utilities */
+  /* Use these classes to ensure content respects the safe area on notched devices */
+  .safe-area-top { padding-top: max(12px, env(safe-area-inset-top)); }
+  .safe-area-bottom { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+  .safe-area-left { padding-left: max(12px, env(safe-area-inset-left)); }
+  .safe-area-right { padding-right: max(12px, env(safe-area-inset-right)); }
+  .safe-area-all { 
+    padding-top: max(12px, env(safe-area-inset-top));
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+  }
+}
+
+/* Ensure the Next root and body are full height so internal overflow containers can scroll */
+html, body, #__next {
+  height: 100%;
+}
+
+/* Prevent iOS scroll-on-focus behavior that hides headers when keyboard opens */
+@supports (-webkit-touch-callout: none) {
+  /* iOS only */
+  html {
+    height: -webkit-fill-available;
+  }
+  body {
+    min-height: -webkit-fill-available;
+  }
+  /* Do NOT add scroll-margin-top to [contenteditable]:focus — it causes
+     scroll jumps on every focus transition between Yoopta blocks. */
+}
+
+/* Enable momentum scrolling on touch devices for scrollable panes */
+.smooth-scroll {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ============================================================================
+   YOOPTA EDITOR - Minimal Dark Mode Support
+   Note: Action menu, toolbar, and link tool use custom React components.
+   These CSS rules are for block options/handles only.
+   ============================================================================ */
+
+/* Block options menu dark mode - Warm stone (default) */
+.dark [class*="yoopta-block-options-menu-content"] {
+  background-color: #211e1b !important;
+  color: #e7e5e4 !important;
+  border: 1px solid #3d3835 !important;
+}
+
+.dark [class*="yoopta-extended-block-actions"] {
+  background-color: #211e1b !important;
+  color: #e7e5e4 !important;
+  border: 1px solid #3d3835 !important;
+}
+
+.dark [class*="yoopta-block-action-buttons"] button {
+  color: #e7e5e4 !important;
+}
+
+.dark [class*="yoopta-block-action-buttons"] button:hover {
+  background-color: #2c2825 !important;
+}
+
+/* Block drag handle visibility */
+.dark [data-yoopta-editor-id] [class*="yoopta-block-options"] {
+  color: #a8a29e;
+}
+
+/* Block options menu dark mode - Cool GitHub theme */
+.dark.theme-cool [class*="yoopta-block-options-menu-content"] {
+  background-color: #161b22 !important;
+  color: #e6edf3 !important;
+  border: 1px solid #30363d !important;
+}
+
+.dark.theme-cool [class*="yoopta-extended-block-actions"] {
+  background-color: #161b22 !important;
+  color: #e6edf3 !important;
+  border: 1px solid #30363d !important;
+}
+
+.dark.theme-cool [class*="yoopta-block-action-buttons"] button {
+  color: #e6edf3 !important;
+}
+
+.dark.theme-cool [class*="yoopta-block-action-buttons"] button:hover {
+  background-color: #21262d !important;
+}
+
+.dark.theme-cool [data-yoopta-editor-id] [class*="yoopta-block-options"] {
+  color: #8b949e;
+}
+
+/* ============================================================================
+   YOOPTA MEDIA PLUGINS - Dark Mode Support
+   Image, File, Embed, Video plugins use hardcoded light colors.
+   These overrides provide dark mode styling.
+   ============================================================================ */
+
+/* === IMAGE PLUGIN === */
+/* Image upload placeholder/uploader */
+.dark [class*="yoo-image-bg-"] {
+  background-color: #21262d !important;
+}
+
+.dark [class*="yoo-image-text-"] {
+  color: #8b949e !important;
+}
+
+.dark [class*="yoo-image-border-"] {
+  border-color: #3d3835 !important;
+}
+
+/* Image caption */
+.dark [class*="yoo-image-"] input,
+.dark [class*="yoo-image-"] textarea {
+  background-color: transparent !important;
+  color: #e7e5e4 !important;
+}
+
+.dark [class*="yoo-image-"] input::placeholder,
+.dark [class*="yoo-image-"] textarea::placeholder {
+  color: #a8a29e !important;
+}
+
+/* === FILE PLUGIN === */
+.dark [class*="yoo-file-bg-"] {
+  background-color: #2c2825 !important;
+}
+
+.dark [class*="yoo-file-text-"] {
+  color: #e7e5e4 !important;
+}
+
+.dark [class*="yoo-file-border-"] {
+  border-color: #3d3835 !important;
+}
+
+/* File upload button/area */
+.dark [class*="yoo-file-"] button {
+  background-color: #2c2825 !important;
+  color: #e7e5e4 !important;
+  border-color: #3d3835 !important;
+}
+
+.dark [class*="yoo-file-"] button:hover {
+  background-color: #38332f !important;
+}
+
+/* === EMBED PLUGIN === */
+.dark [class*="yoo-embed-bg-"] {
+  background-color: #2c2825 !important;
+}
+
+.dark [class*="yoo-embed-text-"] {
+  color: #e7e5e4 !important;
+}
+
+.dark [class*="yoo-embed-border-"] {
+  border-color: #3d3835 !important;
+}
+
+/* Embed input field */
+.dark [class*="yoo-embed-"] input {
+  background-color: #1c1917 !important;
+  color: #e7e5e4 !important;
+  border-color: #3d3835 !important;
+}
+
+.dark [class*="yoo-embed-"] input::placeholder {
+  color: #a8a29e !important;
+}
+
+/* Embed submit button */
+.dark [class*="yoo-embed-"] button {
+  background-color: #78716c !important;
+  color: #171412 !important;
+}
+
+.dark [class*="yoo-embed-"] button:hover {
+  background-color: #a8a29e !important;
+}
+
+/* === VIDEO PLUGIN === */
+.dark [class*="yoo-video-bg-"] {
+  background-color: #2c2825 !important;
+}
+
+.dark [class*="yoo-video-text-"] {
+  color: #e7e5e4 !important;
+}
+
+.dark [class*="yoo-video-border-"] {
+  border-color: #3d3835 !important;
+}
+
+/* Video input and controls */
+.dark [class*="yoo-video-"] input {
+  background-color: #1c1917 !important;
+  color: #e7e5e4 !important;
+  border-color: #3d3835 !important;
+}
+
+.dark [class*="yoo-video-"] input::placeholder {
+  color: #a8a29e !important;
+}
+
+.dark [class*="yoo-video-"] button {
+  background-color: #78716c !important;
+  color: #171412 !important;
+}
+
+.dark [class*="yoo-video-"] button:hover {
+  background-color: #a8a29e !important;
+}
+
+/* =============================================================================
+   YOOPTA MEDIA PLUGINS - Cool Dark Theme (GitHub-style)
+   ============================================================================= */
+
+/* === IMAGE PLUGIN (Cool) === */
+.dark.theme-cool [class*="yoo-image-bg-"] {
+  background-color: #21262d !important;
+}
+
+.dark.theme-cool [class*="yoo-image-text-"] {
+  color: #8b949e !important;
+}
+
+.dark.theme-cool [class*="yoo-image-border-"] {
+  border-color: #30363d !important;
+}
+
+.dark.theme-cool [class*="yoo-image-"] input,
+.dark.theme-cool [class*="yoo-image-"] textarea {
+  background-color: transparent !important;
+  color: #e6edf3 !important;
+}
+
+.dark.theme-cool [class*="yoo-image-"] input::placeholder,
+.dark.theme-cool [class*="yoo-image-"] textarea::placeholder {
+  color: #8b949e !important;
+}
+
+/* === FILE PLUGIN (Cool) === */
+.dark.theme-cool [class*="yoo-file-bg-"] {
+  background-color: #21262d !important;
+}
+
+.dark.theme-cool [class*="yoo-file-text-"] {
+  color: #e6edf3 !important;
+}
+
+.dark.theme-cool [class*="yoo-file-border-"] {
+  border-color: #30363d !important;
+}
+
+.dark.theme-cool [class*="yoo-file-"] button {
+  background-color: #21262d !important;
+  color: #e6edf3 !important;
+  border-color: #30363d !important;
+}
+
+.dark.theme-cool [class*="yoo-file-"] button:hover {
+  background-color: #30363d !important;
+}
+
+/* === EMBED PLUGIN (Cool) === */
+.dark.theme-cool [class*="yoo-embed-bg-"] {
+  background-color: #21262d !important;
+}
+
+.dark.theme-cool [class*="yoo-embed-text-"] {
+  color: #e6edf3 !important;
+}
+
+.dark.theme-cool [class*="yoo-embed-border-"] {
+  border-color: #30363d !important;
+}
+
+.dark.theme-cool [class*="yoo-embed-"] input {
+  background-color: #0d1117 !important;
+  color: #e6edf3 !important;
+  border-color: #30363d !important;
+}
+
+.dark.theme-cool [class*="yoo-embed-"] input::placeholder {
+  color: #8b949e !important;
+}
+
+.dark.theme-cool [class*="yoo-embed-"] button {
+  background-color: #238636 !important;
+  color: #ffffff !important;
+}
+
+.dark.theme-cool [class*="yoo-embed-"] button:hover {
+  background-color: #2ea043 !important;
+}
+
+/* === VIDEO PLUGIN (Cool) === */
+.dark.theme-cool [class*="yoo-video-bg-"] {
+  background-color: #21262d !important;
+}
+
+.dark.theme-cool [class*="yoo-video-text-"] {
+  color: #e6edf3 !important;
+}
+
+.dark.theme-cool [class*="yoo-video-border-"] {
+  border-color: #30363d !important;
+}
+
+.dark.theme-cool [class*="yoo-video-"] input {
+  background-color: #0d1117 !important;
+  color: #e6edf3 !important;
+  border-color: #30363d !important;
+}
+
+.dark.theme-cool [class*="yoo-video-"] input::placeholder {
+  color: #8b949e !important;
+}
+
+.dark.theme-cool [class*="yoo-video-"] button {
+  background-color: #238636 !important;
+  color: #ffffff !important;
+}
+
+.dark.theme-cool [class*="yoo-video-"] button:hover {
+  background-color: #2ea043 !important;
+}
+
+/* === ACCORDION PLUGIN (Notion-style toggle) === */
+/* Light mode: cleaner Notion-style appearance */
+.yoopta-accordion-list-item {
+  background-color: transparent !important;
+  border: none !important;
+  border-radius: 4px !important;
+  margin-bottom: 2px !important;
+}
+
+.yoopta-accordion-list-item:hover {
+  background-color: rgba(0, 0, 0, 0.03) !important;
+}
+
+.yoopta-accordion-list-item-heading {
+  font-weight: 500 !important;
+  padding: 8px 32px 8px 4px !important;
+}
+
+.yoopta-accordion-list-item-content {
+  padding: 0 4px 12px 20px !important;
+  color: #57534e !important;
+}
+
+/* Chevron button - cleaner positioning */
+.yoopta-accordion-list-item-heading .yoopta-button:last-child svg {
+  color: #78716c !important;
+  transition: transform 0.2s ease !important;
+}
+
+/* Dark mode accordion */
+.dark .yoopta-accordion-list-item {
+  background-color: transparent !important;
+  border: none !important;
+}
+
+.dark .yoopta-accordion-list-item:hover {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+}
+
+.dark .yoopta-accordion-list-item-heading {
+  color: #e7e5e4 !important;
+}
+
+.dark .yoopta-accordion-list-item-content {
+  color: #a8a29e !important;
+}
+
+.dark .yoopta-accordion-list-item-heading .yoopta-button:last-child svg {
+  color: #a8a29e !important;
+}
+
+/* Action buttons (add/delete) */
+.dark .yoopta-accordion-list-item-heading .yoopta-button svg {
+  color: #a8a29e !important;
+}
+
+.dark .yoopta-accordion-list-item-heading .yoopta-button:hover svg {
+  color: #e7e5e4 !important;
+}
+
+/* Dark mode accordion - Cool GitHub theme */
+.dark.theme-cool .yoopta-accordion-list-item-heading {
+  color: #e6edf3 !important;
+}
+
+.dark.theme-cool .yoopta-accordion-list-item-content {
+  color: #8b949e !important;
+}
+
+.dark.theme-cool .yoopta-accordion-list-item-heading .yoopta-button:last-child svg {
+  color: #8b949e !important;
+}
+
+.dark.theme-cool .yoopta-accordion-list-item-heading .yoopta-button svg {
+  color: #8b949e !important;
+}
+
+.dark.theme-cool .yoopta-accordion-list-item-heading .yoopta-button:hover svg {
+  color: #e6edf3 !important;
+}
+
+
+/* Paper canvas styles are provided by Frameer base.css */
+
+/* ============================================================================
+   YOOPTA MULTI-BLOCK SELECTION FIX
+   Fix for regression in v4.9 where multi-block selection doesn't work
+   See: https://github.com/yoopta-editor/Yoopta-Editor/issues/449
+   ============================================================================ */
+
+.yoopta-selection-block::before {
+  content: "" !important;
+}
+
+/* Card hover and list-item-hover effects are provided by Frameer base.css */
+
+/* Scrollbar styles are provided by Frameer base.css */
+
+/* =============================================================================
+   TAB BAR
+   Chrome-style tab bar with smooth transitions and responsive sizing
+   ============================================================================= */
+
+/* Tab container */
+.tab-bar {
+  display: flex;
+  align-items: flex-end;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.tab-bar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Tab item base */
+.tab-item {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+/* Tab item states */
+.tab-item:not(.tab-active):hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.dark .tab-item:not(.tab-active):hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.tab-item.tab-active {
+  background: white;
+  box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.dark .tab-item.tab-active {
+  background: var(--color-gh-canvas-default);
+}
+
+/* Tab close button */
+.tab-close {
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+
+.tab-item:hover .tab-close,
+.tab-item.tab-active .tab-close {
+  opacity: 1;
+}
+
+/* Tab drag over indicator */
+.tab-item.drag-over-left {
+  box-shadow: -2px 0 0 0 var(--color-blue-500);
+}
+
+.tab-item.drag-over-right {
+  box-shadow: 2px 0 0 0 var(--color-blue-500);
+}
+
+/* Glass base styles (glass, glass-subtle, glass-heavy) are provided by Frameer base.css */
+
+/* =============================================================================
+   PLANNEER-SPECIFIC GLASS EXTENSIONS
+   Additional glass variants not in frameer, specific to Planneer's UI
+   ============================================================================= */
+
+/* Tab-specific glass item - subtle visible background */
+.glass-item-tab {
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+}
+
+.dark .glass-item-tab {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid transparent;
+}
+
+.glass-item-tab:hover {
+  background: rgba(255, 255, 255, 0.4);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.dark .glass-item-tab:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+/* Pinned item - subtle border by default, glass-item on hover/active */
+.pinned-item {
+  background: transparent;
+  border: 1px solid var(--color-border-default);
+  transition: all 0.15s ease;
+}
+
+.dark .pinned-item {
+  border: 1px solid var(--color-border-default);
+}
+
+.pinned-item:hover,
+.pinned-item.active {
+  background: color-mix(in srgb, var(--color-surface-base) 76%, transparent);
+  border: 1px solid var(--color-border-default);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.04),
+    0 4px 12px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.dark .pinned-item:hover,
+.dark .pinned-item.active {
+  background: color-mix(in srgb, var(--color-surface-base) 72%, transparent);
+  border: 1px solid var(--color-border-default);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.15),
+    0 4px 12px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* Typography refinement styles are provided by Frameer base.css */
+
+/* Table styling and header gradients are provided by Frameer base.css */
+
+/* Focus ring, transitions, and layout-background are provided by Frameer base.css */
+
+/* Paper surface overrides - base styles from Frameer base.css */
+.paper-surface {
+  /* Planneer-specific margins and border-radius */
+  margin-top: 8px;
+  margin-right: 8px;
+  margin-bottom: 8px;
+  border-radius: 20px;
+}
+
+/*
+ * The paper-surface top highlight (::before pseudo with -webkit-mask) was
+ * removed because mask-composite forces GPU compositing on <main>, causing
+ * Safari to drop contenteditable block paints. The visual effect was barely
+ * perceptible and the existing border + box-shadow on .paper-surface
+ * (defined in Frameer base.css) provides sufficient depth.
+ */
+
+/* Sidebar recessed styles are now in Frameer base.css */
+
+/* Tab bar - floating tabs without explicit background */
+.tab-bar {
+  background-color: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  /* Symmetric horizontal margins now that tab bar spans full width */
+  margin-left: 8px;
+  margin-right: 8px;
+  margin-top: 12px;
+  z-index: 10;
+  position: relative;
+  border: none;
+  box-shadow: none;
+  /* Padding to prevent shadow clipping from glass-item tabs */
+  padding-top: 4px;
+  padding-bottom: 12px;
+}
+
+.dark .tab-bar {
+  background-color: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: none;
+  box-shadow: none;
+}
+
+.sidebar-recessed .sidebar-content {
+  background-color: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  flex: 1;
+  margin: 0;
+  padding-right: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.dark .sidebar-recessed .sidebar-content {
+  background-color: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+}
+
+/* =============================================================================
+   GLASS TOOLBAR - Shared frosted-glass pill style for all floating toolbars.
+   Used by: ExcalidrawToolbar, Yoopta floating toolbar, mobile nav bar (FAB).
+   ============================================================================= */
+
+.glass-toolbar,
+.glass-toolbar-lighter,
+.glass-panel-nav {
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--color-border-default);
+  border-radius: 9999px;
+}
+
+.glass-toolbar,
+.glass-panel-nav {
+  background: color-mix(in srgb, var(--color-surface-base) 80%, transparent);
+}
+
+.glass-toolbar-lighter {
+  background: color-mix(in srgb, var(--color-surface-base) 70%, transparent);
+}
+
+/* Excalidraw property sub-bar: thin auto-hiding scrollbar */
+.excalidraw-subbar-scroll,
+.excalidraw-toolbar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.excalidraw-subbar-scroll:hover,
+.excalidraw-toolbar-scroll:hover {
+  scrollbar-color: rgba(128, 128, 128, 0.25) transparent;
+}
+.excalidraw-subbar-scroll::-webkit-scrollbar,
+.excalidraw-toolbar-scroll::-webkit-scrollbar {
+  height: 3px;
+}
+.excalidraw-subbar-scroll::-webkit-scrollbar-track,
+.excalidraw-toolbar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.excalidraw-subbar-scroll::-webkit-scrollbar-thumb,
+.excalidraw-toolbar-scroll::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 3px;
+}
+.excalidraw-subbar-scroll:hover::-webkit-scrollbar-thumb,
+.excalidraw-toolbar-scroll:hover::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.25);
+}
+
+/* Spring easing for interactive elements */
+.transition-spring {
+  transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/*
+ * Drag behaviour: keep all blocks in place during drag.
+ * Only the blue drop-indicator bar shows where the block will land.
+ * The original block stays visible at 50% opacity in its position.
+ * The block moves into its new position on drop, not during drag.
+ */
+/* Show the dragged block at 50% opacity in its original position */
+.yoopta-ui-block-dnd-sortable[data-block-dnd-dragging="true"] {
+  opacity: 0.5 !important;
+  transform: none !important;
+}
+/* Prevent non-dragged blocks from shifting during drag */
+.yoopta-ui-block-dnd-sortable:not([data-block-dnd-dragging="true"]) {
+  transform: none !important;
+  transition: none !important;
+}
+/* Hide the "Moving block" drag overlay (visibility:hidden keeps it measurable
+   so dnd-kit's collision detection still works correctly) */
+.yoopta-ui-block-dnd-overlay {
+  visibility: hidden !important;
+}
+/* Hide the library's built-in drop indicator (replaced by VerticalDropIndicator) */
+.yoopta-ui-block-dnd-drop-indicator {
+  display: none !important;
+}
+
+

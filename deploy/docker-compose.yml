@@ -1,0 +1,24 @@
+services:
+  planneer:
+    image: ghcr.io/jessevl/planneer:${VERSION:-latest}
+    container_name: planneer
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8090}:8090"
+    environment:
+      - PB_ADMIN_EMAIL=${PB_ADMIN_EMAIL}
+      - PB_ADMIN_PASSWORD=${PB_ADMIN_PASSWORD}
+      - PLANNEER_CLOSED_BETA=${PLANNEER_CLOSED_BETA:-true}
+      - PLANNEER_ALLOW_ADMIN_UI=${PLANNEER_ALLOW_ADMIN_UI:-false}
+      - UNSPLASH_ACCESS_KEY=${UNSPLASH_ACCESS_KEY:-}
+    volumes:
+      - planneer-data:/app/pb_data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8090/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  planneer-data:
+    name: planneer-data

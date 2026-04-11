@@ -1,0 +1,4 @@
+[submodule "frameer"]
+	path = frameer
+	url = https://github.com/jessevl/Frameer.git
+	branch = main

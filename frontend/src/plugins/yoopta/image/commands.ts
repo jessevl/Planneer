@@ -1,0 +1,64 @@
+/**
+ * @file commands.ts
+ * @description Commands for the custom Image plugin
+ * Forked from @yoopta/image
+ */
+import type { YooEditor, YooptaPathIndex } from '@yoopta/editor';
+import { Blocks, buildBlockData, generateId, Elements } from '@yoopta/editor';
+import type { ImageElement, ImageElementProps, ImagePluginElements } from './types';
+
+type ImageElementOptions = {
+  props?: Omit<ImageElementProps, 'nodeType'>;
+};
+
+type InsertImageOptions = ImageElementOptions & {
+  at?: YooptaPathIndex;
+  focus?: boolean;
+};
+
+export type ImageCommandsType = {
+  buildImageElements: (editor: YooEditor, options?: Partial<ImageElementOptions>) => ImageElement;
+  insertImage: (editor: YooEditor, options?: Partial<InsertImageOptions>) => void;
+  deleteImage: (editor: YooEditor, blockId: string) => void;
+  updateImage: (editor: YooEditor, blockId: string, props: Partial<ImageElementProps>) => void;
+};
+
+export const ImageCommands: ImageCommandsType = {
+  buildImageElements: (_editor: YooEditor, options = {}) => {
+    const imageProps = { ...options.props, nodeType: 'void' as const };
+    return {
+      id: generateId(),
+      type: 'image' as const,
+      children: [{ text: '' }],
+      props: imageProps as ImageElementProps,
+    };
+  },
+
+  insertImage: (editor: YooEditor, options = {}) => {
+    const { at, focus, props } = options;
+    const image = ImageCommands.buildImageElements(editor, { props });
+    const block = buildBlockData({
+      value: [image],
+      type: 'Image',
+      meta: { align: 'center', depth: 0, order: 0 },
+    });
+
+    Blocks.insertBlock(editor, block.type, {
+      focus,
+      at,
+      blockData: block,
+    });
+  },
+
+  deleteImage: (editor: YooEditor, blockId: string) => {
+    Blocks.deleteBlock(editor, { blockId });
+  },
+
+  updateImage: (editor: YooEditor, blockId: string, props: Partial<ImageElementProps>) => {
+    Elements.updateElement(editor, { 
+      blockId,
+      type: 'image',
+      props 
+    });
+  },
+};

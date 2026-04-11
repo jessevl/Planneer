@@ -1,0 +1,195 @@
+name: Container
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - docs/**
+      - screenshots/**
+      - '**/*.md'
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*.*.*'
+    paths-ignore:
+      - docs/**
+      - screenshots/**
+      - '**/*.md'
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build:
+    name: Build Container
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          parse_version() {
+            local value="$1"
+            if [[ ! "$value" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+              return 1
+            fi
+            echo "${BASH_REMATCH[1]} ${BASH_REMATCH[2]} ${BASH_REMATCH[3]}"
+          }
+
+          current_version="$(tr -d '[:space:]' < VERSION)"
+          if [[ -z "$current_version" ]]; then
+            echo "VERSION file is empty" >&2
+            exit 1
+          fi
+
+          if ! current_parts="$(parse_version "$current_version")"; then
+            echo "VERSION must use semantic version format X.Y.Z" >&2
+            exit 1
+          fi
+
+          read -r current_major current_minor current_patch <<< "$current_parts"
+          resolved_version="$current_version"
+          should_commit=false
+
+          if [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF" == "refs/heads/main" ]]; then
+            previous_ref="${{ github.event.before }}"
+            if [[ "$previous_ref" != "0000000000000000000000000000000000000000" ]]; then
+              previous_version="$(git show "$previous_ref:VERSION" 2>/dev/null | tr -d '[:space:]' || true)"
+              if [[ -n "$previous_version" ]]; then
+                if ! previous_parts="$(parse_version "$previous_version")"; then
+                  echo "Previous VERSION must use semantic version format X.Y.Z" >&2
+                  exit 1
+                fi
+
+                read -r previous_major previous_minor previous_patch <<< "$previous_parts"
+
+                if [[ "$current_major" == "$previous_major" && "$current_minor" == "$previous_minor" ]]; then
+                  resolved_version="$current_major.$current_minor.$((previous_patch + 1))"
+                  if [[ "$resolved_version" != "$current_version" ]]; then
+                    printf '%s\n' "$resolved_version" > VERSION
+                    should_commit=true
+                  fi
+                fi
+              fi
+            fi
+          fi
+
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            tag_version="${GITHUB_REF_NAME#v}"
+            if [[ "$tag_version" != "$resolved_version" ]]; then
+              echo "Tag version $tag_version does not match VERSION $resolved_version" >&2
+              exit 1
+            fi
+          fi
+
+          echo "value=$resolved_version" >> "$GITHUB_OUTPUT"
+          echo "should_commit=$should_commit" >> "$GITHUB_OUTPUT"
+
+      - name: Commit auto-bumped version
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.version.outputs.should_commit == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add VERSION
+          git commit -m "chore: bump version to ${{ steps.version.outputs.value }} [skip ci]"
+          git push
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ steps.version.outputs.value }},enable={{is_default_branch}}
+            type=sha,prefix=sha-
+            type=ref,event=branch
+            type=semver,pattern={{version}},value=${{ github.ref_name }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ github.ref_name }}
+
+      - name: Build and optionally push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ steps.version.outputs.value }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  release:
+    name: Create GitHub Release
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate release notes
+        id: notes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          current_tag="${GITHUB_REF_NAME}"
+          previous_tag="$({ git tag --sort=-version:refname | grep '^v' | grep -Fxv "$current_tag" | head -n 1; } || true)"
+
+          {
+            echo "## Changes"
+            echo
+
+            if [[ -n "$previous_tag" ]]; then
+              git log --pretty=format:'- %s (%h)' "$previous_tag..$current_tag"
+            else
+              git log --pretty=format:'- %s (%h)' "$current_tag"
+            fi
+          } > release-notes.md
+
+          if [[ ! -s release-notes.md ]] || [[ "$(tail -n +3 release-notes.md | wc -l | tr -d ' ')" == "0" ]]; then
+            printf '## Changes\n\n- No commit messages found for this release.\n' > release-notes.md
+          fi
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body_path: release-notes.md

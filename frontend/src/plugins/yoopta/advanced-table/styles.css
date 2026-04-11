@@ -1,0 +1,427 @@
+/* Advanced Table Plugin Styles */
+@reference "tailwindcss";
+@reference "../../../app/globals.css";
+
+/* Table Block Container - position context for absolute block options */
+.yoopta-advanced-table-block {
+  @apply w-full pt-0 relative;
+}
+
+.yoopta-advanced-table-block .yoopta-advanced-table-options {
+  @apply absolute right-0;
+  opacity: 0;
+  transition: opacity 0.15s ease-in-out;
+  top: 12px;
+  z-index: 10;
+}
+
+.yoopta-advanced-table-block:hover .yoopta-advanced-table-options {
+  opacity: 1;
+}
+
+/* Table Wrapper - provides the rounded border and clips cell overflows */
+.yoopta-advanced-table-wrapper {
+  position: relative;
+  display: inline-block;
+  border-radius: 12px;
+  border: 1px solid var(--color-border-default);
+  overflow: hidden;
+  background-color: var(--color-surface-primary);
+}
+
+/* When calc row exists, bottom corner arcs should match calc row color, not body row color */
+.yoopta-advanced-table-wrapper.yoopta-advanced-table-wrapper-has-calculation-row {
+  background-color: color-mix(in srgb, var(--color-surface-inset) 50%, var(--color-surface-primary));
+}
+
+/* Paint top corner arcs with header color (h-10 = 40px) so they don't inherit wrapper body color */
+.yoopta-advanced-table-wrapper::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+  background-color: var(--color-surface-inset);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Paint bottom corner arcs to match calculation row background when enabled */
+.yoopta-advanced-table-wrapper.yoopta-advanced-table-wrapper-has-calculation-row::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 40px;
+  background-color: color-mix(in srgb, var(--color-surface-inset) 50%, var(--color-surface-primary));
+  pointer-events: none;
+  z-index: 0;
+}
+
+.yoopta-advanced-table-wrapper > .yoopta-advanced-table {
+  position: relative;
+  z-index: 1;
+}
+
+/* Fill rounded top corners with header background */
+.yoopta-advanced-table-metadata-row th:first-child {
+  border-top-left-radius: 12px;
+  background-clip: padding-box;
+}
+
+.yoopta-advanced-table-metadata-row th:last-child {
+  border-top-right-radius: 12px;
+  background-clip: padding-box;
+}
+
+/* Fill rounded bottom corners for regular last row */
+.yoopta-advanced-table tbody .yoopta-advanced-table-row:last-child .yoopta-advanced-table-data-cell:first-child {
+  border-bottom-left-radius: 12px;
+  background-clip: padding-box;
+}
+
+.yoopta-advanced-table tbody .yoopta-advanced-table-row:last-child .yoopta-advanced-table-data-cell:last-child {
+  border-bottom-right-radius: 12px;
+  background-clip: padding-box;
+}
+
+/* Fill rounded bottom corners when calculation row is shown */
+.yoopta-advanced-table-calculation-row td:first-child {
+  border-bottom-left-radius: 12px;
+  background-clip: padding-box;
+}
+
+.yoopta-advanced-table-calculation-row td:last-child {
+  border-bottom-right-radius: 12px;
+  background-clip: padding-box;
+}
+
+/* Calculation row needs explicit cell backgrounds so bottom corner arcs are fully painted */
+.yoopta-advanced-table-has-calculation-row .yoopta-advanced-table-calculation-row td {
+  background-color: color-mix(in srgb, var(--color-surface-inset) 50%, var(--color-surface-primary)) !important;
+}
+
+/* Table Element */
+.yoopta-advanced-table {
+  @apply select-none border-separate w-auto caption-bottom text-sm table-fixed;
+  border-spacing: 0;
+}
+
+/* Ensure rounded wrapper corners are filled by table section backgrounds */
+.yoopta-advanced-table thead {
+  background-color: var(--color-surface-inset);
+}
+
+.yoopta-advanced-table tbody {
+  background-color: var(--color-surface-primary);
+}
+
+.yoopta-advanced-table-selecting *::selection {
+  background: none;
+}
+
+.yoopta-advanced-table tbody {
+  @apply select-none;
+}
+
+/* Table Row */
+.yoopta-advanced-table-row {
+  @apply transition-colors relative;
+}
+
+.yoopta-advanced-table-row-selected {
+  border-color: #73b6db;
+  border-width: 2px;
+}
+
+/* Table Data Cell */
+.yoopta-advanced-table-data-cell {
+  @apply transition-colors text-inherit fill-current relative align-top min-h-[32px];
+  background-color: var(--color-surface-primary);
+  /* Use explicit border properties with !important to override Yoopta's inline reset in production */
+  border-style: solid !important;
+  border-right-width: 1px !important;
+  border-bottom-width: 1px !important;
+  border-color: var(--color-border-default) !important;
+}
+
+.dark .yoopta-advanced-table-data-cell {
+  border-color: var(--color-border-default) !important;
+}
+
+/* Remove right border from last cell in each row */
+.yoopta-advanced-table-row .yoopta-advanced-table-data-cell:last-child {
+  border-right-width: 0 !important;
+}
+
+/* Remove bottom border from cells in last row */
+.yoopta-advanced-table-row:last-child .yoopta-advanced-table-data-cell {
+  border-bottom-width: 0 !important;
+}
+
+.yoopta-advanced-table-data-cell[data-cell-selected='true'] {
+  background-color: #37352f14;
+}
+
+.dark .yoopta-advanced-table-data-cell[data-cell-selected='true'] {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.yoopta-advanced-table-data-cell-head {
+  background-color: var(--color-surface-inset) !important;
+  /* Use explicit border for header cells with !important for production */
+  border-bottom-width: 2px !important;
+  border-bottom-style: solid !important;
+  border-bottom-color: var(--color-border-default) !important;
+}
+
+.dark .yoopta-advanced-table-data-cell-head {
+  background-color: var(--color-surface-inset) !important;
+  border-bottom-color: var(--color-border-default) !important;
+}
+
+.yoopta-advanced-table-data-cell:hover .yoopta-advanced-table-column-button {
+  opacity: 1;
+}
+
+.yoopta-advanced-table-data-cell:hover .yoopta-advanced-table-row-button {
+  opacity: 1;
+}
+
+/* Metadata Header Row */
+.yoopta-advanced-table-metadata-row {
+  /* Regular row, no sticky */
+}
+
+.yoopta-advanced-table-metadata-row th {
+  background-color: var(--color-surface-inset) !important;
+  border-right-style: solid !important;
+  border-right-width: 1px !important;
+  border-right-color: var(--color-border-default) !important;
+}
+
+.dark .yoopta-advanced-table-metadata-row th {
+  border-right-color: var(--color-border-default) !important;
+}
+
+.yoopta-advanced-table-metadata-row th:last-child {
+  border-right-width: 0 !important;
+}
+
+/* Cell Content */
+.yoopta-advanced-table-data-cell-content {
+  @apply max-w-full w-full whitespace-pre-wrap break-words p-[7px_9px] bg-transparent text-[14px] leading-[20px];
+  caret-color: rgb(55, 53, 47);
+}
+
+.dark .yoopta-advanced-table-data-cell-content {
+  caret-color: #e3e3e3;
+}
+
+/* Column Drag Button */
+.yoopta-advanced-table-column-button {
+  @apply opacity-0 cursor-pointer select-none transition-opacity duration-150 absolute flex items-center justify-center rounded z-[4] h-[16px] w-[26px] p-[2px_4px];
+  @apply bg-white dark:bg-gh-canvas-overlay;
+  top: -8px;
+  left: calc(50% - 13px);
+  fill: rgba(55, 53, 47, 0.35);
+  box-shadow: hsla(0, 0%, 6%, 0.1) 0px 0px 0px 1px, hsla(0, 0%, 6%, 0.1) 0px 2px 4px;
+}
+
+.dark .yoopta-advanced-table-column-button {
+  fill: rgba(255, 255, 255, 0.5);
+}
+
+/* Row Drag Button */
+.yoopta-advanced-table-row-button {
+  @apply opacity-0 cursor-pointer select-none transition-opacity duration-150 absolute flex items-center justify-center rounded z-[4] w-[16px] h-[26px] p-[4px_2px];
+  @apply bg-white dark:bg-gh-canvas-overlay;
+  top: calc(50% - 13px);
+  left: -8px;
+  fill: rgba(55, 53, 47, 0.35);
+  box-shadow: hsla(0, 0%, 6%, 0.1) 0px 0px 0px 1px, hsla(0, 0%, 6%, 0.1) 0px 2px 4px;
+}
+
+.dark .yoopta-advanced-table-row-button {
+  fill: rgba(255, 255, 255, 0.5);
+}
+
+/* Drag Icon */
+.yoopta-advanced-table-drag-icon {
+  @apply w-[12px] h-[12px];
+  color: rgba(55, 53, 47, 0.5);
+}
+
+.dark .yoopta-advanced-table-drag-icon {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Icons in menus */
+.yoopta-advanced-table-icons {
+  @apply w-4 h-4 mr-2;
+}
+
+/* Resize Handle */
+.yoopta-advanced-table-resize-handle {
+  @apply select-none absolute -right-[2px] w-[4px] top-0 flex-grow-0 h-full z-[10] cursor-col-resize;
+}
+
+.yoopta-advanced-table-resize-handle-inner {
+  @apply select-none absolute w-[2px] left-[1px] top-0 h-full transition-[background] duration-150 delay-[50ms];
+  background-color: transparent;
+}
+
+.yoopta-advanced-table-resize-handle:hover .yoopta-advanced-table-resize-handle-inner,
+.yoopta-advanced-table:hover .yoopta-advanced-table-resize-handle-inner {
+  background-color: rgba(116, 182, 219, 0.2);
+}
+
+.yoopta-advanced-table-resize-handle:hover .yoopta-advanced-table-resize-handle-inner {
+  background-color: #74b6db;
+}
+
+/* Quick Add Buttons */
+.yoopta-advanced-table-quick-add-row {
+  @apply opacity-0 absolute -bottom-3 left-0 w-full h-6 flex items-center justify-center cursor-pointer transition-opacity duration-150 bg-transparent hover:bg-blue-50 border border-dashed border-transparent hover:border-blue-300 rounded;
+}
+
+.dark .yoopta-advanced-table-quick-add-row:hover {
+  @apply bg-blue-900/20 border-blue-700;
+}
+
+.yoopta-advanced-table-block:hover .yoopta-advanced-table-quick-add-row {
+  opacity: 1;
+}
+
+.yoopta-advanced-table-quick-add-column {
+  @apply opacity-0 absolute -right-3 top-0 w-6 h-full flex items-center justify-center cursor-pointer transition-opacity duration-150 bg-transparent hover:bg-blue-50 border border-dashed border-transparent hover:border-blue-300 rounded;
+}
+
+.dark .yoopta-advanced-table-quick-add-column:hover {
+  @apply bg-blue-900/20 border-blue-700;
+}
+
+.yoopta-advanced-table-block:hover .yoopta-advanced-table-quick-add-column {
+  opacity: 1;
+}
+
+.yoopta-advanced-table-quick-add-icon {
+  @apply w-4 h-4 text-blue-500;
+}
+
+/* Color Picker */
+.yoopta-advanced-table-color-picker {
+  @apply p-2 w-[180px];
+}
+
+.yoopta-advanced-table-color-picker-label {
+  @apply text-xs text-gray-500 mb-2 font-medium;
+}
+
+.dark .yoopta-advanced-table-color-picker-label {
+  @apply text-gray-400;
+}
+
+.yoopta-advanced-table-color-clear-button {
+  @apply w-full text-left px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 rounded mb-2 transition-colors flex items-center gap-2 border border-transparent hover:border-gray-200 dark:hover:border-gray-600;
+}
+
+.yoopta-advanced-table-color-picker-grid {
+  @apply grid grid-cols-7 gap-1.5;
+}
+
+.yoopta-advanced-table-color-swatch {
+  @apply w-7 h-7 rounded-md border border-gray-200 cursor-pointer transition-all hover:scale-110 hover:shadow-sm flex items-center justify-center;
+}
+
+.dark .yoopta-advanced-table-color-swatch {
+  @apply border-gray-600;
+}
+
+.yoopta-advanced-table-color-swatch-selected {
+  @apply ring-2 ring-blue-500 ring-offset-1 dark:ring-offset-gray-800;
+}
+
+.yoopta-advanced-table-color-check {
+  @apply w-3 h-3 text-gray-700;
+}
+
+.dark .yoopta-advanced-table-color-check {
+  @apply text-gray-100;
+}
+
+.yoopta-advanced-table-color-picker-container {
+  @apply px-2 py-1;
+}
+
+.yoopta-advanced-table-color-button {
+  @apply flex items-center gap-2;
+}
+
+.yoopta-advanced-table-color-preview {
+  @apply w-4 h-4 rounded border border-gray-300 ml-auto;
+}
+
+.dark .yoopta-advanced-table-color-preview {
+  @apply border-gray-500;
+}
+
+/* Sort active state */
+.yoopta-advanced-table-sort-active {
+  @apply bg-blue-50 text-blue-600;
+}
+
+.dark .yoopta-advanced-table-sort-active {
+  @apply bg-blue-900/20 text-blue-400;
+}
+
+/* ============ Alternating Rows ============ */
+/* Without header row: even rows get alternating color */
+.yoopta-advanced-table-alternating .yoopta-advanced-table-row:nth-child(even) .yoopta-advanced-table-data-cell:not([data-has-bg="true"]) {
+  background-color: #f5f5f4;
+}
+
+.dark .yoopta-advanced-table-alternating .yoopta-advanced-table-row:nth-child(even) .yoopta-advanced-table-data-cell:not([data-has-bg="true"]) {
+  background-color: #292929;
+}
+
+/* With header row: skip first row, odd rows (2nd, 4th, etc data rows) get alternating color */
+.yoopta-advanced-table-alternating.yoopta-advanced-table-has-header .yoopta-advanced-table-row:nth-child(even) .yoopta-advanced-table-data-cell:not([data-has-bg="true"]) {
+  background-color: transparent;
+}
+
+.yoopta-advanced-table-alternating.yoopta-advanced-table-has-header .yoopta-advanced-table-row:nth-child(odd):not(:first-child) .yoopta-advanced-table-data-cell:not([data-has-bg="true"]) {
+  background-color: #f5f5f4;
+}
+
+.dark .yoopta-advanced-table-alternating.yoopta-advanced-table-has-header .yoopta-advanced-table-row:nth-child(odd):not(:first-child) .yoopta-advanced-table-data-cell:not([data-has-bg="true"]) {
+  background-color: #292929;
+}
+
+/* ============ Mobile-specific styles ============ */
+/* On mobile, ensure visible borders between cells */
+@media (max-width: 768px) {
+  .yoopta-advanced-table-data-cell {
+    border-style: solid !important;
+    border-right-width: 1px !important;
+    border-bottom-width: 1px !important;
+    border-color: #d1d5db !important; /* gray-300 */
+  }
+  
+  .dark .yoopta-advanced-table-data-cell {
+    border-color: var(--color-gh-border-muted) !important;
+  }
+  
+  /* Still remove right border from last cell in each row */
+  .yoopta-advanced-table-row .yoopta-advanced-table-data-cell:last-child {
+    border-right-width: 0 !important;
+  }
+
+  /* Still remove bottom border from cells in last row */
+  .yoopta-advanced-table-row:last-child .yoopta-advanced-table-data-cell {
+    border-bottom-width: 0 !important;
+  }
+}
+
