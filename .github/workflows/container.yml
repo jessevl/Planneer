@@ -112,6 +112,11 @@ jobs:
           git commit -m "chore: bump version to ${{ steps.version.outputs.value }} [skip ci]"
           git push
 
+      - name: Capture release commit SHA
+        id: release_sha
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -148,6 +153,44 @@ jobs:
             VERSION=${{ steps.version.outputs.value }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Generate Changelog
+        id: changelog
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+
+          if [ -z "$PREVIOUS_TAG" ]; then
+            COMMITS=$(git log --pretty=format:"* %s (%h)" --no-merges | grep -v "chore: bump version")
+          else
+            COMMITS=$(git log --pretty=format:"* %s (%h)" "$PREVIOUS_TAG..HEAD" --no-merges | grep -v "chore: bump version")
+          fi
+
+          if [ -z "$COMMITS" ]; then
+            COMMITS="* ${{ github.event.head_commit.message }} (${{ github.sha }})"
+          fi
+
+          REPO_URL="https://github.com/${{ github.repository }}"
+          FORMATTED_CHANGELOG=$(echo "$COMMITS" | sed -E "s|#([0-9]+)|[#\1]($REPO_URL/issues/\1)|g")
+
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          echo "## What's Changed" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "$FORMATTED_CHANGELOG" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "**Full Changelog**: $REPO_URL/compare/${PREVIOUS_TAG:-main}...v${{ steps.version.outputs.value }}" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.value }}
+          name: v${{ steps.version.outputs.value }}
+          body: ${{ steps.changelog.outputs.body }}
+          target_commitish: ${{ steps.release_sha.outputs.sha || github.sha }}
+          draft: false
+          prerelease: false
 
   release:
     name: Create GitHub Release
