@@ -18,7 +18,7 @@ interface ModalProps {
   showCloseButton?: boolean;
   /** Force full-screen on mobile (default: true for lg/xl sizes) */
   mobileFullScreen?: boolean;
-  /** Custom z-index (default: 200, above MobileSheet which is 150) */
+  /** Custom z-index (default: 260, above the mobile drawer layer) */
   zIndex?: number;
 }
 
@@ -32,7 +32,7 @@ const Modal: React.FC<ModalProps> = ({
   hideHeader = false,
   showCloseButton = true,
   mobileFullScreen,
-  zIndex = 200,
+  zIndex = 260,
 }) => {
   // Animate on mount
   const [mounted, setMounted] = useState(false);

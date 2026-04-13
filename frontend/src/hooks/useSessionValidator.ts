@@ -68,6 +68,7 @@ export function useSessionValidator(options: UseSessionValidatorOptions = {}): v
     onSessionRefreshed,
   } = options;
 
+  const userId = useAuthStore((s) => s.user?.id ?? null);
   const lastValidatedAt = useAuthStore((s) => s.lastValidatedAt);
   const lastValidationRef = useRef<number>(0);
   const onSessionExpiredRef = useRef(onSessionExpired);
@@ -76,6 +77,10 @@ export function useSessionValidator(options: UseSessionValidatorOptions = {}): v
   // Keep refs updated
   onSessionExpiredRef.current = onSessionExpired;
   onSessionRefreshedRef.current = onSessionRefreshed;
+
+  useEffect(() => {
+    lastValidationRef.current = lastValidatedAt;
+  }, [userId, lastValidatedAt]);
 
   /**
    * Check if the auth token needs proactive refresh (approaching expiry).
@@ -132,7 +137,9 @@ export function useSessionValidator(options: UseSessionValidatorOptions = {}): v
 
       // This will throw if token is invalid
       await pb.collection('users').getOne(userId);
-      lastValidationRef.current = Date.now();
+      const validatedAt = Date.now();
+      lastValidationRef.current = validatedAt;
+      useAuthStore.setState({ lastValidatedAt: validatedAt });
       
       return true;
     } catch (error) {
@@ -150,7 +157,7 @@ export function useSessionValidator(options: UseSessionValidatorOptions = {}): v
       console.warn('[SessionValidator] Validation failed:', error);
       return true;
     }
-  }, [isTokenExpired]);
+  }, [isTokenExpired, lastValidatedAt, validationInterval]);
 
   /**
    * Attempt to refresh the auth token.
@@ -166,6 +173,9 @@ export function useSessionValidator(options: UseSessionValidatorOptions = {}): v
     try {
       // PocketBase's authRefresh will refresh the token if valid
       await pb.collection('users').authRefresh();
+      const validatedAt = Date.now();
+      lastValidationRef.current = validatedAt;
+      useAuthStore.setState({ lastValidatedAt: validatedAt });
       onSessionRefreshedRef.current?.();
       return true;
     } catch (error) {
@@ -242,7 +252,7 @@ export function useSessionValidator(options: UseSessionValidatorOptions = {}): v
 
   // Periodic validation
   useEffect(() => {
-    if (!isAuthenticated()) return;
+    if (!userId || !isAuthenticated()) return;
 
     // Initial validation (slightly delayed to avoid startup race)
     const timeoutId = setTimeout(fullValidation, VALIDATION.SESSION_VALIDATION_DELAY_MS);
@@ -254,7 +264,7 @@ export function useSessionValidator(options: UseSessionValidatorOptions = {}): v
       clearTimeout(timeoutId);
       clearInterval(intervalId);
     };
-  }, [fullValidation, validationInterval]);
+  }, [fullValidation, validationInterval, userId]);
 
   // Validate when window regains focus (app wakes from background)
   useEffect(() => {

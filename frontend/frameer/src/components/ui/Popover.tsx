@@ -85,7 +85,7 @@ const Popover = forwardRef<HTMLDivElement, PopoverProps>(({
       className={cn(
         'absolute rounded-xl border border-solid border-[var(--color-border-default)]',
         'bg-[var(--color-surface-primary)] shadow-lg',
-        'z-[200]',
+        'z-[260]',
         !style && (openUpward ? 'bottom-full mb-2' : 'top-full mt-2'),
         width !== 'auto' && widthClasses[width],
         !style && positionClasses[position],

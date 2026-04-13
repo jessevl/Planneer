@@ -250,7 +250,7 @@ const MobileSheet: React.FC<MobileSheetProps> = ({
   
   return createPortal(
     <div 
-      className="fixed inset-0 z-[200] pointer-events-none"
+      className="fixed inset-0 z-[260] pointer-events-none"
       role="dialog"
       aria-modal="true"
       aria-labelledby={title ? 'mobile-sheet-title' : undefined}

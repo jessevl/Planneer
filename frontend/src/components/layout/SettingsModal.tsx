@@ -178,7 +178,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, initialS
   if (isMobile) {
     return createPortal(
       <div
-        className={`fixed inset-0 z-[100] bg-[var(--color-surface-base)] flex flex-col transition-opacity duration-200 ${mounted ? 'opacity-100' : 'opacity-0'}`}
+        className={`fixed inset-0 z-[260] bg-[var(--color-surface-base)] flex flex-col transition-opacity duration-200 ${mounted ? 'opacity-100' : 'opacity-0'}`}
         style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         <div className="flex-shrink-0 flex items-center h-14 px-4 border-b border-[var(--color-border-default)]">
@@ -212,7 +212,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, initialS
   // ── Desktop: centered modal ─────────────────────────────────────────────────
   return createPortal(
       <div
-        className={`fixed inset-0 z-[100] flex items-center justify-center transition-all duration-200 eink-modal-backdrop ${mounted ? 'bg-black/30 backdrop-blur-[2px]' : 'bg-black/0 backdrop-blur-0'}`}
+        className={`fixed inset-0 z-[260] flex items-center justify-center transition-all duration-200 eink-modal-backdrop ${mounted ? 'bg-black/30 backdrop-blur-[2px]' : 'bg-black/0 backdrop-blur-0'}`}
       onClick={onClose}
     >
       <div
