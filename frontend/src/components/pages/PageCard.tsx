@@ -382,7 +382,7 @@ const PageCard: React.FC<PageCardProps> = React.memo(({
 
           {/* Title and metadata */}
             <div className="flex min-h-0 flex-1 flex-col p-4">
-              <div className="mb-2 flex items-start gap-2">
+              <div className="flex items-start gap-2">
               <div className="mt-0.5 flex-shrink-0">
                 <ItemIcon
                   type={iconType}
@@ -397,10 +397,7 @@ const PageCard: React.FC<PageCardProps> = React.memo(({
                 </H3>
               </div>
             </div>
-            <div className="flex min-h-0 flex-1 flex-col justify-between gap-3">
-              <div />
-
-              <div className="space-y-1.5">
+            <div className="mt-1.5 space-y-1.5">
                 {visibleTags.length > 0 && (
                   <div className="flex min-h-[28px] flex-wrap gap-1 overflow-hidden">
                     {visibleTags.map((tag) => (
@@ -439,7 +436,6 @@ const PageCard: React.FC<PageCardProps> = React.memo(({
                 <div className="text-xs text-[var(--color-text-secondary)]">
                   edited {updatedRelative}
                 </div>
-              </div>
             </div>
           </div>
         </div>

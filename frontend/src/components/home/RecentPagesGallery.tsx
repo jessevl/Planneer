@@ -23,6 +23,8 @@ import type { Page } from '@/types/page';
 interface RecentPagesGalleryProps {
   /** Array of recent pages to display */
   pages: Page[];
+  /** Resolve a page's parent for breadcrumb pill display */
+  getParentPage?: (page: Page) => Page | null;
   /** Handler when a page is clicked */
   onPageClick: (pageId: string) => void;
   /** Handler to create a new page */
@@ -40,6 +42,7 @@ interface RecentPagesGalleryProps {
 
 const RecentPagesGallery: React.FC<RecentPagesGalleryProps> = ({
   pages,
+  getParentPage,
   onPageClick,
   onCreatePage,
   onViewAll,
@@ -127,6 +130,7 @@ const RecentPagesGallery: React.FC<RecentPagesGalleryProps> = ({
           >
             <PageCard
               page={page}
+              parentPage={getParentPage?.(page) ?? null}
               onClick={() => onPageClick(page.id)}
               enableSelection={false}
               draggable={false}

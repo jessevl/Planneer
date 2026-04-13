@@ -154,6 +154,11 @@ const HomeView: React.FC = () => {
     navigate({ to: '/pages/$id', params: { id: pageId } });
   }, [selectPage, navigate]);
 
+  const getParentPage = useCallback((page: { parentId?: string | null }) => {
+    if (!page.parentId) return null;
+    return pages[page.parentId] ?? null;
+  }, [pages]);
+
   const handleCreateChildPage = useCallback((parentId: string) => {
     const newPage = createPage({ title: 'Untitled', parentId, viewMode: 'note' });
     selectPage(newPage.id, true);
@@ -222,6 +227,7 @@ const HomeView: React.FC = () => {
           {/* Recent Pages Gallery - Primary focus */}
           <RecentPagesGallery
             pages={recentPages}
+            getParentPage={getParentPage}
             onPageClick={handlePageClick}
             onCreatePage={handleCreatePage}
             onViewAll={handleViewAllPages}
