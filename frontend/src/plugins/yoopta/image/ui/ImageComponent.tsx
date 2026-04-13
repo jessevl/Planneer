@@ -69,7 +69,8 @@ export const ImageComponent = ({
     style.height = 'auto';
   } else if (['fixed', 'fill', 'intrinsic'].includes(layout)) {
     style.width = '100%';
-    style.height = '100%';
+    style.height = 'auto';
+    style.maxHeight = '100%';
   }
 
   if (isZoomed) {
@@ -83,7 +84,7 @@ export const ImageComponent = ({
   return (
     <div
       className={cn(
-        'yoopta-plugin-card relative rounded-md overflow-hidden border transition-colors',
+        'yoopta-plugin-card relative rounded-md overflow-hidden border transition-colors inline-block',
         isZoomed && 'z-[1000]'
       )}
       data-layout={layout}

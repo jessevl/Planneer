@@ -1614,6 +1614,7 @@ const PageRelationshipGraph = forwardRef<PageRelationshipGraphHandle, PageRelati
               : 'max-h-[110px] translate-y-2 opacity-95'
           )}
         >
+          <div onClick={(event) => event.stopPropagation()} onPointerDown={(event) => event.stopPropagation()}>
             <div className="border-b border-[var(--color-border-subtle)] px-4 py-4">
               <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--color-text-tertiary)]">Inspector</div>
               <h3 className="mt-1 text-lg font-semibold text-[var(--color-text-primary)]">{selectedNode ? selectedNode.title : 'No node selected'}</h3>
@@ -1666,7 +1667,10 @@ const PageRelationshipGraph = forwardRef<PageRelationshipGraphHandle, PageRelati
                     </div>
 
                     {selectedNode.type !== 'hub' && selectedNode.type !== 'tag' && (
-                      <Button className="mt-4 w-full" onClick={() => handleOpenNode(selectedNode)}>
+                      <Button className="mt-4 w-full" onClick={(event) => {
+                        event.stopPropagation();
+                        handleOpenNode(selectedNode);
+                      }}>
                         Open {selectedNode.type === 'task' ? 'task' : 'page'}
                       </Button>
                     )}
@@ -1712,7 +1716,10 @@ const PageRelationshipGraph = forwardRef<PageRelationshipGraphHandle, PageRelati
                             key={edge.id}
                             type="button"
                             className="flex w-full items-center gap-3 rounded-2xl border border-[var(--color-border-default)] bg-[var(--color-surface-secondary)]/45 px-3 py-3 text-left transition-colors hover:bg-[var(--color-surface-secondary)]"
-                            onClick={() => onSelectedNodeIdChange(neighbor.id)}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleOpenNode(neighbor);
+                            }}
                           >
                             <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border border-white/20 bg-[var(--color-surface-base)]/70">
                               {neighbor.type === 'page' ? (
@@ -1743,6 +1750,7 @@ const PageRelationshipGraph = forwardRef<PageRelationshipGraphHandle, PageRelati
                 </div>
               )}
             </div>
+          </div>
         </FloatingPanel>
         )}
       </div>

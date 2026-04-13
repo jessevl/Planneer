@@ -3,7 +3,7 @@
  * @description Mini child-page preview for collection cards in grid view
  * @app PAGES - Used by PageCard when viewMode='collection'
  *
- * Shows the two most recent child pages as vertical mini-cards side by side,
+ * Shows the most recent child page as a mini-card,
  * plus a dashed "+N more" card when additional children exist.
  * Mirrors the horizontal layout of CardPreviewTasks for visual consistency.
  *
@@ -17,7 +17,7 @@ import ItemIcon from '@/components/common/ItemIcon';
 import type { Page } from '@/types/page';
 import PageCardRichPreview from '@/components/pages/PageCardRichPreview';
 
-const MAX_VISIBLE = 2;
+const MAX_VISIBLE = 1;
 
 interface CardPreviewCollectionProps {
   pageId: string;
@@ -81,7 +81,7 @@ const CardPreviewCollection: React.FC<CardPreviewCollectionProps> = React.memo(
     const remaining = children.length - MAX_VISIBLE;
 
     return (
-      <div className="flex h-full gap-1.5 overflow-hidden">
+      <div className="flex h-full gap-2 overflow-hidden">
         {visible.map((child) => {
           const iconType =
             child.isDailyNote
@@ -95,7 +95,7 @@ const CardPreviewCollection: React.FC<CardPreviewCollectionProps> = React.memo(
           return (
             <div
               key={child.id}
-              className="flex flex-1 flex-col gap-1.5 overflow-hidden rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-surface-base)]/90 px-2.5 py-2"
+              className="flex flex-1 flex-col gap-2 overflow-hidden rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-surface-base)]/90 px-3 py-2.5"
             >
               <div className="flex items-center gap-1.5">
                 <div className="flex-shrink-0 rounded-md bg-[var(--color-surface-secondary)] p-1">
@@ -116,7 +116,7 @@ const CardPreviewCollection: React.FC<CardPreviewCollectionProps> = React.memo(
         })}
 
         {remaining > 0 && (
-          <div className="flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-[var(--color-border-default)] bg-[var(--color-surface-base)]/60 px-2 py-3">
+          <div className="flex min-w-[84px] flex-col items-center justify-center rounded-xl border border-dashed border-[var(--color-border-default)] bg-[var(--color-surface-base)]/60 px-3 py-3">
             <span className="text-lg font-semibold text-[var(--color-text-secondary)]">
               +{remaining}
             </span>

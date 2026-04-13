@@ -256,7 +256,7 @@ const MobileDrawer: React.FC<MobileDrawerProps> = ({
   
   return createPortal(
     <div 
-      className={`fixed inset-0 z-[100] ${!isOpen ? 'pointer-events-none' : ''}`}
+      className={`fixed inset-0 z-[220] ${!isOpen ? 'pointer-events-none' : ''}`}
       role="dialog"
       aria-modal="true"
     >

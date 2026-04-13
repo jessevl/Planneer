@@ -11,7 +11,7 @@ import { usePagesStore } from '@/stores/pagesStore';
 import { 
   StylizedCollectionIcon, 
   StylizedNoteIcon 
-} from '@/components/common/ItemPropertiesModal';
+} from '@/components/common/StylizedIcons';
 import { Folder } from 'lucide-react';
 
 interface MoveToParentSheetProps {

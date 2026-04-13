@@ -8,8 +8,6 @@ export { default as ConfirmDiscardModal } from './ConfirmDiscardModal';
 export { ErrorBoundary, withErrorBoundary } from './ErrorBoundary';
 export * from './Icons';
 export { default as ItemIcon } from './ItemIcon';
-export { default as ItemPropertiesModal } from './ItemPropertiesModal';
-export type { ItemType, ItemData, ParentOption } from './ItemPropertiesModal';
 export { StylizedNoteIcon, StylizedCollectionIcon, StylizedTaskIcon, StylizedDailyIcon } from './StylizedIcons';
 export { default as PageTypeDropdown } from './PageTypeDropdown';
 export { default as TreeSidebarItem } from './TreeSidebarItem';

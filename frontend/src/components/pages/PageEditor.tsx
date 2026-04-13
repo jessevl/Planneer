@@ -536,7 +536,7 @@ const PageEditor: React.FC<PageEditorProps> = ({
       options: {
         onUpload: imageUploadHandler,
         accept: 'image/jpeg,image/png,image/gif,image/webp',
-        maxSizes: { maxWidth: 2048, maxHeight: 2048 },
+        maxSizes: { maxWidth: 896, maxHeight: 1600 },
       },
     });
 

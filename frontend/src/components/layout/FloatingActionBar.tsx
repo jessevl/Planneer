@@ -71,7 +71,7 @@ import {
 } from '@/components/common/Icons';
 import {
   StylizedNoteIcon,
-} from '@/components/common/ItemPropertiesModal';
+} from '@/components/common/StylizedIcons';
 import {
   Bold as LucideBold,
   Italic as LucideItalic,
@@ -268,9 +268,9 @@ const CreateMenuItemButton: React.FC<{
           w-10 h-10
           rounded-xl
           transition-all ease-out
-          hover:bg-[var(--color-surface-hover)]
+          hover:bg-[var(--color-fab-bg-hover)]/20
           active:scale-95
-          text-[var(--color-text-secondary)]
+          text-[var(--color-fab-text)]
           ${isVisible 
             ? 'opacity-100 translate-y-0' 
             : 'opacity-0 translate-y-4 pointer-events-none'
@@ -289,7 +289,7 @@ const CreateMenuItemButton: React.FC<{
       
       {/* Tooltip */}
       {showTooltip && isVisible && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-[var(--color-surface-inverted)] text-white text-xs rounded whitespace-nowrap pointer-events-none z-50">
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 rounded px-2 py-1 text-xs whitespace-nowrap pointer-events-none z-50 bg-black/85 text-white shadow-lg">
           {item.label}
         </div>
       )}
@@ -524,16 +524,15 @@ const FloatingActionBar: React.FC = () => {
 
   // Determine if a split view detail pane is currently visible on the right
   // This affects both FAB positioning (shift) and creation logic (side panels vs modals)
-  const isSplitViewActive = useMemo(() => !isMobile && sidePanelOpen, [isMobile, sidePanelOpen]);
+  const isSplitViewActive = useMemo(
+    () => !isMobile && sidePanelOpen && (isPage || isTasks),
+    [isMobile, isPage, isTasks, sidePanelOpen],
+  );
 
   // Determine the shift width based on which detail pane is active
   const fabShiftWidth = useMemo(() => {
     if (!isSplitViewActive) return 0;
-    
-    // Root pages list (/pages) has its "list" on the LEFT and "content" on the RIGHT.
-    // The FAB is on the right, so it's already in the content area and doesn't need to shift.
-    if (location.pathname === '/pages') return 0;
-    
+
     // Use the shared floating sidepanel reserve width so the FAB clears the
     // actual docked panel footprint, including its gutter.
     return UNIFIED_SIDEPANEL_FLOATING_RESERVE_WIDTH;

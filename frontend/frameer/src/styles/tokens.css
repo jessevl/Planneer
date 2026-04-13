@@ -1458,4 +1458,5 @@
   --color-fab-bg-hover: rgba(214, 211, 209, 0.95);
   --color-fab-border: rgba(120, 113, 108, 0.4);
   --color-fab-glow: rgba(168, 162, 158, 0.3);
+  --color-fab-text: #1c1917;
 }

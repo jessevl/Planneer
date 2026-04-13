@@ -195,7 +195,8 @@ export const useAuthStore = create<AuthState>()(
           
           set({ 
             user: authData.record as unknown as User, 
-            isLoading: false 
+            isLoading: false,
+            lastValidatedAt: Date.now()
           }, false, 'login/success');
         } catch (error: unknown) {
           const errorMessage = getErrorMessage(error, 'Login failed');
@@ -240,7 +241,8 @@ export const useAuthStore = create<AuthState>()(
           set({ 
             user: authData.record as unknown as User, 
             pendingEmail: null,
-            isLoading: false 
+            isLoading: false,
+            lastValidatedAt: Date.now()
           }, false, 'verifyMagicLink/success');
         } catch (error: unknown) {
           const errorMessage = getErrorMessage(error, 'Invalid or expired code');

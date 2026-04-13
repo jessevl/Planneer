@@ -185,6 +185,8 @@ func main() {
 			"style-src 'self' 'unsafe-inline'; " +
 			"img-src 'self' data: blob: https://images.unsplash.com https://api.unsplash.com; " +
 			"connect-src 'self' https://api.unsplash.com https://images.unsplash.com https://unpkg.com https://huggingface.co https://*.huggingface.co blob:; " +
+			"worker-src 'self' blob:; " +
+			"media-src 'self' blob: data:; " +
 			"font-src 'self' data:; " +
 			"frame-src 'self' blob:; " +
 			"frame-ancestors 'self'; " +

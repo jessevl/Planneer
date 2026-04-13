@@ -49,11 +49,30 @@ export const ImageRender = (props: PluginElementRenderProps) => {
 
   const blockSelected = useBlockSelected({ blockId });
   const normalizedSrc = normalizePocketBaseAssetUrl(src);
+  const [aspectRatio, setAspectRatio] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!normalizedSrc) {
+      setAspectRatio(null);
+      return;
+    }
+
+    const image = new window.Image();
+    image.onload = () => {
+      if (image.naturalWidth > 0 && image.naturalHeight > 0) {
+        setAspectRatio(image.naturalHeight / image.naturalWidth);
+      }
+    };
+    image.src = normalizedSrc;
+  }, [normalizedSrc]);
+
+  const currentWidth = typeof sizes.width === 'number' ? sizes.width : parseInt(String(sizes.width), 10) || 650;
+  const computedHeight = aspectRatio ? Math.round(currentWidth * aspectRatio) : sizes.height;
 
   const resizeProps: ResizableProps = useMemo(
     () => ({
-      minWidth: 300,
-      size: { width: sizes.width, height: sizes.height },
+      minWidth: 160,
+      size: { width: sizes.width, height: computedHeight },
       maxWidth: pluginOptions?.maxSizes?.maxWidth || 800,
       maxHeight: pluginOptions?.maxSizes?.maxHeight || 720,
       lockAspectRatio: true,
@@ -85,7 +104,7 @@ export const ImageRender = (props: PluginElementRenderProps) => {
         right: isReadOnly ? <></> : <Resizer position="right" />,
       },
     }),
-    [sizes.width, sizes.height, isReadOnly, editor, blockId, pluginOptions?.maxSizes]
+    [sizes.width, computedHeight, isReadOnly, editor, blockId, pluginOptions?.maxSizes]
   );
 
   if (!normalizedSrc) {
@@ -111,7 +130,7 @@ export const ImageRender = (props: PluginElementRenderProps) => {
     <div
       contentEditable={false}
       draggable={false}
-      className="mt-0 mb-4 relative group yoopta-image"
+      className="mt-0 mb-4 relative group yoopta-image max-w-full"
     >
       <Resizable {...resizeProps} className={cn('my-0', alignClass)}>
         {blockSelected && (

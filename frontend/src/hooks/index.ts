@@ -94,11 +94,3 @@ export {
   type PageModeChangeOptions,
   type UsePageOperationsResult,
 } from './usePageOperations';
-
-export {
-  usePagePropertiesModal,
-  type PagePropertiesData,
-  type ParentOption,
-  type UsePagePropertiesModalOptions,
-  type UsePagePropertiesModalResult,
-} from './usePagePropertiesModal';

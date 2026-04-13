@@ -165,7 +165,7 @@ const SubtaskList: React.FC<SubtaskListProps> = ({ subtasks, onChange, readOnly 
 
       {/* Subtask list */}
       {subtasks.length > 0 && (
-        <div className="space-y-0.5">
+        <div className="max-h-[min(40vh,18rem)] space-y-0.5 overflow-y-auto pr-1">
           {subtasks.map((subtask) => (
             <div
               key={subtask.id}

@@ -22,6 +22,7 @@ import React, { useMemo, useCallback, useState } from 'react';
 import type { Page } from '../../types/page';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import { CheckSquare, FileText, FolderIcon } from 'lucide-react';
 import { Card, H3, ContextMenu, ContextMenuContent, Popover, TagBadge } from '../ui';
 import ItemIcon from '../common/ItemIcon';
 import { extractPagePreview, highlightText } from '../../lib/pageUtils';
@@ -39,6 +40,24 @@ import { useLongPress } from '@/hooks/useLongPress';
 
 
 dayjs.extend(relativeTime);
+
+const PAGE_MODE_BADGE_CONFIG: Record<Page['viewMode'], { label: string; icon: React.ReactNode; className: string }> = {
+  note: {
+    label: 'Note',
+    icon: <FileText className="h-3 w-3" />,
+    className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+  },
+  collection: {
+    label: 'Collection',
+    icon: <FolderIcon className="h-3 w-3" />,
+    className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+  },
+  tasks: {
+    label: 'Tasks',
+    icon: <CheckSquare className="h-3 w-3" />,
+    className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
+  },
+};
 
 interface PageCardProps {
   page: Page;
@@ -150,8 +169,8 @@ const PageCard: React.FC<PageCardProps> = React.memo(({
     : null;
   const isBooxNotebook = page.sourceOrigin === 'boox' && page.sourceItemType === 'notebook';
 
-  const createdDate = useMemo(() => dayjs(page.created).format('MMM D, YYYY'), [page.created]);
   const updatedRelative = useMemo(() => dayjs(page.updated).fromNow(), [page.updated]);
+  const pageModeBadge = PAGE_MODE_BADGE_CONFIG[page.viewMode] ?? PAGE_MODE_BADGE_CONFIG.note;
   const previewMode = isCollection
     ? 'collection'
     : isTasks
@@ -379,25 +398,7 @@ const PageCard: React.FC<PageCardProps> = React.memo(({
               </div>
             </div>
             <div className="flex min-h-0 flex-1 flex-col justify-between gap-3">
-              <div className="space-y-1.5">
-                {/* Parent breadcrumb */}
-                {parentPage && (
-                  <div className="flex items-center gap-1.5">
-                    <ItemIcon
-                      type={parentPage.viewMode as any}
-                      icon={parentPage.icon}
-                      color={parentPage.color}
-                      size="xs"
-                    />
-                    <span className="truncate text-xs text-[var(--color-text-secondary)]">
-                      {parentPage.title}
-                    </span>
-                  </div>
-                )}
-                <div className="text-sm text-[var(--color-text-secondary)]">
-                  {createdDate}
-                </div>
-              </div>
+              <div />
 
               <div className="space-y-1.5">
                 {visibleTags.length > 0 && (
@@ -412,6 +413,29 @@ const PageCard: React.FC<PageCardProps> = React.memo(({
                     )}
                   </div>
                 )}
+                <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-secondary)]">
+                  <span className={cn(
+                    'inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium',
+                    pageModeBadge.className,
+                  )}>
+                    {pageModeBadge.icon}
+                    {pageModeBadge.label}
+                  </span>
+                  {parentPage && (
+                    <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-secondary)] px-2 py-1 text-[11px] text-[var(--color-text-secondary)]">
+                      <span className="font-medium text-[var(--color-text-tertiary)]">in:</span>
+                      <ItemIcon
+                        type={parentPage.viewMode as any}
+                        icon={parentPage.icon}
+                        color={parentPage.color}
+                        size="xs"
+                      />
+                      <span className="max-w-[12rem] truncate text-[var(--color-text-primary)]">
+                        {parentPage.title}
+                      </span>
+                    </span>
+                  )}
+                </div>
                 <div className="text-xs text-[var(--color-text-secondary)]">
                   edited {updatedRelative}
                 </div>

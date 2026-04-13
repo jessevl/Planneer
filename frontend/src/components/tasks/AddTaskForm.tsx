@@ -777,7 +777,7 @@ const DESCRIPTION_MAX_LENGTH = FORM_VALIDATION.TASK_DESCRIPTION_MAX_LENGTH;
           "flex flex-col",
           layout === 'single-column' ? 'w-full py-4' : 'w-full md:w-1/2 py-4 md:py-6 pr-4 md:pr-6 pl-0'
         )}>
-          <div className="flex-1">
+          <div className="flex-1 min-h-0 overflow-y-auto pr-1 md:pr-2">
             {/* Title */}
             <div className="mb-2 group/title">
               <div className="relative">

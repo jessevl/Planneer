@@ -181,6 +181,7 @@ function RootLayout() {
   // The ref alone doesn't work because HMR can recreate stores while keeping refs
   const initRef = useRef(false);
   const routeWarmupRef = useRef(false);
+  const pendingAuthRecoveryRef = useRef<Promise<boolean> | null>(null);
   // Track current workspace to detect switches
   const prevWorkspaceIdRef = useRef<string | null>(null);
   
@@ -207,6 +208,11 @@ function RootLayout() {
   useSessionValidator({
     validationInterval: 60000, // Check every minute
     onSessionExpired: () => {
+      const authState = useAuthStore.getState();
+      if (Date.now() - authState.lastValidatedAt < 10000) {
+        return;
+      }
+
       // Clear any workspace error - session expiry takes priority
       setWorkspaceError(null);
       setShowSessionExpired(true);
@@ -257,12 +263,28 @@ function RootLayout() {
   // Listen for global auth errors (401) from PocketBase client
   useEffect(() => {
     const unsubscribe = onAuthError(() => {
-      // Only show if we're not already showing it and we're supposed to be authenticated
-      if (!showSessionExpired && useAuthStore.getState().user) {
-        // Clear any workspace error - session expiry takes priority
+      const authState = useAuthStore.getState();
+      if (showSessionExpired || !authState.user) return;
+      if (Date.now() - authState.lastValidatedAt < 10000) return;
+
+      if (!pendingAuthRecoveryRef.current) {
+        pendingAuthRecoveryRef.current = (async () => {
+          try {
+            await pb.collection('users').authRefresh();
+            return true;
+          } catch {
+            return false;
+          } finally {
+            pendingAuthRecoveryRef.current = null;
+          }
+        })();
+      }
+
+      void pendingAuthRecoveryRef.current.then((recovered) => {
+        if (recovered || showSessionExpired || !useAuthStore.getState().user) return;
         setWorkspaceError(null);
         setShowSessionExpired(true);
-      }
+      });
     });
     return unsubscribe;
   }, [showSessionExpired]);
@@ -354,6 +376,12 @@ function RootLayout() {
       } catch (error) {
         // Check for specific error types
         if (isSessionExpired(error)) {
+          const authState = useAuthStore.getState();
+          if (Date.now() - authState.lastValidatedAt < 10000) {
+            setAppState('ready');
+            return;
+          }
+
           setShowSessionExpired(true);
           return;
         }
