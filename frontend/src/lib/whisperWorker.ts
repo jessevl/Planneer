@@ -3,6 +3,7 @@
  * Uses @huggingface/transformers with ONNX backend
  */
 import {
+  env,
   pipeline,
   AutomaticSpeechRecognitionPipeline,
   type AutomaticSpeechRecognitionOutput,
@@ -15,6 +16,76 @@ const MODEL_REPOS: Record<string, string> = {
   'tiny': 'Xenova/whisper-tiny',
   'small': 'Xenova/whisper-small',
 };
+
+const ORT_ASSET_CACHE_NAME = `transformers-ort-assets-v${env.version}`;
+const ORT_REMOTE_BASE_URL = `https://unpkg.com/@huggingface/transformers@${env.version}/dist`;
+const ORT_REMOTE_MODULE_URL = `${ORT_REMOTE_BASE_URL}/ort-wasm-simd-threaded.jsep.mjs`;
+const ORT_REMOTE_BINARY_URL = `${ORT_REMOTE_BASE_URL}/ort-wasm-simd-threaded.jsep.wasm`;
+
+type OrtAssetUrls = {
+  mjs: string;
+  wasm: string;
+};
+
+if (!env.backends.onnx.wasm) {
+  throw new Error('ONNX wasm backend is unavailable in the Whisper worker');
+}
+
+const onnxWasmEnv = env.backends.onnx.wasm;
+
+onnxWasmEnv.proxy = false;
+
+let ortAssetUrlsPromise: Promise<OrtAssetUrls> | null = null;
+
+async function fetchOrtAssetResponse(assetUrl: string): Promise<Response> {
+  const cachedResponse = typeof caches !== 'undefined'
+    ? await (await caches.open(ORT_ASSET_CACHE_NAME)).match(assetUrl)
+    : undefined;
+
+  if (cachedResponse) {
+    return cachedResponse;
+  }
+
+  const response = await fetch(assetUrl, { credentials: 'omit' });
+  if (!response.ok) {
+    throw new Error(`Failed to download ONNX runtime asset: ${assetUrl}`);
+  }
+
+  if (typeof caches !== 'undefined') {
+    const cache = await caches.open(ORT_ASSET_CACHE_NAME);
+    await cache.put(assetUrl, response.clone());
+  }
+
+  return response;
+}
+
+async function resolveOrtAssetBlobUrl(assetUrl: string): Promise<string> {
+  const response = await fetchOrtAssetResponse(assetUrl);
+  const blob = await response.blob();
+  return URL.createObjectURL(blob);
+}
+
+async function resolveOrtAssetUrls(): Promise<OrtAssetUrls> {
+  if (!ortAssetUrlsPromise) {
+    ortAssetUrlsPromise = (async () => {
+      try {
+        const [mjs, wasm] = await Promise.all([
+          resolveOrtAssetBlobUrl(ORT_REMOTE_MODULE_URL),
+          resolveOrtAssetBlobUrl(ORT_REMOTE_BINARY_URL),
+        ]);
+
+        return { mjs, wasm };
+      } catch {
+        return {
+          mjs: ORT_REMOTE_MODULE_URL,
+          wasm: ORT_REMOTE_BINARY_URL,
+        };
+      }
+    })();
+  }
+
+  return ortAssetUrlsPromise;
+}
 
 // State
 let transcriber: AutomaticSpeechRecognitionPipeline | null = null;
@@ -37,7 +108,8 @@ async function loadModel(modelId: string): Promise<void> {
     self.postMessage({ type: 'loading', modelId });
 
     const modelRepo = MODEL_REPOS[modelId] || `Xenova/whisper-${modelId}`;
-    
+    onnxWasmEnv.wasmPaths = await resolveOrtAssetUrls();
+
     transcriber = await (pipeline as (
       task: 'automatic-speech-recognition',
       model: string,
@@ -92,7 +164,7 @@ async function transcribe(audio: Float32Array, language?: string): Promise<void>
     chunk_length_s: 30,
     stride_length_s: 5,
   };
-  
+
   if (!isEnglishOnly && language) {
     options.language = language;
     options.task = 'transcribe';
@@ -103,14 +175,14 @@ async function transcribe(audio: Float32Array, language?: string): Promise<void>
   const progressInterval = setInterval(() => {
     self.postMessage({ type: 'progress', progress: Math.min(90, Math.random() * 20 + 70) });
   }, 500);
-  
+
   const result = await transcriber(audio, options);
   clearInterval(progressInterval);
   self.postMessage({ type: 'progress', progress: 95 });
 
   let text = '';
   let chunks: Array<{ text: string; timestamp: [number, number | null] }> = [];
-  
+
   if (typeof result === 'string') {
     text = result;
   } else if (result && typeof result === 'object') {

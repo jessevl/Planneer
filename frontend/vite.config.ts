@@ -72,6 +72,7 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
+      'onnxruntime-web': path.resolve(__dirname, './node_modules/onnxruntime-web/dist/ort.min.mjs'),
       '@': path.resolve(__dirname, './src'),
       '@frameer': path.resolve(__dirname, './frameer/src'),
     },
