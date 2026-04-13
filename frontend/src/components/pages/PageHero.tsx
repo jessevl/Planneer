@@ -236,6 +236,15 @@ export const PageHero: React.FC<PageHeroProps> = ({
   const isExternalImage = !!coverGradient && coverGradient.startsWith('http');
   const hasCover = !!cover;
   const isNoteLikeView = !viewMode || viewMode === 'note' || isDailyNote;
+  const needsCoverOverlayClearance = hasCover && Boolean(coverAttribution || editableCover);
+  const compactTitleOffsetClass = hasCover
+    ? 'pt-[max(env(safe-area-inset-top),0.75rem)]'
+    : '';
+  const expandedContentOffsetClass = hasCover
+    ? needsCoverOverlayClearance
+      ? 'pt-[calc(10rem+env(safe-area-inset-top))] md:pt-[calc(12.5rem+env(safe-area-inset-top))] pb-4'
+      : 'pt-[calc(8.5rem+0.5rem)] md:pt-[calc(10rem+0.5rem)] pb-4'
+    : 'pt-[calc(var(--header-height)+1.5rem)] pb-4';
   
   // Build the image URL for brightness analysis
   const imageUrl = useMemo(() => {
@@ -457,9 +466,7 @@ export const PageHero: React.FC<PageHeroProps> = ({
         <div
           className={cn(
             'relative z-10',
-            hasCover
-              ? 'pt-[calc(var(--header-height)+max(env(safe-area-inset-top),0.75rem))] pb-2'
-              : 'pt-[calc(var(--header-height)+0.75rem)] pb-2'
+            'pt-[calc(var(--header-height)+0.75rem)] pb-2'
           )}
           style={contentInsetStyle}
         >
@@ -478,6 +485,7 @@ export const PageHero: React.FC<PageHeroProps> = ({
 
             <div className={cn(
               'flex items-center gap-3 min-w-0',
+              compactTitleOffsetClass,
               'pb-3 border-b border-[var(--color-border-default)]/35',
               isNoteLikeView ? 'md:px-6' : 'md:px-0'
             )}>
@@ -615,12 +623,7 @@ export const PageHero: React.FC<PageHeroProps> = ({
           })()}
 
           {/* Content area */}
-          <div className={cn(
-            'relative z-10',
-            hasCover
-              ? 'pt-[calc(8.5rem+0.5rem)] md:pt-[calc(10rem+0.5rem)] pb-4'
-              : 'pt-[calc(var(--header-height)+1.5rem)] pb-4'
-          )} style={contentInsetStyle}>
+          <div className={cn('relative z-10', expandedContentOffsetClass)} style={contentInsetStyle}>
             <div className="max-w-5xl mx-auto px-4 md:px-6">
               {/* Action bar */}
               {!hideActions && pageId && (
