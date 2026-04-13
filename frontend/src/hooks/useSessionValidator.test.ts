@@ -33,13 +33,23 @@ vi.mock('@/lib/errors', () => ({
   logError: vi.fn(),
 }));
 
-import { useAuthStore } from '@/stores/authStore';
+import { useAuthStore, type User } from '@/stores/authStore';
 import { useSessionValidator } from './useSessionValidator';
 
 function createToken(expiresAtMs: number): string {
   const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
   const payload = btoa(JSON.stringify({ exp: Math.floor(expiresAtMs / 1000) }));
   return `${header}.${payload}.signature`;
+}
+
+function createUser(id: string): User {
+  return {
+    id,
+    email: `${id}@example.com`,
+    username: id,
+    name: id,
+    verified: true,
+  };
 }
 
 describe('useSessionValidator', () => {
@@ -68,7 +78,7 @@ describe('useSessionValidator', () => {
     mockAuthStoreState.record = { id: 'stale-user' };
     act(() => {
       useAuthStore.setState({
-        user: { id: 'stale-user' },
+        user: createUser('stale-user'),
         lastValidatedAt: 0,
         isLoading: false,
         error: null,
@@ -86,7 +96,7 @@ describe('useSessionValidator', () => {
     mockAuthStoreState.record = { id: 'fresh-user' };
     act(() => {
       useAuthStore.setState({
-        user: { id: 'fresh-user' },
+        user: createUser('fresh-user'),
         lastValidatedAt: Date.now(),
         isLoading: false,
         error: null,
@@ -111,7 +121,7 @@ describe('useSessionValidator', () => {
     mockAuthStoreState.record = { id: 'user-1' };
     act(() => {
       useAuthStore.setState({
-        user: { id: 'user-1' },
+        user: createUser('user-1'),
         lastValidatedAt: 0,
         isLoading: false,
         error: null,
