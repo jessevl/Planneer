@@ -22,7 +22,7 @@ import React, { useMemo, useCallback, useState } from 'react';
 import type { Page } from '../../types/page';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
-import { CheckSquare, FileText, FolderIcon } from 'lucide-react';
+import { CheckSquare, File, FileImage, FileText, FolderIcon } from 'lucide-react';
 import { Card, H3, ContextMenu, ContextMenuContent, Popover, TagBadge } from '../ui';
 import ItemIcon from '../common/ItemIcon';
 import { extractPagePreview, highlightText } from '../../lib/pageUtils';
@@ -33,7 +33,7 @@ import CardPreviewCollection from '@/components/pages/CardPreviewCollection';
 import CardPreviewTasks from '@/components/pages/CardPreviewTasks';
 import PageCardRichPreview from '@/components/pages/PageCardRichPreview';
 import PdfFirstPagePreview from '@/components/common/PdfFirstPagePreview';
-import { getPageFileUrl } from '@/api/pagesApi';
+import { getPageFileUrl, getPageImageUrl } from '@/api/pagesApi';
 
 import { useIsTouch } from '@frameer/hooks/useMobileDetection';
 import { useLongPress } from '@/hooks/useLongPress';
@@ -79,6 +79,24 @@ interface PageCardProps {
 }
 
 const CARD_CONFIG = { previewHeight: '168px', lines: 3, blocks: 4 };
+
+const richPreviewClampStyle: React.CSSProperties = {
+  maskImage: 'linear-gradient(to bottom, black 72%, transparent 100%)',
+  WebkitMaskImage: 'linear-gradient(to bottom, black 72%, transparent 100%)',
+};
+
+type PreviewMediaItem =
+  | { key: string; kind: 'image'; label: string; src: string }
+  | { key: string; kind: 'file'; label: string; filename: string };
+
+function isImageFilename(filename: string): boolean {
+  return /\.(avif|gif|jpe?g|png|webp|svg)$/i.test(filename);
+}
+
+function getImageLikeFileUrl(pageId: string, filename: string): string {
+  return `${getPageFileUrl(pageId, filename)}?thumb=512x512`;
+}
+
 const PageCard: React.FC<PageCardProps> = React.memo(({ 
   page, 
   onClick, 
@@ -168,6 +186,59 @@ const PageCard: React.FC<PageCardProps> = React.memo(({
     ? getPageFileUrl(page.id, page.previewThumbnail)
     : null;
   const isBooxNotebook = page.sourceOrigin === 'boox' && page.sourceItemType === 'notebook';
+  const previewMediaItems = useMemo<PreviewMediaItem[]>(() => {
+    const items: PreviewMediaItem[] = [];
+    const seenKeys = new Set<string>();
+
+    const pushItem = (item: PreviewMediaItem) => {
+      if (seenKeys.has(item.key) || items.length >= 3) return;
+      seenKeys.add(item.key);
+      items.push(item);
+    };
+
+    for (const filename of page.images) {
+      pushItem({
+        key: `image:${filename}`,
+        kind: 'image',
+        label: 'Image',
+        src: getPageImageUrl(page.id, filename, true),
+      });
+    }
+
+    for (const filename of page.files ?? []) {
+      if (isImageFilename(filename)) {
+        pushItem({
+          key: `file-image:${filename}`,
+          kind: 'image',
+          label: 'Attachment',
+          src: getImageLikeFileUrl(page.id, filename),
+        });
+        continue;
+      }
+
+      pushItem({
+        key: `file:${filename}`,
+        kind: 'file',
+        label: 'Attachment',
+        filename,
+      });
+    }
+
+    if (page.coverImage && items.length < 3) {
+      const src = page.coverImage.startsWith('http')
+        ? page.coverImage
+        : getPageImageUrl(page.id, page.coverImage, true);
+      pushItem({
+        key: `cover:${page.coverImage}`,
+        kind: 'image',
+        label: 'Cover',
+        src,
+      });
+    }
+
+    return items;
+  }, [page.coverImage, page.files, page.id, page.images]);
+  const hasInlineMediaPreview = previewMediaItems.length > 0 && !isCollection && !isTasks && !isBooxNotebook;
 
   const updatedRelative = useMemo(() => dayjs(page.updated).fromNow(), [page.updated]);
   const pageModeBadge = PAGE_MODE_BADGE_CONFIG[page.viewMode] ?? PAGE_MODE_BADGE_CONFIG.note;
@@ -352,6 +423,62 @@ const PageCard: React.FC<PageCardProps> = React.memo(({
                     thumbnailUrl={booxThumbUrl}
                     pageCount={page.sourcePageCount}
                   />
+                ) : hasInlineMediaPreview ? (
+                  <div className="flex h-full flex-col gap-3">
+                    <div className="h-[56px] overflow-hidden" style={richPreviewClampStyle}>
+                      <PageCardRichPreview
+                        content={page.content}
+                        previewBlocks={page.previewStructured ?? null}
+                        fallbackText={preview || 'Open this page to continue writing, organizing, or reviewing attached materials.'}
+                        maxBlocks={3}
+                      />
+                    </div>
+                    <div
+                      className="grid min-h-0 flex-1 gap-2"
+                      style={{ gridTemplateColumns: `repeat(${previewMediaItems.length}, minmax(0, 1fr))` }}
+                    >
+                      {previewMediaItems.map((item, index) => (
+                        <div
+                          key={item.key}
+                          className="relative min-h-0 overflow-hidden rounded-xl border border-[var(--color-border-subtle)] bg-[var(--color-surface-base)] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+                        >
+                          {item.kind === 'image' ? (
+                            <>
+                              <img
+                                src={item.src}
+                                alt={item.label}
+                                className="h-full w-full object-cover"
+                                loading="lazy"
+                              />
+                              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/55 to-transparent px-2 py-1.5">
+                                <span className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-black/35 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em] text-white backdrop-blur-sm">
+                                  <FileImage className="h-3 w-3" />
+                                  {item.label}
+                                </span>
+                              </div>
+                              {index === 2 && previewMediaItems.length === 3 && (
+                                <div className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-r from-transparent to-[color-mix(in_srgb,var(--color-surface-base)_96%,white)]" />
+                              )}
+                            </>
+                          ) : (
+                            <div className="flex h-full flex-col justify-between bg-[linear-gradient(160deg,color-mix(in_srgb,var(--color-surface-secondary)_92%,white)_0%,var(--color-surface-base)_100%)] p-2.5">
+                              <div className="min-w-0">
+                                <div className="truncate text-[10px] font-medium leading-4 text-[var(--color-text-secondary)]">
+                                  {item.filename}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="inline-flex min-w-0 max-w-full items-center gap-1 rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-base)]/80 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.08em] text-[var(--color-text-secondary)]">
+                                  <File className="h-3 w-3 flex-shrink-0" />
+                                  <span className="truncate">{item.label}</span>
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 ) : previewMode === 'note' ? (
                   <PageCardRichPreview
                     content={page.content}
@@ -411,30 +538,31 @@ const PageCard: React.FC<PageCardProps> = React.memo(({
                   </div>
                 )}
                 <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-secondary)]">
-                  <span className={cn(
-                    'inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium',
-                    pageModeBadge.className,
-                  )}>
-                    {pageModeBadge.icon}
-                    {pageModeBadge.label}
-                  </span>
                   {parentPage && (
-                    <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-secondary)] px-2 py-1 text-[11px] text-[var(--color-text-secondary)]">
-                      <span className="font-medium text-[var(--color-text-tertiary)]">in:</span>
-                      <ItemIcon
-                        type={parentPage.viewMode as any}
-                        icon={parentPage.icon}
-                        color={parentPage.color}
-                        size="xs"
-                      />
-                      <span className="max-w-[12rem] truncate text-[var(--color-text-primary)]">
-                        {parentPage.title}
+                    <>
+                      <span className="text-[11px] font-medium text-[var(--color-text-tertiary)]">
+                        in:
                       </span>
-                    </span>
+                      <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface-secondary)] px-2 py-1 text-[11px] text-[var(--color-text-secondary)]">
+                        <ItemIcon
+                          type={parentPage.viewMode as any}
+                          icon={parentPage.icon}
+                          color={parentPage.color}
+                          size="xs"
+                        />
+                        <span className="max-w-[12rem] truncate text-[var(--color-text-primary)]">
+                          {parentPage.title}
+                        </span>
+                      </span>
+                    </>
                   )}
                 </div>
-                <div className="text-xs text-[var(--color-text-secondary)]">
-                  edited {updatedRelative}
+                <div className="flex items-center justify-between gap-3 text-xs text-[var(--color-text-secondary)]">
+                  <span>edited {updatedRelative}</span>
+                  <span className="inline-flex items-center gap-1 rounded-full border border-[var(--color-border-default)] bg-[var(--color-surface-base)] px-2 py-1 text-[11px] font-medium text-[var(--color-text-secondary)]">
+                    <span className="text-[var(--color-text-tertiary)]">{pageModeBadge.icon}</span>
+                    {pageModeBadge.label}
+                  </span>
                 </div>
             </div>
           </div>
