@@ -245,9 +245,6 @@ export const PageHero: React.FC<PageHeroProps> = ({
     [parsedTags, tagSuggestions],
   );
   const needsCoverOverlayClearance = hasCover && Boolean(coverAttribution || editableCover);
-  const compactTitleOffsetClass = !compact && hasCover
-    ? 'pt-[max(env(safe-area-inset-top),0.75rem)]'
-    : '';
   const expandedContentOffsetClass = hasCover
     ? needsCoverOverlayClearance
       ? 'pt-[calc(10rem+env(safe-area-inset-top))] md:pt-[calc(12.5rem+env(safe-area-inset-top))] pb-4'
@@ -468,7 +465,7 @@ export const PageHero: React.FC<PageHeroProps> = ({
         <div
           className={cn(
             'relative z-10',
-            'pt-[calc(var(--header-height)+0.75rem)] pb-2'
+            'pt-[calc(var(--header-height)+0.35rem)] pb-2'
           )}
           style={contentInsetStyle}
         >
@@ -487,7 +484,6 @@ export const PageHero: React.FC<PageHeroProps> = ({
 
             <div className={cn(
               'flex items-center gap-3 min-w-0',
-              compactTitleOffsetClass,
               'pb-3 border-b border-[var(--color-border-default)]/35',
               isNoteLikeView ? 'md:px-6' : 'md:px-0'
             )}>
