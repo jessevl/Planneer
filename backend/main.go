@@ -20,6 +20,7 @@ import (
 	"io/fs"
 	"log"
 	"os"
+	"path"
 	"strings"
 	"sync"
 	"time"
@@ -270,6 +271,7 @@ func main() {
 				return e.NotFoundError("manifest.json not found", err)
 			}
 			log.Printf("[manifest.json] Serving %d bytes", len(data))
+			setRevalidateHeaders(e)
 			e.Response.Header().Set("Content-Type", "application/manifest+json")
 			return e.Blob(200, "application/manifest+json", data)
 		})
@@ -285,6 +287,7 @@ func main() {
 			if err != nil {
 				return e.NotFoundError("sw.js not found", err)
 			}
+			setRevalidateHeaders(e)
 			return e.Blob(200, "application/javascript", data)
 		})
 		se.Router.GET("/registerSW.js", func(e *core.RequestEvent) error {
@@ -292,6 +295,15 @@ func main() {
 			if err != nil {
 				return e.NotFoundError("registerSW.js not found", err)
 			}
+			setRevalidateHeaders(e)
+			return e.Blob(200, "application/javascript", data)
+		})
+		se.Router.GET("/config.js", func(e *core.RequestEvent) error {
+			data, err := fs.ReadFile(frontendFS, "config.js")
+			if err != nil {
+				return e.NotFoundError("config.js not found", err)
+			}
+			setRevalidateHeaders(e)
 			return e.Blob(200, "application/javascript", data)
 		})
 
@@ -313,18 +325,26 @@ func main() {
 			if strings.HasPrefix(path, "/landing/") {
 				subPath := strings.TrimPrefix(path, "/landing/")
 				if subPath == "" || subPath == "index.html" {
+					setRevalidateHeaders(e)
 					return e.FileFS(frontendFS, "landing/index.html")
 				}
+				setStaticAssetCacheHeaders(e, path)
 				return apis.Static(frontendFS, false)(e)
 			}
 
 			// 4. Serve assets and other static files
 			if strings.HasPrefix(path, "/assets/") || strings.HasPrefix(path, "/icons/") {
+				setStaticAssetCacheHeaders(e, path)
 				return apis.Static(frontendFS, false)(e)
 			}
 
 			// 5. For all other routes (app routes like /tasks, /pages/xxx):
 			// Serve the file if it exists, otherwise fallback to the root index.html
+			if shouldDisableCaching(path) {
+				setRevalidateHeaders(e)
+			} else {
+				setStaticAssetCacheHeaders(e, path)
+			}
 			return apis.Static(frontendFS, true)(e)
 		})
 
@@ -353,6 +373,39 @@ func extractIP(remoteAddr string) string {
 		return remoteAddr[:idx]
 	}
 	return remoteAddr
+}
+
+func setRevalidateHeaders(e *core.RequestEvent) {
+	h := e.Response.Header()
+	h.Set("Cache-Control", "public, max-age=0, must-revalidate")
+	h.Set("Pragma", "no-cache")
+	h.Set("Expires", "0")
+}
+
+func setStaticAssetCacheHeaders(e *core.RequestEvent, requestPath string) {
+	if shouldDisableCaching(requestPath) {
+		setRevalidateHeaders(e)
+		return
+	}
+
+	h := e.Response.Header()
+	h.Set("Cache-Control", "public, max-age=31536000, immutable")
+}
+
+func shouldDisableCaching(requestPath string) bool {
+	cleanPath := path.Clean(requestPath)
+	base := path.Base(cleanPath)
+
+	if cleanPath == "/" || cleanPath == "/landing" || cleanPath == "/landing/" {
+		return true
+	}
+
+	switch base {
+	case "index.html", "manifest.json", "sw.js", "registerSW.js", "config.js":
+		return true
+	}
+
+	return path.Ext(base) == ""
 }
 
 // createSuperuserFromEnv creates a superuser from environment variables if specified
