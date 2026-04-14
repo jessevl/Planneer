@@ -22,7 +22,7 @@ import ItemIcon from '@/components/common/ItemIcon';
 import type { PageRelationshipGraphHandle } from '@/components/pages/PageRelationshipGraph';
 import CompactTaskRow from '@/components/tasks/CompactTaskRow';
 import TaskDetailPane from '@/components/tasks/TaskDetailPane';
-import { IconButton } from '@/components/ui';
+import { IconButton, InlineTagInput } from '@/components/ui';
 import { useBacklinks } from '@/hooks/useBacklinks';
 import { useTaskPaneState } from '@/hooks/useTaskPaneState';
 import { buildRelationshipGraph, collectGraphTasks, createVisibleRelationshipGraph, relationshipGraphIds } from '@/lib/relationshipGraph';
@@ -116,6 +116,7 @@ const UnifiedSidepanel: React.FC<UnifiedSidepanelProps> = ({
   // Stores
   const { taskCollections } = useTaskCollections();
   const pagesById = usePagesStore((s) => s.pagesById);
+  const updatePage = usePagesStore((s) => s.updatePage);
   const tasksById = useTasksStore((s) => s.tasksById);
   const taskOrder = useTasksStore((s) => s.taskOrder);
   const toggleComplete = useTasksStore((s) => s.toggleComplete);
@@ -278,6 +279,7 @@ const UnifiedSidepanel: React.FC<UnifiedSidepanelProps> = ({
             allTasks={allTasks}
             pagesById={pagesById}
             backlinks={backlinks}
+            onUpdatePage={updatePage}
             onTaskClick={handleTaskClick}
             navigate={navigate}
           />
@@ -441,9 +443,10 @@ const MetadataTabContent: React.FC<{
   allTasks: Task[];
   pagesById: Record<string, Page>;
   backlinks: ReturnType<typeof useBacklinks>;
+  onUpdatePage: (id: string, updates: Partial<Page>) => void;
   onTaskClick: (taskId: string) => void;
   navigate: ReturnType<typeof useNavigate>;
-}> = ({ currentPage, childPages, allTasks, pagesById, backlinks, onTaskClick, navigate }) => {
+}> = ({ currentPage, childPages, allTasks, pagesById, backlinks, onUpdatePage, onTaskClick, navigate }) => {
   if (!currentPage) {
     return <EmptyPanelState title="Open a page to inspect its metadata." />;
   }
@@ -451,6 +454,19 @@ const MetadataTabContent: React.FC<{
   const parentPage = currentPage.parentId ? pagesById[currentPage.parentId] : null;
   const directTaskCount = allTasks.filter((t) => t.parentPageId === currentPage.id).length;
   const tags = currentPage.tags?.split(',').map((tag) => tag.trim()).filter(Boolean) ?? [];
+  const siblingTagSuggestions = (() => {
+    const parentKey = currentPage.parentId || '__root__';
+    const tagSet = new Set<string>();
+
+    Object.values(pagesById)
+      .filter((page) => (page.parentId || '__root__') === parentKey)
+      .forEach((page) => {
+        page.tags?.split(',').map((tag) => tag.trim()).filter(Boolean).forEach((tag) => tagSet.add(tag));
+      });
+
+    return Array.from(tagSet).sort();
+  })();
+  const tagColorUniverse = Array.from(new Set([...siblingTagSuggestions, ...tags])).sort();
   const description = currentPage.excerpt?.trim() || 'No description yet.';
   const coverLabel = currentPage.coverImage
     ? 'Image cover'
@@ -533,20 +549,15 @@ const MetadataTabContent: React.FC<{
           <p className="text-xs text-[var(--color-text-tertiary)]">Labels attached to this page</p>
         </div>
 
-        {tags.length ? (
-          <div className="flex flex-wrap gap-2">
-            {tags.map((tag) => (
-              <span
-                key={tag}
-                className="rounded-full bg-[var(--color-surface-tertiary)] px-2.5 py-1 text-xs font-medium text-[var(--color-text-secondary)]"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-[var(--color-text-secondary)]">No tags added yet.</p>
-        )}
+        <InlineTagInput
+          value={currentPage.tags || ''}
+          onChange={(value) => onUpdatePage(currentPage.id, { tags: value })}
+          existingTags={tagColorUniverse}
+          isMulti
+          placeholder="Add tags..."
+          contextKey={`page-tags-${currentPage.id}`}
+          className="min-h-[36px] px-0 py-0"
+        />
       </div>
 
       <div className="rounded-2xl border border-[var(--color-border-subtle)] bg-[var(--color-surface-primary)] p-4">

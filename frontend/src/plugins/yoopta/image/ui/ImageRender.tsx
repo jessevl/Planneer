@@ -3,7 +3,7 @@
  * @description Main image block render component
  * Custom styling for Planneer with dark mode support
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PluginElementRenderProps } from '@yoopta/editor';
 import {
   Elements,
@@ -50,6 +50,7 @@ export const ImageRender = (props: PluginElementRenderProps) => {
   const blockSelected = useBlockSelected({ blockId });
   const normalizedSrc = normalizePocketBaseAssetUrl(src);
   const [aspectRatio, setAspectRatio] = useState<number | null>(null);
+  const lastNormalizedSizeRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!normalizedSrc) {
@@ -68,6 +69,46 @@ export const ImageRender = (props: PluginElementRenderProps) => {
 
   const currentWidth = typeof sizes.width === 'number' ? sizes.width : parseInt(String(sizes.width), 10) || 650;
   const computedHeight = aspectRatio ? Math.round(currentWidth * aspectRatio) : sizes.height;
+
+  useEffect(() => {
+    if (!aspectRatio) return;
+
+    setSizes((prev) => {
+      const nextHeight = Math.round(currentWidth * aspectRatio);
+      if (prev.height === nextHeight) return prev;
+      return { ...prev, height: nextHeight };
+    });
+  }, [aspectRatio, currentWidth]);
+
+  useEffect(() => {
+    if (!aspectRatio) return;
+
+    const nextHeight = Math.round(currentWidth * aspectRatio);
+    const sizeKey = `${currentWidth}x${nextHeight}`;
+
+    if (lastNormalizedSizeRef.current === `${blockId}:${sizeKey}`) {
+      return;
+    }
+
+    const storedWidth = propSizes?.width ?? currentWidth;
+    const storedHeight = propSizes?.height ?? nextHeight;
+    const widthDiff = Math.abs(storedWidth - currentWidth);
+    const heightDiff = Math.abs(storedHeight - nextHeight);
+
+    if (widthDiff <= 1 && heightDiff <= 1) {
+      lastNormalizedSizeRef.current = `${blockId}:${sizeKey}`;
+      return;
+    }
+
+    lastNormalizedSizeRef.current = `${blockId}:${sizeKey}`;
+    Elements.updateElement(editor, {
+      blockId,
+      type: 'image',
+      props: {
+        sizes: { width: currentWidth, height: nextHeight },
+      },
+    });
+  }, [aspectRatio, blockId, currentWidth, editor, propSizes?.height, propSizes?.width]);
 
   const resizeProps: ResizableProps = useMemo(
     () => ({
@@ -145,7 +186,7 @@ export const ImageRender = (props: PluginElementRenderProps) => {
           fit={fit}
           width={sizes?.width}
           bgColor={bgColor}
-          height={sizes?.height}
+          height={computedHeight}
           attributes={attributes}
         >
           {children}

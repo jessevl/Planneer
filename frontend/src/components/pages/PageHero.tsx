@@ -236,8 +236,16 @@ export const PageHero: React.FC<PageHeroProps> = ({
   const isExternalImage = !!coverGradient && coverGradient.startsWith('http');
   const hasCover = !!cover;
   const isNoteLikeView = !viewMode || viewMode === 'note' || isDailyNote;
+  const parsedTags = useMemo(
+    () => tags?.split(',').map((tag) => tag.trim()).filter(Boolean) ?? [],
+    [tags],
+  );
+  const tagColorUniverse = useMemo(
+    () => Array.from(new Set([...tagSuggestions, ...parsedTags])).sort(),
+    [parsedTags, tagSuggestions],
+  );
   const needsCoverOverlayClearance = hasCover && Boolean(coverAttribution || editableCover);
-  const compactTitleOffsetClass = hasCover
+  const compactTitleOffsetClass = !compact && hasCover
     ? 'pt-[max(env(safe-area-inset-top),0.75rem)]'
     : '';
   const expandedContentOffsetClass = hasCover
@@ -326,12 +334,6 @@ export const PageHero: React.FC<PageHeroProps> = ({
       default: return { icon: <FileText size={12} />, label: isDailyNote ? 'Daily Note' : 'Note' };
     }
   }, [viewMode, isDailyNote]);
-
-  // Parse tags
-  const parsedTags = useMemo(() => {
-    if (!tags) return [];
-    return tags.split(',').map(t => t.trim()).filter(Boolean);
-  }, [tags]);
 
   // Cover handlers
   const handleRemoveCover = useCallback(async () => {
@@ -590,7 +592,7 @@ export const PageHero: React.FC<PageHeroProps> = ({
                 : attr.link;
               const unsplashLink = 'https://unsplash.com/?utm_source=planneer&utm_medium=referral';
               return (
-                <div className="absolute top-[calc(var(--header-height)+env(safe-area-inset-top)+0.25rem)] md:top-20 left-0 right-0 z-20 pointer-events-none" style={contentInsetStyle}>
+                <div className="absolute top-[calc(var(--header-height)+env(safe-area-inset-top)+0.25rem)] md:top-20 left-0 right-0 z-[5] pointer-events-none" style={contentInsetStyle}>
                   <div className="max-w-5xl mx-auto px-4 md:px-6">
                     <span className={cn('text-xs', isLightText ? 'text-white' : 'text-black')} style={dropShadow}>
                       Photo by{' '}
@@ -607,7 +609,7 @@ export const PageHero: React.FC<PageHeroProps> = ({
               );
             } catch {
               return (
-                <div className="absolute top-[calc(var(--header-height)+env(safe-area-inset-top)+0.25rem)] md:top-20 left-0 right-0 z-20 pointer-events-none" style={contentInsetStyle}>
+                <div className="absolute top-[calc(var(--header-height)+env(safe-area-inset-top)+0.25rem)] md:top-20 left-0 right-0 z-[5] pointer-events-none" style={contentInsetStyle}>
                   <div className="max-w-5xl mx-auto px-4 md:px-6">
                     <span className={cn('text-xs opacity-80', isLightText ? 'text-white' : 'text-black')} style={{
                       filter: isLightText 
@@ -772,17 +774,23 @@ export const PageHero: React.FC<PageHeroProps> = ({
                             <InlineTagInput
                               value={tags || ''}
                               onChange={onTagsChange}
-                              existingTags={tagSuggestions}
+                              existingTags={tagColorUniverse}
                               isMulti
                               placeholder="Add tags..."
-                              contextKey={`page-hero-${pageId}`}
+                              contextKey={pageId ? `page-tags-${pageId}` : undefined}
                               className="min-h-0 px-0 py-0"
                             />
                           ) : (
                             <div className="flex flex-wrap gap-1 py-0.5">
                               {parsedTags.length > 0 ? (
                                 parsedTags.map(tag => (
-                                  <TagBadge key={tag} tag={tag} compact />
+                                  <TagBadge
+                                    key={tag}
+                                    tag={tag}
+                                    compact
+                                    contextKey={pageId ? `page-tags-${pageId}` : undefined}
+                                    existingTags={tagColorUniverse}
+                                  />
                                 ))
                               ) : (
                                 <span className="text-[var(--color-text-disabled)] italic text-xs py-0.5">No tags</span>

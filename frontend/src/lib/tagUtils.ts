@@ -343,6 +343,29 @@ export function getTagColorInContext(
     return getTagColor(tagName);
   }
 
+  if (existingTags && existingTags.length > 0) {
+    const normalizedTag = tagName.trim().toLowerCase();
+    const stableTags = Array.from(
+      new Set(
+        [...existingTags, tagName]
+          .map((tag) => tag.trim().toLowerCase())
+          .filter(Boolean),
+      ),
+    ).sort();
+
+    const stableIndex = Math.max(0, stableTags.indexOf(normalizedTag));
+    const assignedColor = TAG_COLORS[stableIndex % TAG_COLORS.length];
+
+    let contextColors = tagColorAssignments.get(contextKey);
+    if (!contextColors) {
+      contextColors = new Map();
+      tagColorAssignments.set(contextKey, contextColors);
+    }
+    contextColors.set(normalizedTag, assignedColor);
+
+    return assignedColor;
+  }
+
   // Get or create context map
   let contextColors = tagColorAssignments.get(contextKey);
   if (!contextColors) {

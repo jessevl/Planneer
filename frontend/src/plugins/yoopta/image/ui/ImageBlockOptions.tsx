@@ -30,6 +30,7 @@ import {
 } from '@/components/common/Icons';
 import { InputAltText } from './InputAltText';
 import { Loader } from './Loader';
+import { limitSizes } from '../limitSizes';
 import type { ImageElementProps, ImagePluginElements, ImagePluginOptions } from '../types';
 
 const ALIGN_ICONS = {
@@ -141,6 +142,13 @@ export const ImageBlockOptions = ({ editor, block, props: imageProps }: Props) =
     try {
       const data = await options.onUpload(file);
       const defaultImageProps = editor.plugins.Image.elements.image.props as ImageElementProps;
+      const maxSizes = (editor.plugins.Image.options as ImagePluginOptions | undefined)?.maxSizes;
+      const normalizedSizes = data.sizes && maxSizes
+        ? limitSizes(data.sizes, {
+            width: maxSizes.maxWidth ?? data.sizes.width,
+            height: maxSizes.maxHeight ?? data.sizes.height,
+          })
+        : data.sizes || defaultImageProps.sizes;
 
       Elements.updateElement(editor, {
         blockId: block.id,
@@ -148,7 +156,7 @@ export const ImageBlockOptions = ({ editor, block, props: imageProps }: Props) =
         props: {
           src: data.src,
           alt: data.alt,
-          sizes: data.sizes || defaultImageProps.sizes,
+          sizes: normalizedSizes,
           bgColor: imageProps?.bgColor || data.bgColor || defaultImageProps.bgColor,
           fit: imageProps?.fit || data.fit || defaultImageProps.fit || 'fill',
         },

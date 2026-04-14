@@ -18,11 +18,12 @@
 'use client';
 
 import React, { useEffect, useMemo, useState, useCallback, useRef, useReducer, DragEvent } from 'react';
+import { createPortal } from 'react-dom';
 import type { PageViewMode } from '../../types/page';
 import { useShallow } from 'zustand/react/shallow';
 import YooptaEditor, { YooptaContentValue, YooptaOnChangeOptions, Elements, Blocks, generateId, buildBlockData, type YooEditor, type RenderBlockProps } from '@yoopta/editor';
 import { createPlanneerEditor, type PlanneerEditor } from '@/lib/createPlanneerEditor';
-import { Transforms, Editor as SlateEditor } from 'slate';
+import { Transforms, Editor as SlateEditor, Range } from 'slate';
 import { BlockDndContext, SortableBlock } from '@yoopta/ui/block-dnd';
 import { useEditorRowLayout, ROW_LAYOUT_KEY, injectRowLayout, getGroupColumns } from '@/hooks/useEditorRowLayout';
 import SideDropIndicator from './SideDropIndicator';
@@ -58,7 +59,7 @@ import {
   ExcalidrawPlugin,
 } from '@/plugins/yoopta';
 import CommandPalette, { type SearchSelection } from '@/components/common/CommandPalette';
-import { StatusBanner } from '@/components/ui';
+import { StatusBanner, TagPickerMenu } from '@/components/ui';
 import { cn } from '@/lib/design-system';
 import { getRightInsetStyle } from '@/lib/layout';
 import PageHero from './PageHero';
@@ -75,6 +76,8 @@ import { uploadPageImage, removePageImage } from '@/api/pagesApi';
 import { PageEditorProvider } from '@/contexts';
 import { isGranularKey } from '@/lib/crdt';
 import { BOOX_PAGE_EMBED_BLOCK_TYPE, type BooxPageEmbedData } from '@/lib/booxPageEmbed';
+import { limitSizes } from '@/plugins/yoopta/image/limitSizes';
+import type { ImagePluginOptions } from '@/plugins/yoopta/image/types';
 
 interface PageEditorProps {
   pageId: string | null;
@@ -157,6 +160,42 @@ const basePlugins = [
 ];
 
 const MARKS = [Bold, Italic, CodeMark, Underline, Strike, Highlight];
+
+type InlineMarkdownShortcut = {
+  pattern: RegExp;
+  marks: Array<'bold' | 'italic' | 'strike' | 'code'>;
+};
+
+type InlineTagPickerState = {
+  blockId: string;
+  path: number[];
+  startOffset: number;
+  endOffset: number;
+  query: string;
+  top: number;
+  left: number;
+  highlightedIndex: number;
+};
+
+const INLINE_MARKDOWN_SHORTCUTS: InlineMarkdownShortcut[] = [
+  { pattern: /(^|\s)(\*\*\*([^*\n]+)\*\*\*)$/, marks: ['bold', 'italic'] },
+  { pattern: /(^|\s)(___([^_\n]+)___)$/, marks: ['bold', 'italic'] },
+  { pattern: /(^|\s)(\*\*([^*\n]+)\*\*)$/, marks: ['bold'] },
+  { pattern: /(^|\s)(__([^_\n]+)__)$/, marks: ['bold'] },
+  { pattern: /(^|\s)(\*([^*\n]+)\*)$/, marks: ['italic'] },
+  { pattern: /(^|\s)(_([^_\n]+)_)$/, marks: ['italic'] },
+  { pattern: /(^|\s)(~~([^~\n]+)~~)$/, marks: ['strike'] },
+  { pattern: /(^|\s)(~([^~\n]+)~)$/, marks: ['strike'] },
+  { pattern: /(^|\s)(`([^`\n]+)`)$/, marks: ['code'] },
+];
+
+function normalizeTagValue(tag: string): string {
+  return tag.trim().replace(/^#+/, '').replace(/\s+/g, ' ');
+}
+
+function tagKey(tag: string): string {
+  return normalizeTagValue(tag).toLowerCase();
+}
 
 /**
  * Wrapper around BlockDndContext that forces re-renders when the editor
@@ -574,6 +613,7 @@ const PageEditor: React.FC<PageEditorProps> = ({
   const [isLinkPickerOpen, setIsLinkPickerOpen] = useState(false);
   const [isBooxPagePickerOpen, setIsBooxPagePickerOpen] = useState(false);
   const [isMobileActionMenuOpen, setIsMobileActionMenuOpen] = useState(false);
+  const [inlineTagPicker, setInlineTagPicker] = useState<InlineTagPickerState | null>(null);
   // Track placeholder block to replace when inserting custom void blocks.
   const blockToDeleteRef = useRef<string | undefined>(undefined);
   const dragCounter = useRef(0);
@@ -593,6 +633,68 @@ const PageEditor: React.FC<PageEditorProps> = ({
   const pendingDraftValueRef = useRef<YooptaContentValue | null>(null);
   const pendingDraftIdleRef = useRef<number | null>(null);
   const pendingDraftTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inlineTagRefreshRafRef = useRef<number | null>(null);
+
+  const currentPageTags = useMemo(() => {
+    if (!tags) return [] as string[];
+    return tags
+      .split(',')
+      .map((tag) => normalizeTagValue(tag))
+      .filter(Boolean);
+  }, [tags]);
+
+  const pageTagUniverse = useMemo(
+    () => Array.from(new Set([...(tagSuggestions ?? []), ...currentPageTags])).sort(),
+    [currentPageTags, tagSuggestions],
+  );
+
+  const inlineTagOptions = useMemo(() => {
+    if (!inlineTagPicker) return [] as string[];
+
+    const selectedKeys = new Set(currentPageTags.map(tagKey));
+    const query = inlineTagPicker.query.trim().toLowerCase();
+    const uniqueSuggestions: string[] = [];
+    const seen = new Set<string>();
+
+    for (const suggestion of tagSuggestions ?? []) {
+      const normalized = normalizeTagValue(suggestion);
+      const normalizedKey = tagKey(normalized);
+      if (!normalized || seen.has(normalizedKey) || selectedKeys.has(normalizedKey)) continue;
+      if (query && !normalized.toLowerCase().includes(query)) continue;
+      uniqueSuggestions.push(normalized);
+      seen.add(normalizedKey);
+    }
+
+    return uniqueSuggestions;
+  }, [currentPageTags, inlineTagPicker, tagSuggestions]);
+
+  const canCreateInlineTag = useMemo(() => {
+    if (!inlineTagPicker) return false;
+    const normalized = normalizeTagValue(inlineTagPicker.query);
+    if (!normalized) return false;
+
+    const existingKeys = new Set([
+      ...currentPageTags.map(tagKey),
+      ...(tagSuggestions ?? []).map(tagKey),
+    ]);
+
+    return !existingKeys.has(tagKey(normalized));
+  }, [currentPageTags, inlineTagPicker, tagSuggestions]);
+
+  const getCurrentSlateContext = useCallback(() => {
+    const currentOrder = editor.path.current;
+    if (currentOrder === null || currentOrder === undefined) return null;
+
+    const currentBlock = Object.values(editor.getEditorValue()).find(
+      (block: any) => block?.meta?.order === currentOrder,
+    ) as any;
+    if (!currentBlock?.id) return null;
+
+    const slateEditor = editor.blockEditorsMap[currentBlock.id];
+    if (!slateEditor) return null;
+
+    return { blockId: currentBlock.id as string, slateEditor };
+  }, [editor]);
 
   // === COLUMN LAYOUT ===
   const { colMeta, colMetaRef, gridPositions, initFromContent, addToRow, addBlockToColumn, removeFromRow, resizeColumns, prevBlockIdsRef, skipAutoJoinRef, restoreLayoutFromDraft, trackBlockChanges } = useEditorRowLayout(editor);
@@ -1045,13 +1147,21 @@ const PageEditor: React.FC<PageEditorProps> = ({
             sizes: { width: queued.width, height: queued.height },
           };
         }
+
+        const maxSizes = (editor.plugins.Image.options as ImagePluginOptions | undefined)?.maxSizes;
+        const normalizedSizes = result.sizes && maxSizes
+          ? limitSizes(result.sizes, {
+              width: maxSizes.maxWidth ?? result.sizes.width,
+              height: maxSizes.maxHeight ?? result.sizes.height,
+            })
+          : result.sizes;
         
         // Use Yoopta's ImageCommands to properly insert the image block
         ImageCommands.insertImage(editor, {
           props: {
             src: result.src,
             alt: result.alt || '',
-            sizes: result.sizes,
+            sizes: normalizedSizes,
           },
         });
       }
@@ -1329,8 +1439,216 @@ const PageEditor: React.FC<PageEditorProps> = ({
       pendingDraftIdleRef.current = null;
       pendingDraftTimeoutRef.current = null;
       pendingDraftValueRef.current = null;
+      if (inlineTagRefreshRafRef.current !== null) {
+        cancelAnimationFrame(inlineTagRefreshRafRef.current);
+      }
     };
   }, []);
+
+  const closeInlineTagPicker = useCallback(() => {
+    setInlineTagPicker((prev) => (prev === null ? prev : null));
+  }, []);
+
+  const refreshInlineTagPicker = useCallback(() => {
+    if (!onTagsChange || readOnly) {
+      setInlineTagPicker((prev) => (prev === null ? prev : null));
+      return;
+    }
+
+    const context = getCurrentSlateContext();
+    if (!context) {
+      setInlineTagPicker((prev) => (prev === null ? prev : null));
+      return;
+    }
+
+    const { blockId, slateEditor } = context;
+    const selection = slateEditor.selection;
+    if (!selection || !Range.isCollapsed(selection)) {
+      setInlineTagPicker((prev) => (prev === null ? prev : null));
+      return;
+    }
+
+    const node = SlateEditor.node(slateEditor, selection.anchor.path);
+    const textNode = node[0] as { text?: string };
+    if (!textNode || typeof textNode.text !== 'string') {
+      setInlineTagPicker((prev) => (prev === null ? prev : null));
+      return;
+    }
+
+    const textBeforeCursor = textNode.text.slice(0, selection.anchor.offset);
+    const hashIndex = textBeforeCursor.lastIndexOf('#');
+    if (hashIndex < 0) {
+      setInlineTagPicker((prev) => (prev === null ? prev : null));
+      return;
+    }
+
+    if (hashIndex > 0 && !/\s/.test(textBeforeCursor[hashIndex - 1])) {
+      setInlineTagPicker((prev) => (prev === null ? prev : null));
+      return;
+    }
+
+    const query = textBeforeCursor.slice(hashIndex + 1);
+    if (/\s/.test(query)) {
+      setInlineTagPicker((prev) => (prev === null ? prev : null));
+      return;
+    }
+
+    const domSelection = window.getSelection();
+    if (!domSelection || domSelection.rangeCount === 0) {
+      setInlineTagPicker((prev) => (prev === null ? prev : null));
+      return;
+    }
+
+    const range = domSelection.getRangeAt(0).cloneRange();
+    range.collapse(true);
+    const rect = range.getBoundingClientRect();
+    const editorRect = editorAreaRef.current?.getBoundingClientRect();
+    if (!editorRect) {
+      setInlineTagPicker((prev) => (prev === null ? prev : null));
+      return;
+    }
+
+    const nextTop = rect.bottom + 10;
+    const nextLeft = Math.max(8, rect.left - 8);
+
+    setInlineTagPicker((prev) => {
+      const nextHighlightedIndex = prev && prev.query === query ? prev.highlightedIndex : 0;
+      const nextState: InlineTagPickerState = {
+        blockId,
+        path: selection.anchor.path,
+        startOffset: hashIndex,
+        endOffset: selection.anchor.offset,
+        query,
+        top: nextTop,
+        left: nextLeft,
+        highlightedIndex: nextHighlightedIndex,
+      };
+
+      if (
+        prev &&
+        prev.blockId === nextState.blockId &&
+        prev.startOffset === nextState.startOffset &&
+        prev.endOffset === nextState.endOffset &&
+        prev.query === nextState.query &&
+        prev.left === nextState.left &&
+        prev.top === nextState.top &&
+        prev.highlightedIndex === nextState.highlightedIndex &&
+        prev.path.length === nextState.path.length &&
+        prev.path.every((value, index) => value === nextState.path[index])
+      ) {
+        return prev;
+      }
+
+      return nextState;
+    });
+  }, [editorAreaRef, getCurrentSlateContext, onTagsChange, readOnly]);
+
+  const scheduleInlineTagPickerRefresh = useCallback(() => {
+    if (inlineTagRefreshRafRef.current !== null) {
+      cancelAnimationFrame(inlineTagRefreshRafRef.current);
+    }
+
+    inlineTagRefreshRafRef.current = requestAnimationFrame(() => {
+      inlineTagRefreshRafRef.current = null;
+      refreshInlineTagPicker();
+    });
+  }, [refreshInlineTagPicker]);
+
+  const commitInlineTag = useCallback((rawTag: string) => {
+    if (!onTagsChange || !inlineTagPicker) return;
+
+    const normalizedTag = normalizeTagValue(rawTag);
+    if (!normalizedTag) {
+      setInlineTagPicker((prev) => (prev === null ? prev : null));
+      return;
+    }
+
+    const mergedTags = [...currentPageTags];
+    if (!mergedTags.some((tag) => tagKey(tag) === tagKey(normalizedTag))) {
+      mergedTags.push(normalizedTag);
+      onTagsChange(mergedTags.join(', '));
+    }
+
+    const slateEditor = editor.blockEditorsMap[inlineTagPicker.blockId];
+    if (slateEditor) {
+      Transforms.select(slateEditor, {
+        anchor: { path: inlineTagPicker.path, offset: inlineTagPicker.startOffset },
+        focus: { path: inlineTagPicker.path, offset: inlineTagPicker.endOffset },
+      });
+      Transforms.delete(slateEditor);
+    }
+
+    setInlineTagPicker((prev) => (prev === null ? prev : null));
+  }, [currentPageTags, editor.blockEditorsMap, inlineTagPicker, onTagsChange]);
+
+  const tryApplyInlineMarkdownShortcut = useCallback((trailingText: string) => {
+    const context = getCurrentSlateContext();
+    if (!context) return false;
+
+    const { slateEditor } = context;
+    const selection = slateEditor.selection;
+    if (!selection || !Range.isCollapsed(selection)) return false;
+
+    const node = SlateEditor.node(slateEditor, selection.anchor.path);
+    const textNode = node[0] as { text?: string };
+    if (!textNode || typeof textNode.text !== 'string') return false;
+
+    const textBeforeCursor = textNode.text.slice(0, selection.anchor.offset);
+
+    for (const shortcut of INLINE_MARKDOWN_SHORTCUTS) {
+      const match = textBeforeCursor.match(shortcut.pattern);
+      if (!match) continue;
+
+      const matchedToken = match[2];
+      const content = match[3];
+      if (!matchedToken || !content) continue;
+
+      const startOffset = selection.anchor.offset - matchedToken.length;
+      if (startOffset < 0) continue;
+
+      Transforms.select(slateEditor, {
+        anchor: { path: selection.anchor.path, offset: startOffset },
+        focus: { path: selection.anchor.path, offset: selection.anchor.offset },
+      });
+      Transforms.delete(slateEditor);
+      const formattedLeaf = shortcut.marks.reduce<Record<string, unknown>>(
+        (acc, mark) => {
+          acc[mark] = true;
+          return acc;
+        },
+        { text: content },
+      );
+      const nodesToInsert = trailingText
+        ? [formattedLeaf, { text: trailingText }]
+        : [formattedLeaf, { text: '' }];
+      Transforms.insertNodes(slateEditor, nodesToInsert as any);
+      return true;
+    }
+
+    return false;
+  }, [editor, getCurrentSlateContext]);
+
+  useEffect(() => {
+    if (!inlineTagPicker) return;
+
+    const maxIndex = inlineTagOptions.length + (canCreateInlineTag ? 1 : 0) - 1;
+    if (maxIndex < 0) {
+      if (inlineTagPicker.highlightedIndex !== 0) {
+        setInlineTagPicker((prev) => (prev ? { ...prev, highlightedIndex: 0 } : prev));
+      }
+      return;
+    }
+
+    if (inlineTagPicker.highlightedIndex > maxIndex) {
+      setInlineTagPicker((prev) => (prev ? { ...prev, highlightedIndex: maxIndex } : prev));
+    }
+  }, [canCreateInlineTag, inlineTagOptions.length, inlineTagPicker]);
+
+  useEffect(() => {
+    if (!isEditorFocused) {
+      setInlineTagPicker(null);
+    }
+  }, [isEditorFocused]);
 
   // === HANDLERS ===
   const handleChange = useCallback((newValue: YooptaContentValue, _options: YooptaOnChangeOptions) => {
@@ -1344,7 +1662,24 @@ const PageEditor: React.FC<PageEditorProps> = ({
 
     pendingDraftValueRef.current = newValue;
     schedulePendingDraftFlush();
-  }, [schedulePendingDraftFlush, trackBlockChanges]);
+    scheduleInlineTagPickerRefresh();
+  }, [scheduleInlineTagPickerRefresh, schedulePendingDraftFlush, trackBlockChanges]);
+
+  useEffect(() => {
+    if (readOnly || !isEditorFocused) return;
+
+    const handleSelectionRefresh = () => {
+      scheduleInlineTagPickerRefresh();
+    };
+
+    document.addEventListener('selectionchange', handleSelectionRefresh);
+    window.addEventListener('resize', handleSelectionRefresh);
+
+    return () => {
+      document.removeEventListener('selectionchange', handleSelectionRefresh);
+      window.removeEventListener('resize', handleSelectionRefresh);
+    };
+  }, [isEditorFocused, readOnly, scheduleInlineTagPickerRefresh]);
 
   // Handle internal link selection from picker
   const handleInternalLinkSelect = useCallback((selection: SearchSelection) => {
@@ -1581,6 +1916,59 @@ const PageEditor: React.FC<PageEditorProps> = ({
 
   // Handle @ key to trigger internal link picker
   const handleEditorKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (inlineTagPicker) {
+      const totalOptions = inlineTagOptions.length + (canCreateInlineTag ? 1 : 0);
+
+      if (e.key === 'ArrowDown' && totalOptions > 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        setInlineTagPicker((prev) => prev ? {
+          ...prev,
+          highlightedIndex: Math.min(prev.highlightedIndex + 1, totalOptions - 1),
+        } : prev);
+        return;
+      }
+
+      if (e.key === 'ArrowUp' && totalOptions > 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        setInlineTagPicker((prev) => prev ? {
+          ...prev,
+          highlightedIndex: Math.max(prev.highlightedIndex - 1, 0),
+        } : prev);
+        return;
+      }
+
+      if ((e.key === 'Enter' || e.key === 'Tab') && totalOptions > 0) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (inlineTagPicker.highlightedIndex < inlineTagOptions.length) {
+          commitInlineTag(inlineTagOptions[inlineTagPicker.highlightedIndex]);
+        } else if (canCreateInlineTag) {
+          commitInlineTag(inlineTagPicker.query);
+        }
+        return;
+      }
+
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        closeInlineTagPicker();
+        return;
+      }
+
+      if (e.key === ' ') {
+        closeInlineTagPicker();
+      }
+    }
+
+    if ((e.key === ' ' || e.key === '.' || e.key === ',' || e.key === '!' || e.key === '?' || e.key === ';' || e.key === ':') && tryApplyInlineMarkdownShortcut(e.key)) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+
     // Tab / Shift+Tab to indent/outdent list blocks (bulleted, numbered, todo)
     if (e.key === 'Tab') {
       const currentOrder = editor.path.current;
@@ -1632,7 +2020,7 @@ const PageEditor: React.FC<PageEditorProps> = ({
       blockToDeleteRef.current = currentBlockId;
       setIsLinkPickerOpen(true);
     }
-  }, [editor]);
+  }, [canCreateInlineTag, closeInlineTagPicker, commitInlineTag, editor, inlineTagOptions, inlineTagPicker, tryApplyInlineMarkdownShortcut]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -1851,6 +2239,34 @@ const PageEditor: React.FC<PageEditorProps> = ({
                   <p className="text-sm font-medium text-[var(--color-text-secondary)]">Uploading image...</p>
                 </div>
               </div>
+            )}
+
+            {inlineTagPicker && !readOnly && typeof document !== 'undefined' && createPortal(
+              <div
+                className="fixed z-[9999] w-72 max-w-[min(22rem,calc(100vw-1rem))] overflow-hidden rounded-2xl border border-[var(--color-border-default)] bg-[color-mix(in_srgb,var(--color-surface-base)_96%,white)] shadow-[0_18px_60px_rgba(0,0,0,0.18)] backdrop-blur-xl"
+                style={{
+                  top: inlineTagPicker.top,
+                  left: inlineTagPicker.left,
+                }}
+              >
+                <div className="border-b border-[var(--color-border-subtle)] px-3 py-2 text-[11px] font-medium uppercase tracking-[0.18em] text-[var(--color-text-tertiary)]">
+                  Page tags
+                </div>
+                <div className="max-h-64 overflow-y-auto py-1">
+                  <TagPickerMenu
+                    suggestions={inlineTagOptions}
+                    currentTags={currentPageTags}
+                    highlightedIndex={inlineTagPicker.highlightedIndex}
+                    canCreate={canCreateInlineTag}
+                    query={inlineTagPicker.query}
+                    existingTags={pageTagUniverse}
+                    contextKey={pageId ? `page-tags-${pageId}` : undefined}
+                    onSelectTag={commitInlineTag}
+                    onCreateTag={commitInlineTag}
+                  />
+                </div>
+              </div>,
+              document.body,
             )}
             
             {isLoading ? (

@@ -15,7 +15,7 @@
  */
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Plus, Check } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useFloating, offset, flip, shift, autoUpdate, size } from '@floating-ui/react';
 import { cn } from '@/lib/design-system';
 import { TagBadge } from '@/components/ui';
@@ -23,6 +23,7 @@ import { Popover } from '@/components/ui';
 import { MobileSheet } from '@/components/ui';
 import { useIsMobile } from '@frameer/hooks/useMobileDetection';
 import { getTagColor, TAG_COLORS } from '@/lib/tagUtils';
+import TagPickerMenu from './TagPickerMenu';
 
 export interface InlineTagInputProps {
   /** Current value(s) - comma-separated for multi-select */
@@ -325,83 +326,18 @@ const InlineTagInput: React.FC<InlineTagInputProps> = ({
       {/* IMPORTANT: Existing suggestions appear FIRST to prioritize selecting them */}
       {(() => {
         const content = (
-          <div className="p-2 flex flex-wrap gap-2">
-            {/* Existing tag suggestions - FIRST to prioritize selection */}
-            {suggestions.map((tag, idx) => {
-              const isHighlighted = highlightedIndex === idx;
-              const isSelected = currentTags.includes(tag);
-              
-              return (
-                <button
-                  key={tag}
-                  type="button"
-                  onMouseDown={(e) => {
-                    if (!isMobile) {
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }
-                    addTag(tag);
-                  }}
-                  onClick={() => {
-                    if (isMobile) addTag(tag);
-                  }}
-                  className={cn(
-                    'flex items-center gap-2 p-0.5 rounded-full transition-all',
-                    isHighlighted 
-                      ? 'ring-2 ring-[var(--color-interactive-ring)] ring-offset-1 ring-offset-[var(--color-surface-base)]' 
-                      : 'hover:scale-105',
-                    isSelected && 'opacity-50'
-                  )}
-                >
-                  <TagBadge 
-                    tag={tag} 
-                    className="!text-sm !px-3 !py-1.5" 
-                    contextKey={contextKey}
-                    existingTags={existingTags}
-                  />
-                  {isSelected && <Check className="w-3 h-3 ml-auto text-[var(--color-interactive-text-strong)] sr-only" />}
-                </button>
-              );
-            })}
-
-            {/* Create new tag option - LAST to de-prioritize */}
-            {isNewTag && (
-              <button
-                type="button"
-                onMouseDown={(e) => {
-                  if (!isMobile) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }
-                  addTag(inputValue.trim());
-                }}
-                onClick={() => {
-                  if (isMobile) addTag(inputValue.trim());
-                }}
-                className={cn(
-                  'flex items-center gap-2 px-2 py-1.5 rounded-lg border border-dashed border-[var(--color-border-default)] transition-colors',
-                  highlightedIndex === suggestions.length 
-                    ? 'bg-[var(--color-interactive-bg)] border-[var(--color-interactive-border)]' 
-                    : 'hover:bg-[var(--color-surface-secondary)]'
-                )}
-              >
-                <Plus className="w-3.5 h-3.5 text-[var(--color-text-tertiary)]" />
-                <span className="text-xs text-[var(--color-text-secondary)]">Create</span>
-                <TagBadge 
-                  tag={inputValue.trim()} 
-                  contextKey={contextKey}
-                  existingTags={existingTags}
-                />
-              </button>
-            )}
-
-            {/* Empty state */}
-            {suggestions.length === 0 && !isNewTag && (
-              <div className="w-full px-2 py-4 text-xs text-[var(--color-text-tertiary)] text-center">
-                Type to create a new tag
-              </div>
-            )}
-          </div>
+          <TagPickerMenu
+            suggestions={suggestions}
+            currentTags={currentTags}
+            highlightedIndex={highlightedIndex}
+            canCreate={isNewTag}
+            query={inputValue}
+            existingTags={existingTags}
+            contextKey={contextKey}
+            isMobile={isMobile}
+            onSelectTag={addTag}
+            onCreateTag={addTag}
+          />
         );
 
         if (isMobile) {

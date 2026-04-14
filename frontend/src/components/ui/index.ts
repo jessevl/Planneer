@@ -70,6 +70,7 @@ export { default as PageBadge } from './PageBadge';
 // Tag-related Components
 export { default as TagBadge } from './TagBadge';
 export { default as InlineTagInput } from './InlineTagInput';
+export { default as TagPickerMenu } from './TagPickerMenu';
 
 // View-related Components
 export { default as ViewLayoutToggle } from './ViewLayoutToggle';
