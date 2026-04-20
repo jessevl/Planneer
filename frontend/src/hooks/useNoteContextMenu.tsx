@@ -15,7 +15,6 @@
 
 import React, { useMemo, useCallback } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { Pin, PinOff } from 'lucide-react';
 import { usePagesStore, selectPageActions } from '@/stores/pagesStore';
 import { useSelectionStore } from '@/stores/selectionStore';
 import { useDeleteConfirmStore } from '@/stores/deleteConfirmStore';
@@ -72,16 +71,6 @@ export function useNoteContextMenu({ page, onOpenProperties, childCount = 0 }: U
   const menuItems = useMemo((): ContextMenuItem[] => {
     const items: ContextMenuItem[] = [];
     
-    // Pin/Unpin (single select only)
-    if (!isMultiSelect) {
-      items.push({
-        id: 'pin',
-        label: page.isPinned ? 'Remove from favorites' : 'Pin as favorite',
-        icon: page.isPinned ? <PinOff className={iconClass} /> : <Pin className={iconClass} />,
-        onClick: () => updatePage(page.id, { isPinned: !page.isPinned }),
-      });
-    }
-    
     // Properties (single select only)
     if (!isMultiSelect && onOpenProperties) {
       items.push({
@@ -122,7 +111,7 @@ export function useNoteContextMenu({ page, onOpenProperties, childCount = 0 }: U
   }, [
     isMultiSelect, selectionCount, childCount,
     effectiveSelection, deletePage, updatePage, clearSelection,
-    onOpenProperties, page.id, page.isPinned, requestDelete
+    onOpenProperties, page.id, requestDelete
   ]);
   
   // Click handler with selection support

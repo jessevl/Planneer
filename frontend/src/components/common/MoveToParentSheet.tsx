@@ -12,7 +12,7 @@ import {
   StylizedCollectionIcon, 
   StylizedNoteIcon 
 } from '@/components/common/StylizedIcons';
-import { Folder } from 'lucide-react';
+import { Folder, Inbox } from 'lucide-react';
 
 interface MoveToParentSheetProps {
   isOpen: boolean;
@@ -60,6 +60,11 @@ export const MoveToParentSheet: React.FC<MoveToParentSheetProps> = ({
     movePage(pageId, null);
     onClose();
   };
+
+  const handleMoveToInbox = () => {
+    movePage(pageId, null, { isTopLevel: false });
+    onClose();
+  };
   
   const renderIcon = (page: typeof availableParents[0]) => {
     if (page.icon) {
@@ -98,6 +103,23 @@ export const MoveToParentSheet: React.FC<MoveToParentSheetProps> = ({
             </div>
             <div className="text-xs text-[var(--color-text-secondary)]">
               No parent (top-level page)
+            </div>
+          </div>
+        </button>
+
+        <button
+          onClick={handleMoveToInbox}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left hover:bg-[var(--color-surface-secondary)] transition-colors"
+        >
+          <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-[var(--color-surface-secondary)]">
+            <Inbox className="w-5 h-5 text-[var(--color-text-secondary)]" />
+          </div>
+          <div>
+            <div className="text-sm font-medium text-[var(--color-text-primary)]">
+              Inbox
+            </div>
+            <div className="text-xs text-[var(--color-text-secondary)]">
+              Keep it unfiled until you organize it
             </div>
           </div>
         </button>

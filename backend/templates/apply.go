@@ -146,7 +146,7 @@ func applyContent(app core.App, userId string, forceReset bool) error {
 		page.Set("childrenViewMode", pt.ChildrenViewMode)
 		page.Set("createdBy", userId)
 		page.Set("isExpanded", true)
-		page.Set("isPinned", pt.IsPinned)
+		page.Set("isTopLevel", pt.IsTopLevel)
 
 		// Set cover gradient if provided
 		if pt.CoverGradient != "" {

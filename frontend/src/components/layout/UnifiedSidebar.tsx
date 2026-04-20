@@ -23,37 +23,37 @@ import { useNavigationStore } from '@/stores/navigationStore';
 import { usePagesStore, usePages, selectPageState, selectPageActions, type PagesState } from '@/stores/pagesStore';
 import { useTasksStore, useTasks } from '@/stores/tasksStore';
 import { useUIStore } from '@/stores/uiStore';
-import { useAuthStore } from '@/stores/authStore';
 import { useDeleteConfirmStore } from '@/stores/deleteConfirmStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useTabsStore } from '@/stores/tabsStore';
 import { selectSidebarCounts } from '@/lib/selectors';
 import { getTodayISO, dayjs } from '@/lib/dateUtils';
-import { isRootLevel } from '@/lib/treeUtils';
-import { pb } from '@/lib/pocketbase';
+import { isInboxPlacement, isRootLevel } from '@/lib/treeUtils';
 import { cn } from '@/lib/design-system';
 import { FLOATING_PANEL_GUTTER_PX, getFloatingPanelReserveWidth } from '@/lib/layout';
 // Components
 import TreeSection, { type TreeNode, type TreeItemConfig } from './TreeSection';
-import { NavItem, Divider, SectionHeader, Label, ContextMenu, type ContextMenuItem, ResizeHandle } from '@/components/ui';
+import { Divider, ContextMenu, type ContextMenuItem, ResizeHandle } from '@/components/ui';
 import { MobileSheet } from '@/components/ui';
-import { Settings, LogOut, User, ExternalLink, Network, PanelLeftClose, PanelLeftOpen, PenLine, Pin, PinOff } from 'lucide-react';
+import { ExternalLink, Network, PanelLeftClose, PanelLeftOpen, PenLine, Pin, PinOff } from 'lucide-react';
 import { 
   HomeIcon, 
+  InboxIcon,
   PagesIcon, 
   CheckIcon, 
+  ClockIcon,
   SearchIcon,
 } from '../common/Icons';
 import ItemIcon from '../common/ItemIcon';
+import PageTypeDropdown from '../common/PageTypeDropdown';
 import { openCommandPalette } from '@/hooks/useCommandPalette';
 import { useMobileLayout } from '@/contexts/MobileLayoutContext';
 import { useSplitViewStore } from '@/contexts/SplitViewContext';
 import SidebarHeader from './SidebarHeader';
 import { useIsMobile } from '@frameer/hooks/useMobileDetection';
-import { useWorkspaceStore, selectCurrentWorkspace } from '@/stores/workspaceStore';
 import { usePageOperations } from '@/hooks/usePageOperations';
 import { buildPageMenuItems } from '@/hooks/usePageContextMenu';
-import { filterOutBooxPages, filterOutBooxTree, findBooxRootPage } from '@/lib/pageUtils';
+import { filterOutBooxPages, filterOutBooxTree } from '@/lib/pageUtils';
 
 // Types
 import type { Page, PageTreeNode, PageViewMode } from '@/types/page';
@@ -70,7 +70,6 @@ interface SidebarPage {
   viewMode?: PageViewMode;
   childCount?: number;
   showChildrenInSidebar?: boolean;
-  isPinned?: boolean;
   isReadOnly?: boolean;
 }
 
@@ -119,7 +118,7 @@ const SidebarRailButton: React.FC<SidebarRailButtonProps> = ({
         title={label}
         aria-label={label}
         className={cn(
-            'relative flex h-10 w-10 items-center justify-center rounded-full transition-all duration-200 ease-out',
+            'relative flex h-9 w-9 items-center justify-center rounded-[1.15rem] transition-all duration-200 ease-out',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-fg)]/35 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent',
           'active:scale-[0.97] hover:-translate-y-0.5',
           isActive
@@ -127,7 +126,7 @@ const SidebarRailButton: React.FC<SidebarRailButtonProps> = ({
             : 'glass-item-subtle text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
         )}
       >
-        <span className="flex items-center justify-center transition-transform duration-200 group-hover:scale-105 [&_svg]:h-4.5 [&_svg]:w-4.5">{icon}</span>
+        <span className="flex items-center justify-center transition-transform duration-200 group-hover:scale-105 [&_svg]:h-4.25 [&_svg]:w-4.25">{icon}</span>
       </button>
       {showTooltip ? (
         <div className="pointer-events-none absolute left-[calc(100%+0.85rem)] top-1/2 z-30 -translate-y-1/2 translate-x-[-6px] opacity-0 transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:translate-x-0 group-focus-within:opacity-100">
@@ -246,7 +245,6 @@ const pageConfig: TreeItemConfig<SidebarPage> = {
     return 'note';
   },
   getViewMode: (n) => n.viewMode,
-  getIsPinned: (n) => n.isPinned ?? false,
   getShowChildrenInSidebar: (n) => n.showChildrenInSidebar,
   // Use showChildrenInSidebar if defined, otherwise default based on viewMode
   // Notes show subpages in sidebar by default, others don't
@@ -289,7 +287,6 @@ const convertPageTree = (nodes: PageTreeNode[]): TreeNode<SidebarPage>[] => {
         cached.item.viewMode === node.page.viewMode &&
         cached.item.childCount === node.page.childCount &&
         cached.item.showChildrenInSidebar === node.page.showChildrenInSidebar &&
-        cached.item.isPinned === node.page.isPinned &&
         cached.item.isReadOnly === node.page.isReadOnly &&
         cached.children === children
     ) {
@@ -306,7 +303,6 @@ const convertPageTree = (nodes: PageTreeNode[]): TreeNode<SidebarPage>[] => {
         viewMode: node.page.viewMode,
         childCount: node.page.childCount,
         showChildrenInSidebar: node.page.showChildrenInSidebar,
-        isPinned: node.page.isPinned,
         isReadOnly: node.page.isReadOnly,
       },
       children,
@@ -325,7 +321,9 @@ interface MainNavigationProps {
   isPages: boolean;
   isGraph: boolean;
   isTasks: boolean;
-  selectedPageId: string | null;
+  isHandwritten: boolean;
+  shouldShowHandwrittenNav: boolean;
+  currentDateLabel: string;
   pagesEditedRecently: number;
   sidebarCounts: {
     allCount: number;
@@ -336,78 +334,166 @@ interface MainNavigationProps {
   onNavigateToPages: () => void;
   onNavigateToGraph: () => void;
   onNavigateToTasks: () => void;
+  onNavigateToHandwritten: () => void;
   taskFilterFromStore: string | null;
 }
+
+interface MainNavigationTileProps {
+  icon: React.ReactNode;
+  label: string;
+  isActive: boolean;
+  onClick: () => void;
+  trailing?: React.ReactNode;
+}
+
+const NavPill: React.FC<{ tone?: 'neutral' | 'accent' | 'warning' | 'danger'; children: React.ReactNode }> = ({
+  tone = 'neutral',
+  children,
+}) => (
+  <span
+    className={cn(
+      'inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none',
+      tone === 'neutral' && 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]',
+      tone === 'accent' && 'bg-[var(--color-accent-muted)] text-[var(--color-accent-fg)]',
+      tone === 'warning' && 'bg-amber-500/14 text-amber-700 dark:text-amber-300',
+      tone === 'danger' && 'bg-red-500/14 text-red-700 dark:text-red-300'
+    )}
+  >
+    {children}
+  </span>
+);
+
+const MainNavigationTile: React.FC<MainNavigationTileProps> = ({
+  icon,
+  label,
+  isActive,
+  onClick,
+  trailing,
+}) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={cn(
+      'group flex flex-row items-center gap-2 rounded-[16px] border px-2 py-1.5 text-left transition-all duration-200',
+      isActive
+        ? 'border-[var(--color-border-emphasis)] bg-[color-mix(in_srgb,var(--color-accent-muted)_80%,transparent)] shadow-[0_18px_34px_-28px_rgba(15,23,42,0.48)]'
+        : 'border-[var(--color-border-default)]/75 bg-[color-mix(in_srgb,var(--color-surface-base)_88%,transparent)] hover:border-[var(--color-border-emphasis)] hover:bg-[var(--color-surface-secondary)]'
+    )}
+  >
+    <span className={cn(
+      'flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-xl transition-transform duration-200 group-hover:scale-105',
+      isActive
+        ? 'bg-[var(--color-accent-muted)] text-[var(--color-accent-fg)]'
+        : 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]'
+    )}>
+      <span className="[&_svg]:h-3.5 [&_svg]:w-3.5">{icon}</span>
+    </span>
+    <span className="min-w-0 flex-1">
+      <span className="block truncate text-[12.5px] font-semibold leading-tight text-[var(--color-text-primary)]">{label}</span>
+      {trailing ? <span className="mt-0.5 flex items-center gap-1 leading-none">{trailing}</span> : null}
+    </span>
+  </button>
+);
 
 const MainNavigation: React.FC<MainNavigationProps> = React.memo(({
   isHome,
   isPages,
   isGraph,
   isTasks,
-  selectedPageId,
+  isHandwritten,
+  shouldShowHandwrittenNav,
+  currentDateLabel,
   pagesEditedRecently,
   sidebarCounts,
   onNavigateToHome,
   onNavigateToPages,
   onNavigateToGraph,
   onNavigateToTasks,
+  onNavigateToHandwritten,
   taskFilterFromStore,
 }) => {
-  const isMobile = useIsMobile();
-  const isEink = useSettingsStore((s) => s.einkMode);
   const { tabsEnabled, homeContextMenu, pagesContextMenu, graphContextMenu, tasksContextMenu } = usePrimaryNavContextMenus(taskFilterFromStore);
-  
-  if (isMobile) return null;
+
+  const items: Array<MainNavigationTileProps & { key: string; contextMenuItems?: ContextMenuItem[] }> = [
+    {
+      key: 'home',
+      icon: <HomeIcon className="w-5 h-5" />,
+      label: 'Home',
+      isActive: isHome,
+      onClick: onNavigateToHome,
+      trailing: <span className="text-[11px] font-medium text-[var(--color-text-tertiary)]">{currentDateLabel}</span>,
+      contextMenuItems: homeContextMenu,
+    },
+    {
+      key: 'search',
+      icon: <SearchIcon className="w-5 h-5" />,
+      label: 'Search',
+      isActive: false,
+      onClick: openCommandPalette,
+      trailing: (
+        <kbd className="inline-flex items-center gap-0.5 rounded-full bg-[var(--color-surface-secondary)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-text-disabled)]">
+          {typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0 ? '⌘' : 'Ctrl'}K
+        </kbd>
+      ),
+    },
+    {
+      key: 'pages',
+      icon: <PagesIcon className="w-5 h-5" />,
+      label: 'Pages',
+      isActive: isPages,
+      onClick: onNavigateToPages,
+      trailing: <span className="text-[11px] font-medium text-[var(--color-text-tertiary)]">{pagesEditedRecently} in 7D</span>,
+      contextMenuItems: pagesContextMenu,
+    },
+    {
+      key: 'tasks',
+      icon: <CheckIcon className="w-5 h-5" />,
+      label: 'Tasks',
+      isActive: isTasks,
+      onClick: onNavigateToTasks,
+      trailing: (
+        sidebarCounts.overdueCount > 0
+          ? <NavPill tone="danger">{sidebarCounts.overdueCount} late</NavPill>
+          : sidebarCounts.todayCount > 0
+            ? <NavPill tone="warning">{sidebarCounts.todayCount} today</NavPill>
+            : <NavPill>{sidebarCounts.allCount}</NavPill>
+      ),
+      contextMenuItems: tasksContextMenu,
+    },
+    {
+      key: 'graph',
+      icon: <Network className="w-5 h-5" />,
+      label: 'Graph',
+      isActive: isGraph,
+      onClick: onNavigateToGraph,
+      trailing: <span className="text-[11px] font-medium text-[var(--color-text-tertiary)]">Explore</span>,
+      contextMenuItems: graphContextMenu,
+    },
+  ];
+
+  if (shouldShowHandwrittenNav) {
+    items.push({
+      key: 'handwritten',
+      icon: <PenLine className="w-5 h-5" />,
+      label: 'BOOX',
+      isActive: isHandwritten,
+      onClick: onNavigateToHandwritten,
+      trailing: <span className="text-[11px] font-medium text-[var(--color-text-tertiary)]">notes</span>,
+    });
+  }
   
   return (
-    <nav className="space-y-0.5 mb-2">
-      <ContextMenu items={homeContextMenu} disabled={!tabsEnabled}>
-        <NavItem
-          icon={<HomeIcon className="w-5 h-5" />}
-          label="Home"
-          subtitle="Dashboard & overview"
-          isActive={isHome}
-          einkMode={isEink}
-          onClick={onNavigateToHome}
-        />
-      </ContextMenu>
-      <ContextMenu items={pagesContextMenu} disabled={!tabsEnabled}>
-        <NavItem
-          icon={<PagesIcon className="w-5 h-5" />}
-          label="Pages"
-          subtitle={pagesEditedRecently > 0 ? `${pagesEditedRecently} edited past 7 days` : 'Your workspace'}
-          isActive={isPages && !selectedPageId}
-          einkMode={isEink}
-          onClick={onNavigateToPages}
-        />
-      </ContextMenu>
-      <ContextMenu items={tasksContextMenu} disabled={!tabsEnabled}>
-        <NavItem
-          icon={<CheckIcon className="w-5 h-5" />}
-          label="Tasks"
-          subtitle={
-            sidebarCounts.overdueCount > 0 || sidebarCounts.todayCount > 0
-              ? [
-                  sidebarCounts.overdueCount > 0 && `${sidebarCounts.overdueCount} overdue`,
-                  sidebarCounts.todayCount > 0 && `${sidebarCounts.todayCount} due today`,
-                ].filter(Boolean).join(', ')
-              : 'Track your work'
-          }
-          isActive={isTasks}
-          einkMode={isEink}
-          onClick={onNavigateToTasks}
-        />
-      </ContextMenu>
-      <ContextMenu items={graphContextMenu} disabled={!tabsEnabled}>
-        <NavItem
-          icon={<Network className="w-5 h-5" />}
-          label="Graph"
-          subtitle="Relationships and backlinks"
-          isActive={isGraph}
-          einkMode={isEink}
-          onClick={onNavigateToGraph}
-        />
-      </ContextMenu>
+    <nav className="mb-2 grid grid-cols-2 gap-2">
+      {items.map(({ key, contextMenuItems, ...tileProps }) => {
+        const tile = <MainNavigationTile key={key} {...tileProps} />;
+        return contextMenuItems && contextMenuItems.length > 0 ? (
+          <ContextMenu key={key} items={contextMenuItems} disabled={!tabsEnabled}>
+            {tile}
+          </ContextMenu>
+        ) : (
+          <React.Fragment key={key}>{tile}</React.Fragment>
+        );
+      })}
     </nav>
   );
 });
@@ -428,23 +514,17 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
   const [createWorkspaceOpen, setCreateWorkspaceOpen] = useState(false);
   const isResizingRef = useRef(false);
   const hoverCloseTimeoutRef = useRef<number | null>(null);
+  const treeScrollRef = useRef<HTMLDivElement>(null);
+  const dragScrollAnimRef = useRef<number | null>(null);
   
   // Settings modal from global UI store
   const settingsModal = useUIStore(s => s.settingsModal);
   const openSettingsModal = useUIStore(s => s.openSettingsModal);
   const closeSettingsModal = useUIStore(s => s.closeSettingsModal);
   
-  // Auth state for sidebar footer
-  const { user, logout } = useAuthStore(useShallow((s) => ({ user: s.user, logout: s.logout })));
-  
-  // Mobile user menu state
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
-  
   // Mobile detection - on mobile, sidebar should be full-width inside MobileDrawer
   const isMobile = useIsMobile();
   const isRail = !isMobile && mode === 'rail';
-  const isEink = useSettingsStore((s) => s.einkMode);
-  const currentWorkspace = useWorkspaceStore(selectCurrentWorkspace);
   const sidebarPinned = useNavigationStore((s) => s.sidebarPinned);
   const setSidebarPinned = useNavigationStore((s) => s.setSidebarPinned);
   const setSidebarVisible = useNavigationStore((s) => s.setSidebarVisible);
@@ -484,6 +564,7 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
   // Derive current view state from URL
   const currentPath = location.pathname;
   const isHome = currentPath === '/';
+  const isInbox = currentPath === '/inbox';
   const isPages = currentPath === '/pages' || currentPath.startsWith('/pages/');
   const isGraph = currentPath === '/graph';
   const isTasks = currentPath.startsWith('/tasks');
@@ -525,6 +606,65 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
   const handleLoadMoreRootPages = useCallback(() => {
     loadMorePages(true, 'order', 'asc');
   }, [loadMorePages]);
+
+  // ============================================================================
+  // DRAG-SCROLL FOR SIDEBAR TREE
+  // ============================================================================
+  // Uses a global dragover listener + continuous rAF loop so scrolling works
+  // regardless of which child element the cursor is over (no bubbling dependency).
+  useEffect(() => {
+    const ZONE = 64;  // px from edge to start scrolling
+    const SPEED = 10; // max px per frame
+
+    let scrollSpeed = 0;
+
+    const onDragOver = (e: DragEvent) => {
+      const el = treeScrollRef.current;
+      if (!el) { scrollSpeed = 0; return; }
+
+      const { top, bottom, left, right } = el.getBoundingClientRect();
+
+      // Only scroll when cursor is horizontally within the sidebar panel
+      if (e.clientX < left || e.clientX > right) {
+        scrollSpeed = 0;
+        return;
+      }
+
+      if (e.clientY < top + ZONE) {
+        const ratio = Math.max((ZONE - (e.clientY - top)) / ZONE, 0.15);
+        scrollSpeed = -SPEED * ratio;
+      } else if (e.clientY > bottom - ZONE) {
+        const ratio = Math.max((ZONE - (bottom - e.clientY)) / ZONE, 0.15);
+        scrollSpeed = SPEED * ratio;
+      } else {
+        scrollSpeed = 0;
+      }
+    };
+
+    const stopScroll = () => { scrollSpeed = 0; };
+
+    const tick = () => {
+      if (scrollSpeed !== 0 && treeScrollRef.current) {
+        treeScrollRef.current.scrollTop += scrollSpeed;
+      }
+      dragScrollAnimRef.current = requestAnimationFrame(tick);
+    };
+
+    dragScrollAnimRef.current = requestAnimationFrame(tick);
+    document.addEventListener('dragover', onDragOver);
+    document.addEventListener('dragend', stopScroll);
+    document.addEventListener('drop', stopScroll);
+
+    return () => {
+      document.removeEventListener('dragover', onDragOver);
+      document.removeEventListener('dragend', stopScroll);
+      document.removeEventListener('drop', stopScroll);
+      if (dragScrollAnimRef.current !== null) {
+        cancelAnimationFrame(dragScrollAnimRef.current);
+        dragScrollAnimRef.current = null;
+      }
+    };
+  }, []);
 
   // ============================================================================
   // TASKS STORE (for counts and task updates)
@@ -601,6 +741,14 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
     if (canNavigate) {
       closeDrawer();
       navigate({ to: '/pages' });
+    }
+  }, [requestNavigation, navigate, closeDrawer]);
+
+  const handleNavigateToInbox = useCallback(() => {
+    const canNavigate = requestNavigation({ type: 'view', target: 'pages' });
+    if (canNavigate) {
+      closeDrawer();
+      navigate({ to: '/inbox' });
     }
   }, [requestNavigation, navigate, closeDrawer]);
 
@@ -684,7 +832,6 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
     color?: string | null; 
     parentId?: string | null; 
     viewMode?: string;
-    isPinned?: boolean;
     showChildrenInSidebar?: boolean;
   }) => {
     if (updates.parentId !== undefined && updates.parentId !== pagesById[pageId]?.parentId) {
@@ -699,7 +846,6 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
     if (updates.title !== undefined) pageUpdates.title = updates.title;
     if (updates.icon !== undefined) pageUpdates.icon = updates.icon;
     if (updates.color !== undefined) pageUpdates.color = updates.color;
-    if (updates.isPinned !== undefined) pageUpdates.isPinned = updates.isPinned;
     if (updates.showChildrenInSidebar !== undefined) pageUpdates.showChildrenInSidebar = updates.showChildrenInSidebar;
     if (updates.viewMode) {
       pageUpdates.viewMode = updates.viewMode as PageViewMode;
@@ -708,15 +854,6 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
       updatePage(pageId, pageUpdates);
     }
   }, [pagesById, movePage, setExpanded, updatePage]);
-
-  // Pin handlers for TreeSection
-  const handleTogglePin = useCallback((pageId: string, isPinned: boolean) => {
-    updatePage(pageId, { isPinned });
-  }, [updatePage]);
-
-  const getIsPinned = useCallback((pageId: string): boolean => {
-    return pagesById[pageId]?.isPinned ?? false;
-  }, [pagesById]);
 
   const handleReorderPages = useCallback((pageId: string, targetId: string, targetParentId: string | null, position: 'before' | 'after') => {
     const draggedPage = pagesById[pageId];
@@ -764,8 +901,13 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
     }
   }, [pages, pagesById, reorderPages, movePage]);
 
-  const handleReparentPage = useCallback((pageId: string, newParentId: string) => {
-    if (pageId === newParentId) return;
+  const handleReparentPage = useCallback((pageId: string, newParentId: string | null) => {
+    if (newParentId !== null && pageId === newParentId) return;
+    if (newParentId === null) {
+      // Drop to root level of the tree
+      movePage(pageId, null, { isTopLevel: true });
+      return;
+    }
     const isDescendant = (checkId: string, ancestorId: string): boolean => {
       let current = pagesById[checkId];
       while (current?.parentId) {
@@ -787,8 +929,51 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
   // ============================================================================
   const visiblePageTree = useMemo(() => filterOutBooxTree(pageTree), [pageTree]);
   const genericPageTree = useMemo(() => convertPageTree(visiblePageTree), [visiblePageTree]);
-  const booxRootPage = useMemo(() => findBooxRootPage(pages), [pages]);
-  const shouldShowHandwrittenNav = booxRootPage !== null;
+  const shouldShowHandwrittenNav = true;
+  const selectedPage = selectedPageId ? pagesById[selectedPageId] : null;
+  const selectedPageIsInbox = selectedPage ? isInboxPlacement(selectedPage.parentId, selectedPage.isTopLevel) : false;
+  // Pages tile is active only on the /pages index, not when viewing a specific page
+  const pagesNavActive = isPages && !selectedPageId;
+  const inboxNavActive = isInbox || selectedPageIsInbox;
+  const recentPagesCount = useSettingsStore((state) => state.sidebar.recentPagesCount);
+  const isEink = useSettingsStore((state) => state.einkMode);
+  const recentOpenedPageIds = useNavigationStore((state) => state.recentOpenedPageIds);
+  const recordOpenedPage = useNavigationStore((state) => state.recordOpenedPage);
+  const userPageCount = useMemo(
+    () => pages.filter((page) => !page.isDailyNote && page.sourceOrigin !== 'boox').length,
+    [pages],
+  );
+  const inboxPages = useMemo(
+    () => pages.filter((page) => !page.isDailyNote && page.sourceOrigin !== 'boox' && isInboxPlacement(page.parentId, page.isTopLevel)),
+    [pages],
+  );
+  const handwrittenNotebookCount = useMemo(
+    () => pages.filter((page) => page.sourceOrigin === 'boox' && page.sourceItemType === 'notebook').length,
+    [pages],
+  );
+  const currentDateLabel = useMemo(() => dayjs(todayISO).format('ddd, MMM D'), [todayISO]);
+  const activeRecentPageId = selectedPageId || selectedTaskPageId;
+
+  useEffect(() => {
+    if (!activeRecentPageId) {
+      return;
+    }
+
+    const page = pagesById[activeRecentPageId];
+    if (!page || page.isDailyNote || page.sourceOrigin === 'boox') {
+      return;
+    }
+
+    recordOpenedPage(activeRecentPageId);
+  }, [activeRecentPageId, pagesById, recordOpenedPage]);
+
+  const recentPages = useMemo(
+    () => recentOpenedPageIds
+      .map((pageId: string) => pagesById[pageId])
+      .filter((page: Page | undefined): page is Page => !!page && !page.isDailyNote && page.sourceOrigin !== 'boox')
+      .slice(0, recentPagesCount),
+    [pagesById, recentOpenedPageIds, recentPagesCount],
+  );
 
 
 
@@ -802,27 +987,108 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
       viewMode: n.viewMode,
       childCount: n.childCount,
       showChildrenInSidebar: n.showChildrenInSidebar,
-      isPinned: n.isPinned,
       isReadOnly: n.isReadOnly,
     })), [pages]);
 
   const railPages = useMemo(
-    () => [...sidebarPages]
-      .filter((page) => page.isPinned)
-      .sort((left, right) => {
-        const leftPinnedOrder = pagesById[left.id]?.pinnedOrder ?? Number.MAX_SAFE_INTEGER;
-        const rightPinnedOrder = pagesById[right.id]?.pinnedOrder ?? Number.MAX_SAFE_INTEGER;
-        if (leftPinnedOrder !== rightPinnedOrder) {
-          return leftPinnedOrder - rightPinnedOrder;
-        }
-        return (left.title || '').localeCompare(right.title || '');
-      })
-      .slice(0, 18),
-    [pagesById, sidebarPages],
+    () => pages
+      .filter((page) => !page.isDailyNote && page.sourceOrigin !== 'boox' && page.isTopLevel && isRootLevel(page.parentId))
+      .sort((a, b) => a.order - b.order || (a.title || '').localeCompare(b.title || ''))
+      .slice(0, 18)
+      .map((n): SidebarPage => ({
+        id: n.id,
+        title: n.title,
+        icon: n.icon,
+        color: n.color,
+        parentId: n.parentId,
+        viewMode: n.viewMode,
+        childCount: n.childCount,
+        showChildrenInSidebar: n.showChildrenInSidebar,
+        isReadOnly: n.isReadOnly,
+      })),
+    [pages],
+  );
+  const railRecentPages = useMemo(
+    () => recentPages.slice(0, 4),
+    [recentPages],
+  );
+  const handleCreateInboxPage = useCallback((viewMode?: PageViewMode) => {
+    handleCreateChildPage(null, viewMode);
+  }, [handleCreateChildPage]);
+
+  // Inbox drop target state and handlers
+  const [inboxDropActive, setInboxDropActive] = useState(false);
+
+  const handleInboxDragOver = useCallback((e: React.DragEvent) => {
+    // Accept page drops from tree or collection views
+    const hasPageData = e.dataTransfer.types.includes('text/plain') || e.dataTransfer.types.includes('pageid');
+    if (!hasPageData) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setInboxDropActive(true);
+  }, []);
+
+  const handleInboxDragLeave = useCallback((e: React.DragEvent) => {
+    const relatedTarget = e.relatedTarget as HTMLElement;
+    const currentTarget = e.currentTarget as HTMLElement;
+    if (!currentTarget.contains(relatedTarget)) {
+      setInboxDropActive(false);
+    }
+  }, []);
+
+  const handleInboxDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setInboxDropActive(false);
+    const draggedId = e.dataTransfer.getData('text/plain');
+    if (!draggedId) return;
+    // Move to inbox: parentId=null, isTopLevel=false
+    movePage(draggedId, null, { isTopLevel: false });
+  }, [movePage]);
+
+  const inboxTreeLink = (
+    <div
+      onClick={handleNavigateToInbox}
+      onDragOver={handleInboxDragOver}
+      onDragLeave={handleInboxDragLeave}
+      onDrop={handleInboxDrop}
+      style={{ paddingLeft: '12px' }}
+      className={cn(
+        'group flex w-full items-center gap-1.5 rounded-lg pr-1.5 py-1.5 text-left text-sm font-medium transition-all outline-none cursor-pointer',
+        inboxDropActive && 'bg-green-100 dark:bg-green-900/30 ring-2 ring-green-500',
+        isEink && !inboxDropActive
+          ? cn(
+              'eink-expanded-sidebar-item border border-transparent bg-transparent shadow-none',
+              inboxNavActive
+                ? 'eink-expanded-sidebar-item-active text-[var(--color-text-primary)]'
+                : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
+            )
+          : !inboxDropActive && cn(
+              inboxNavActive && 'glass-item text-[var(--color-text-primary)]',
+              !inboxNavActive && 'glass-item-subtle text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
+            )
+      )}
+    >
+      <InboxIcon className="w-4 h-4 flex-shrink-0" />
+      <span className="flex-1 text-left truncate">Inbox</span>
+      {inboxPages.length > 0 && (
+        <span className="text-xs text-[var(--color-text-secondary)] flex-shrink-0">
+          {inboxPages.length}
+        </span>
+      )}
+      {/* Hover actions - matches TreeSidebarItem pattern */}
+      <div className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 flex items-center gap-0.5 flex-shrink-0 transition-opacity" onClick={(e) => e.stopPropagation()}>
+        <PageTypeDropdown
+          onSelect={handleCreateInboxPage}
+          title="Add page to inbox"
+          size="sm"
+          align="right"
+          triggerClassName="flex items-center justify-center w-5 h-5 rounded hover:bg-[var(--color-surface-inset)] transition-all"
+        />
+      </div>
+    </div>
   );
 
   const getRailPageContextMenuItems = useCallback((page: SidebarPage): ContextMenuItem[] => {
-    const isPinned = page.isPinned ?? false;
     const showChildren = page.showChildrenInSidebar ?? (page.viewMode === 'note');
     const pageChildCount = page.childCount ?? 0;
     const taskCount = page.viewMode === 'tasks' ? countTasksForPage(page.id) : 0;
@@ -832,7 +1098,6 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
       isMultiSelect: false,
       selectionCount: 1,
       tabsEnabled,
-      isPinned,
       showChildrenInSidebar: showChildren,
       onOpenInNewTab: tabsEnabled ? () => {
         useTabsStore.getState().openTab({
@@ -846,8 +1111,10 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
       } : undefined,
       onCreateChild: () => handleCreateChildPage(page.id),
       onCreateTask: page.viewMode === 'tasks' ? () => handleCreateTask(page.id) : undefined,
-      onTogglePin: () => handleTogglePin(page.id, !isPinned),
       onToggleShowChildren: () => handleUpdatePage(page.id, { showChildrenInSidebar: !showChildren }),
+      onMoveTo: () => {
+        useUIStore.getState().openPageMovePicker(page.id, page.title || 'Untitled');
+      },
       onDelete: () => {
         requestDelete({
           itemType: 'page',
@@ -863,7 +1130,7 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
         });
       },
     });
-  }, [countTasksForPage, deletePage, handleCreateChildPage, handleCreateTask, handleTogglePin, handleUpdatePage, migrateTasksToInbox, requestDelete, tabsEnabled]);
+  }, [countTasksForPage, deletePage, handleCreateChildPage, handleCreateTask, handleUpdatePage, migrateTasksToInbox, requestDelete, tabsEnabled]);
 
   // Task counts for task pages (pages with viewMode='tasks')
   const taskPageCounts = useMemo(() => {
@@ -886,7 +1153,7 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
   if (isRail) {
     return (
       <aside className="relative z-10 flex h-full w-full flex-col select-none overflow-x-hidden overflow-y-hidden bg-transparent px-2 py-2 eink-shell-surface-secondary">
-        <div className="flex flex-1 flex-col items-center gap-1.5 overflow-x-hidden overflow-y-hidden">
+        <div className="flex flex-1 flex-col items-center gap-1 overflow-x-hidden overflow-y-hidden">
           <SidebarRailButton
             icon={<PanelLeftOpen />}
             label="Expand sidebar"
@@ -897,57 +1164,81 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
             }}
           />
           <SidebarRailButton
-            icon={
-              <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-[var(--color-accent-muted)] text-sm font-semibold text-[var(--color-accent-fg)]">
-                {(currentWorkspace?.name || 'W').trim().charAt(0).toUpperCase()}
-              </div>
-            }
-            label={currentWorkspace?.name || 'Workspace'}
-            onClick={() => setSidebarVisible(true)}
-          />
-          <SidebarRailButton
             icon={<SearchIcon />}
             label="Search"
             onClick={openCommandPalette}
           />
 
-          <div className="my-1.5 h-px w-8 bg-[var(--color-border-default)]/70" />
+          <div className="my-1 h-px w-7 bg-[var(--color-border-default)]/70" />
 
           <SidebarRailButton icon={<HomeIcon />} label="Home" isActive={isHome} onClick={handleNavigateToHome} contextMenuItems={homeContextMenu} />
-          <SidebarRailButton icon={<PagesIcon />} label="All pages" isActive={isPages && !selectedPageId} onClick={handleNavigateToPages} contextMenuItems={pagesContextMenu} />
+          <SidebarRailButton icon={<PagesIcon />} label="All pages" isActive={pagesNavActive} onClick={handleNavigateToPages} contextMenuItems={pagesContextMenu} />
           <SidebarRailButton icon={<CheckIcon />} label="Tasks" isActive={isTasks} onClick={handleNavigateToTasks} contextMenuItems={tasksContextMenu} />
           <SidebarRailButton icon={<Network />} label="Graph" isActive={isGraph} onClick={handleNavigateToGraph} contextMenuItems={graphContextMenu} />
+          {shouldShowHandwrittenNav ? (
+            <SidebarRailButton
+              icon={<PenLine />}
+              label="Handwritten notes"
+              isActive={isHandwritten}
+              onClick={handleNavigateToHandwritten}
+            />
+          ) : null}
 
-          <div className="my-1.5 h-px w-8 bg-[var(--color-border-default)]/70" />
+          <div className="my-1 h-px w-7 bg-[var(--color-border-default)]/70" />
 
-          <div className="flex min-h-0 flex-1 w-full flex-col items-center gap-1.5 overflow-x-hidden overflow-y-auto pb-1 scrollbar-thin">
-            {railPages.map((page) => {
-              const isActive = page.id === (selectedPageId || selectedTaskPageId);
+          <div className="flex min-h-0 flex-1 w-full flex-col overflow-hidden">
+            <div className="flex min-h-0 flex-1 w-full flex-col items-center gap-1 overflow-x-hidden overflow-y-auto pb-1 scrollbar-thin">
+              <SidebarRailButton
+                icon={<InboxIcon />}
+                label={`Inbox${inboxPages.length > 0 ? ` (${inboxPages.length})` : ''}`}
+                isActive={inboxNavActive}
+                onClick={handleNavigateToInbox}
+              />
 
-              return (
-                <SidebarRailButton
-                  key={page.id}
-                  icon={<ItemIcon type={page.viewMode === 'tasks' ? 'tasks' : page.viewMode === 'collection' ? 'collection' : 'note'} icon={page.icon || undefined} color={page.color} size="md" className="scale-110" />}
-                  label={page.title || 'Untitled'}
-                  isActive={isActive}
-                  showTooltip={false}
-                  onClick={() => handleSelectPage(page.id)}
-                  contextMenuItems={getRailPageContextMenuItems(page)}
-                />
-              );
-            })}
+              {railPages.map((page) => {
+                const isActive = page.id === (selectedPageId || selectedTaskPageId);
+
+                return (
+                  <SidebarRailButton
+                    key={page.id}
+                    icon={<ItemIcon type={page.viewMode === 'tasks' ? 'tasks' : page.viewMode === 'collection' ? 'collection' : 'note'} icon={page.icon || undefined} color={page.color} size="md" className="scale-110" />}
+                    label={page.title || 'Untitled'}
+                    isActive={isActive}
+                    showTooltip={false}
+                    onClick={() => handleSelectPage(page.id)}
+                    contextMenuItems={getRailPageContextMenuItems(page)}
+                  />
+                );
+              })}
+            </div>
+
+            {railRecentPages.length > 0 ? (
+              <div className="mt-auto flex w-full flex-col items-center gap-1 border-t border-[var(--color-border-default)]/70 px-1 pt-2">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--color-surface-secondary)] text-[var(--color-text-tertiary)]" title="Recently opened pages">
+                  <ClockIcon className="h-3 w-3" />
+                </span>
+                {railRecentPages.map((page) => (
+                  <SidebarRailButton
+                    key={`recent-${page.id}`}
+                    icon={<ItemIcon type={page.viewMode === 'tasks' ? 'tasks' : page.viewMode === 'collection' ? 'collection' : 'note'} icon={page.icon || undefined} color={page.color} size="md" className="scale-110" />}
+                    label={`Recent: ${page.title || 'Untitled'}`}
+                    isActive={page.id === (selectedPageId || selectedTaskPageId)}
+                    showTooltip={false}
+                    onClick={() => handleSelectPage(page.id)}
+                  />
+                ))}
+              </div>
+            ) : null}
           </div>
 
-          <div className="mt-auto flex flex-col items-center gap-1.5 pt-1.5">
-            {shouldShowHandwrittenNav ? (
-              <SidebarRailButton
-                icon={<PenLine />}
-                label="Handwritten notes"
-                isActive={isHandwritten}
-                onClick={handleNavigateToHandwritten}
-              />
-            ) : null}
-            <SidebarRailButton icon={<Settings />} label="Settings" onClick={() => openSettingsModal('general')} />
+          <div className="mt-auto flex flex-col items-center gap-1 pt-1">
+            <SidebarHeader
+              triggerVariant="rail"
+              onCreateWorkspace={() => setCreateWorkspaceOpen(true)}
+              onOpenSettings={(section) => {
+                openSettingsModal(section);
+              }}
+            />
           </div>
         </div>
 
@@ -982,12 +1273,12 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
     >
       <nav className={`relative z-10 flex flex-col w-full h-full ${isMobile ? 'px-0' : 'px-2'} overflow-x-hidden overflow-y-hidden ${isMobile ? 'pb-3' : 'pb-3'}`}>
         {!isMobile && (
-          <div className="px-1 pb-2 pt-1 flex-shrink-0">
-            <div className="flex items-center justify-between rounded-2xl border border-[var(--color-border-default)]/70 bg-[var(--color-surface-base)]/72 px-2 py-1.5 backdrop-blur-sm eink-shell-surface">
+          <div className="px-1 pb-2 pt-3 flex-shrink-0">
+            <div className="flex items-center justify-between gap-2">
               <button
                 type="button"
                 onClick={() => setSidebarVisible(false)}
-                className="flex h-9 w-9 items-center justify-center rounded-xl text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-primary)]"
+                className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--color-border-default)]/75 bg-transparent text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-border-emphasis)] hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-primary)]"
                 aria-label="Collapse sidebar"
                 title="Collapse sidebar"
               >
@@ -997,175 +1288,17 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
                 type="button"
                 onClick={() => setSidebarPinned(!sidebarPinned)}
                 className={cn(
-                  'flex h-9 items-center gap-2 rounded-xl border px-3 text-sm font-medium transition-[background-color,border-color,color,box-shadow]',
+                  'flex h-9 w-9 items-center justify-center rounded-xl border transition-[background-color,border-color,color,box-shadow]',
                   sidebarPinned
                     ? 'border-[var(--color-border-emphasis)] bg-[color-mix(in_srgb,var(--color-accent-muted)_78%,transparent)] text-[var(--color-text-primary)] shadow-[0_14px_32px_-26px_rgba(15,23,42,0.45)]'
-                    : 'border-transparent text-[var(--color-text-secondary)] hover:border-[var(--color-border-default)] hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-primary)]'
+                    : 'border-[var(--color-border-default)]/75 bg-transparent text-[var(--color-text-secondary)] hover:border-[var(--color-border-emphasis)] hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-primary)]'
                 )}
                 aria-label={sidebarPinned ? 'Unpin sidebar' : 'Pin sidebar'}
                 title={sidebarPinned ? 'Unpin sidebar' : 'Pin sidebar'}
               >
                 {sidebarPinned ? <Pin className="h-4 w-4" /> : <PinOff className="h-4 w-4" />}
-                <span>{sidebarPinned ? 'Pinned layout' : 'Overlay mode'}</span>
               </button>
             </div>
-          </div>
-        )}
-
-        {/* Header */}
-        <div 
-          className="px-0 pt-2 pb-1 flex-shrink-0"
-        >
-          {isMobile ? (
-            /* Mobile: Workspace switcher and user/settings side by side */
-            <div className="flex items-center">
-              <div className="flex-1 min-w-0">
-                <SidebarHeader
-                  onCreateWorkspace={() => setCreateWorkspaceOpen(true)}
-                  onOpenSettings={(section) => {
-                    openSettingsModal(section);
-                  }}
-                />
-              </div>
-              {user && (
-                <MobileSheet
-                  isOpen={userMenuOpen}
-                  onClose={() => setUserMenuOpen(false)}
-                  title="Account & Settings"
-                >
-                  <div className="p-4 space-y-2">
-                    <button
-                      onClick={() => {
-                        openSettingsModal('account');
-                        setUserMenuOpen(false);
-                      }}
-                      className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors"
-                    >
-                      <User className="w-5 h-5 text-[var(--color-text-secondary)]" />
-                      <span className="text-sm font-medium">Profile</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        openSettingsModal('general');
-                        setUserMenuOpen(false);
-                      }}
-                      className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors"
-                    >
-                      <Settings className="w-5 h-5 text-[var(--color-text-secondary)]" />
-                      <span className="text-sm font-medium">Settings</span>
-                    </button>
-                    <Divider />
-                    <button
-                      onClick={() => {
-                        logout();
-                        setUserMenuOpen(false);
-                      }}
-                      className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-[var(--color-state-error)]/10 text-[var(--color-state-error)] transition-colors"
-                    >
-                      <LogOut className="w-5 h-5" />
-                      <span className="text-sm font-medium">Log out</span>
-                    </button>
-                  </div>
-                </MobileSheet>
-              )}
-              {user && (
-                <div className="flex-shrink-0">
-                  <button
-                    onClick={() => setUserMenuOpen(true)}
-                    className="flex items-center justify-center w-11 h-11 mr-4 rounded-lg hover:bg-[var(--color-surface-hover)] transition-all duration-200 group"
-                    aria-label="Account menu"
-                  >
-                    <div className="w-8 h-8 rounded-full bg-[var(--color-accent-muted)] flex items-center justify-center text-[var(--color-accent-fg)] flex-shrink-0 overflow-hidden transition-transform group-hover:scale-105">
-                      {user.avatar ? (
-                        <img
-                          src={pb.files.getUrl(user, user.avatar)}
-                          alt={user.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <User className="w-4 h-4" />
-                      )}
-                    </div>
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : (
-            /* Desktop: Workspace switcher and user/settings side by side */
-            <div className="px-1">
-              <div className="flex items-center">
-                <div className="flex-1 min-w-0">
-                  <SidebarHeader
-                    onCreateWorkspace={() => setCreateWorkspaceOpen(true)}
-                    onOpenSettings={(section) => {
-                      openSettingsModal(section);
-                    }}
-                  />
-                </div>
-                {user && (
-                  <div className="flex-shrink-0">
-                    <ContextMenu
-                      trigger="click"
-                      items={[
-                        {
-                          id: 'profile',
-                          label: 'Profile',
-                          icon: <User className="w-4 h-4" />,
-                          onClick: () => openSettingsModal('account'),
-                        },
-                        {
-                          id: 'settings',
-                          label: 'Settings',
-                          icon: <Settings className="w-4 h-4" />,
-                          onClick: () => openSettingsModal('general'),
-                        },
-                        {
-                          id: 'logout',
-                          label: 'Log out',
-                          icon: <LogOut className="w-4 h-4" />,
-                          variant: 'danger' as const,
-                          divider: true,
-                          onClick: () => logout(),
-                        },
-                      ]}
-                    >
-                      <button
-                        className="flex items-center justify-center w-9 h-9 rounded-lg hover:bg-[var(--color-surface-hover)] transition-all duration-200 group"
-                        aria-label="Account menu"
-                      >
-                        <div className="w-6 h-6 rounded-full bg-[var(--color-accent-muted)] flex items-center justify-center text-[var(--color-accent-fg)] flex-shrink-0 overflow-hidden transition-transform group-hover:scale-105">
-                          {user.avatar ? (
-                            <img
-                              src={pb.files.getUrl(user, user.avatar)}
-                              alt={user.name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <User className="w-3.5 h-3.5" />
-                          )}
-                        </div>
-                      </button>
-                    </ContextMenu>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Search - Opens Command Palette - desktop only */}
-        {!isMobile && (
-          <div className="px-1.5 mb-1.5">
-            <button
-              onClick={openCommandPalette}
-              className="w-full flex items-center gap-3 px-3 py-1.5 bg-[var(--color-surface-primary)] border border-[var(--color-border-default)] rounded-lg text-sm text-[var(--color-text-tertiary)] hover:border-[var(--color-border-emphasis)] hover:bg-[var(--color-surface-secondary)] transition-all"
-            >
-              <SearchIcon className="w-4 h-4 flex-shrink-0" />
-              <span className="flex-1 text-left">Search...</span>
-              <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-[var(--color-surface-tertiary)] rounded text-[10px] font-medium text-[var(--color-text-disabled)]">
-                {typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0 ? '⌘' : 'Ctrl'}K
-              </kbd>
-            </button>
           </div>
         )}
 
@@ -1173,26 +1306,32 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
         <div className="px-1">
           <MainNavigation 
           isHome={isHome}
-          isPages={isPages}
+          isPages={pagesNavActive}
           isGraph={isGraph}
           isTasks={isTasks}
-          selectedPageId={selectedPageId}
+          isHandwritten={isHandwritten}
+          shouldShowHandwrittenNav={shouldShowHandwrittenNav}
+          currentDateLabel={currentDateLabel}
           pagesEditedRecently={pagesEditedRecently}
           sidebarCounts={sidebarCounts}
           onNavigateToHome={handleNavigateToHome}
           onNavigateToPages={handleNavigateToPages}
           onNavigateToGraph={handleNavigateToGraph}
           onNavigateToTasks={handleNavigateToTasks}
+          onNavigateToHandwritten={handleNavigateToHandwritten}
           taskFilterFromStore={taskFilterFromStore}
         />
         </div>
 
         <Divider className="my-1.5" />
 
-        {/* Scrollable content */}
-        <div className={`flex-1 overflow-y-auto overflow-x-hidden min-h-0 space-y-3 scrollbar-thin ${isMobile ? 'pb-32' : ''}`}>
-          {/* Pages Tree */}
-          <TreeSection<SidebarPage>
+        <div className={`flex min-h-0 flex-1 flex-col overflow-hidden ${isMobile ? 'pb-32' : ''}`}>
+          <div
+            ref={treeScrollRef}
+            className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin"
+          >
+            {/* Pages Tree */}
+            <TreeSection<SidebarPage>
             label="Pages"
             tree={genericPageTree}
             items={sidebarPages}
@@ -1206,8 +1345,6 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
             onCreateTask={handleCreateTask}
             onUpdate={handleUpdatePage}
             onDelete={deletePage}
-            onPin={handleTogglePin}
-            getIsPinned={getIsPinned}
             onReorder={handleReorderPages}
             onReparent={handleReparentPage}
             dataAttrPrefix="page"
@@ -1220,24 +1357,63 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
             counts={taskPageCounts.counts}
             overdueCounts={taskPageCounts.overdueCounts}
             hideHeaderAdd={true}
+            prefixContent={inboxTreeLink}
           />
+          </div>
+
+          {recentPages.length > 0 ? (
+            <section className="mt-auto border-t border-[var(--color-border-default)]/70 px-1 pt-3">
+              <div className="mb-2 flex items-center gap-2 px-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-text-tertiary)]">
+                <ClockIcon className="h-3.5 w-3.5" />
+                <span>Recently opened</span>
+              </div>
+              <div className="flex gap-1.5 overflow-x-auto px-1 pb-1 scrollbar-thin">
+                {recentPages.map((page) => {
+                  const parentLabel = isInboxPlacement(page.parentId, page.isTopLevel)
+                    ? 'Inbox'
+                    : page.parentId
+                      ? (pagesById[page.parentId]?.title || 'Nested page')
+                      : 'Top level';
+
+                  return (
+                    <button
+                      key={`recent-${page.id}`}
+                      type="button"
+                      onClick={() => handleSelectPage(page.id)}
+                      className={cn(
+                        'flex w-[60px] min-w-[60px] flex-col items-center gap-1 rounded-xl border px-1.5 py-1.5 text-center transition-all',
+                        page.id === (selectedPageId || selectedTaskPageId)
+                          ? 'glass-item border-[var(--color-border-emphasis)] text-[var(--color-text-primary)]'
+                          : 'glass-item-subtle border-[var(--color-border-default)]/70 text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
+                      )}
+                      title={`${page.title || 'Untitled'} • ${parentLabel}`}
+                    >
+                      <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)]">
+                        <ItemIcon
+                          type={page.viewMode === 'tasks' ? 'tasks' : page.viewMode === 'collection' ? 'collection' : 'note'}
+                          icon={page.icon || undefined}
+                          color={page.color}
+                          size="sm"
+                        />
+                      </span>
+                      <span className="w-full truncate text-[10px] font-medium leading-tight">{page.title || 'Untitled'}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          ) : null}
         </div>
 
-        {shouldShowHandwrittenNav ? (
-          <div className="px-1 pb-1">
-            <Divider className="mb-2" />
-            <NavItem
-              icon={<PenLine className="w-5 h-5" />}
-              label="Handwritten Notes"
-              subtitle={booxRootPage ? 'Mirrored BOOX notebooks' : 'Dedicated BOOX notebook library'}
-              isActive={isHandwritten}
-              einkMode={isEink}
-              onClick={handleNavigateToHandwritten}
-            />
-          </div>
-        ) : null}
-
-        {/* Sidebar Footer - Removed (now in header) */}
+        <div className="px-1 pb-1 pt-2 flex-shrink-0">
+          <Divider className="mb-2" />
+          <SidebarHeader
+            onCreateWorkspace={() => setCreateWorkspaceOpen(true)}
+            onOpenSettings={(section) => {
+              openSettingsModal(section);
+            }}
+          />
+        </div>
       </nav>
 
       {/* Resize handle - hidden on mobile */}

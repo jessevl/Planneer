@@ -53,12 +53,18 @@ export interface BooxIntegrationSettings {
   enabled: boolean;
 }
 
+export interface SidebarSettings {
+  /** Number of recent pages shown in sidebar quick access. */
+  recentPagesCount: 3 | 5 | 8 | 12;
+}
+
 interface SettingsState {
   theme: Theme;
   themeVariant: ThemeVariant;
   einkMode: boolean;
   accentColor: AccentColor;
   offlineSettings: OfflineSettings;
+  sidebar: SidebarSettings;
   booxIntegration: BooxIntegrationSettings;
   /** Preserved for future browser-style tab support. Hidden in the UI for now. */
   tabsEnabled: boolean;
@@ -73,6 +79,7 @@ interface SettingsState {
   setEinkMode: (enabled: boolean) => void;
   setAccentColor: (color: AccentColor) => void;
   setOfflineSettings: (settings: Partial<OfflineSettings>) => void;
+  setSidebarSettings: (settings: Partial<SidebarSettings>) => void;
   setBooxIntegrationEnabled: (enabled: boolean) => void;
   setTabsEnabled: (enabled: boolean) => void;
   setTabRetentionPolicy: (policy: TabRetentionPolicy) => void;
@@ -87,6 +94,9 @@ const DEFAULT_SETTINGS = {
   offlineSettings: {
     noteContentRetentionDays: 7, // Default: keep 7 days of note content
   } as OfflineSettings,
+  sidebar: {
+    recentPagesCount: 5,
+  } as SidebarSettings,
   booxIntegration: {
     enabled: false,
   } as BooxIntegrationSettings,
@@ -128,6 +138,14 @@ export const useSettingsStore = create<SettingsState>()(
           'setOfflineSettings'
         ),
 
+        setSidebarSettings: (settings) => set(
+          (state) => ({
+            sidebar: { ...state.sidebar, ...settings },
+          }),
+          false,
+          'setSidebarSettings'
+        ),
+
         setBooxIntegrationEnabled: (enabled) => set(
           (state) => ({
             booxIntegration: {
@@ -155,7 +173,7 @@ export const useSettingsStore = create<SettingsState>()(
       }),
       {
         name: 'planneer-settings',
-        version: 7, // v7: add BOOX integration feature gate
+        version: 8, // v8: add sidebar recent pages settings
         migrate: (persisted: any, version: number) => {
           if (version === 0) {
             // v0→v1: Rename old 'amber' (golden) accent to 'honey'
@@ -187,6 +205,9 @@ export const useSettingsStore = create<SettingsState>()(
           }
           if (version <= 6 && persisted && typeof persisted.booxIntegration !== 'object') {
             persisted.booxIntegration = { enabled: false };
+          }
+          if (version <= 7 && persisted && typeof persisted.sidebar !== 'object') {
+            persisted.sidebar = { recentPagesCount: 5 };
           }
           return persisted;
         },

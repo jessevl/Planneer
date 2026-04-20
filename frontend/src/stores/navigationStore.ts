@@ -60,6 +60,7 @@ interface NavigationState {
   currentView: UnifiedView;
   selectedTaskPageId: string | null; // Legacy: selectedProjectId
   selectedPageId: string | null;
+  recentOpenedPageIds: string[];
 
   // Task filter for pills (persisted)
   taskFilter: TaskFilter;
@@ -98,6 +99,7 @@ interface NavigationState {
   navigateToView: (view: UnifiedView) => void;
   selectTaskPage: (id: string | null) => void;
   selectPage: (id: string | null) => void;
+  recordOpenedPage: (id: string) => void;
   clearSelectedPage: () => void;
   setSidebarVisible: (visible: boolean) => void;
   toggleSidebar: () => void;
@@ -212,6 +214,7 @@ export const useNavigationStore = create<NavigationState>()(
         currentView: 'home',
         selectedTaskPageId: null,
         selectedPageId: null,
+        recentOpenedPageIds: [],
         taskFilter: 'upcoming',
         sidebarVisible: false,
         sidebarPinned: false,
@@ -284,6 +287,25 @@ export const useNavigationStore = create<NavigationState>()(
           if (id) {
             set({ currentView: 'page' }, false, 'selectPage/view');
           }
+        },
+        recordOpenedPage: (id) => {
+          set(
+            (state) => {
+              if (!id) {
+                return state;
+              }
+
+              const nextIds = [id, ...state.recentOpenedPageIds.filter((pageId) => pageId !== id)].slice(0, 24);
+
+              if (nextIds.length === state.recentOpenedPageIds.length && nextIds.every((pageId, index) => pageId === state.recentOpenedPageIds[index])) {
+                return state;
+              }
+
+              return { recentOpenedPageIds: nextIds };
+            },
+            false,
+            'recordOpenedPage'
+          );
         },
         clearSelectedPage: () => set({ selectedPageId: null }, false, 'clearSelectedPage'),
 

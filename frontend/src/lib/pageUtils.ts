@@ -26,7 +26,7 @@
  * - hasChildren, isDescendantOf: Hierarchy checks
  */
 import type { Page, PageBreadcrumb, PagePreviewBlock, PagePreviewLeaf, PageTreeNode } from '../types/page';
-import { isRootLevel, ROOT_KEY } from './treeUtils';
+import { isRootLevel, isTopLevelPlacement, ROOT_KEY } from './treeUtils';
 import React from 'react';
 
 function normalizePreviewBlockType(blockType?: string, elementType?: string): PagePreviewBlock['type'] {
@@ -356,7 +356,7 @@ export function computeExcerptForSync(
 
 /**
  * Build a tree structure from a flat array of pages.
- * Returns only root-level nodes (no parent), with children nested recursively.
+ * Returns only canonical top-level nodes, with children nested recursively.
  * Daily pages are excluded from the tree (they're accessed separately).
  * 
  * Note: Handles both null and '' as "no parent" (PocketBase convention).
@@ -374,6 +374,10 @@ export function buildPageTree(pages: Page[]): PageTreeNode[] {
   childrenMap.set(ROOT_KEY, []);
   
   nonDailyPages.forEach((page) => {
+    if (isRootLevel(page.parentId) && !(page.isTopLevel ?? true)) {
+      return;
+    }
+
     const key = isRootLevel(page.parentId) ? ROOT_KEY : page.parentId!;
     if (!childrenMap.has(key)) {
       childrenMap.set(key, []);
@@ -529,7 +533,13 @@ export function sortByOrder<T extends { order: number }>(items: T[]): T[] {
  */
 export function getChildPages(pages: Page[], parentId: string | null): Page[] {
   return sortByOrder(
-    pages.filter((n) => n.parentId === parentId && !n.isDailyNote)
+    pages.filter((n) => {
+      if (n.isDailyNote) return false;
+      if (parentId === null) {
+        return isTopLevelPlacement(n.parentId, n.isTopLevel);
+      }
+      return n.parentId === parentId;
+    })
   );
 }
 

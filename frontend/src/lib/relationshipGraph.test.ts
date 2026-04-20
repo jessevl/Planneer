@@ -13,6 +13,7 @@ function createPage(overrides: Partial<Page>): Page {
     created: overrides.created ?? '2026-03-30T00:00:00.000Z',
     updated: overrides.updated ?? '2026-03-30T00:00:00.000Z',
     parentId: overrides.parentId ?? null,
+    isTopLevel: overrides.isTopLevel ?? true,
     order: overrides.order ?? 0,
     icon: overrides.icon ?? null,
     color: overrides.color ?? null,
@@ -27,8 +28,6 @@ function createPage(overrides: Partial<Page>): Page {
     dailyNoteDate: overrides.dailyNoteDate ?? null,
     childCount: overrides.childCount ?? 0,
     isExpanded: overrides.isExpanded ?? false,
-    isPinned: overrides.isPinned ?? false,
-    pinnedOrder: overrides.pinnedOrder ?? 0,
     ...overrides,
   };
 }

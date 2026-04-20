@@ -52,7 +52,7 @@ ensure_frontend_deps
 
 # Start backend
 echo "Starting backend..."
-cd "$ROOT_DIR/backend" && go run . serve --dev &
+cd "$ROOT_DIR/backend" && go run . serve &
 
 # Wait a moment for backend to start
 sleep 2

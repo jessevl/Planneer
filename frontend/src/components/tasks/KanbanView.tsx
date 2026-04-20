@@ -182,7 +182,7 @@ const KanbanView: React.FC<KanbanViewProps> = ({
         onScroll={handleScroll}
         className={cn(
           embedded
-            ? 'grid grid-cols-1 gap-4 md:grid-cols-3'
+            ? 'grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4'
             : 'flex gap-4 overflow-x-auto py-4 scroll-smooth scrollbar-auto-hide',
           isScrolling && "is-scrolling",
           !embedded && isMobile ? 'snap-x snap-mandatory px-6' : ''

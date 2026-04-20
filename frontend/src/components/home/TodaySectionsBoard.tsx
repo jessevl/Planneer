@@ -24,7 +24,7 @@ import type { Page } from '@/types/page';
 import type { DateGroupKey } from '@/lib/dateGroups';
 
 const PREVIEW_LIMIT = 5;
-const HOME_AGENDA_GROUPS: DateGroupKey[] = ['overdue', 'today', 'tomorrow'];
+const HOME_AGENDA_GROUPS: DateGroupKey[] = ['overdue', 'today', 'tomorrow', 'thisWeek'];
 
 interface TodaySectionsBoardProps {
   /** Tasks due before today */
@@ -33,6 +33,8 @@ interface TodaySectionsBoardProps {
   todayTasks: Task[];
   /** Tasks due tomorrow */
   tomorrowTasks: Task[];
+  /** Tasks due this week (days 2-7 from today) */
+  thisWeekTasks: Task[];
   /** Today's ISO date for task row overdue handling */
   todayISO: string;
   /** Task pages for badge lookup */
@@ -52,6 +54,7 @@ const TodaySectionsBoard: React.FC<TodaySectionsBoardProps> = ({
   overdueTasks,
   todayTasks,
   tomorrowTasks,
+  thisWeekTasks,
   todayISO,
   taskPages,
   onToggleComplete,
@@ -60,8 +63,8 @@ const TodaySectionsBoard: React.FC<TodaySectionsBoardProps> = ({
   onCreateTask,
 }) => {
   const agendaTasks = useMemo(
-    () => [...overdueTasks, ...todayTasks, ...tomorrowTasks],
-    [overdueTasks, todayTasks, tomorrowTasks],
+    () => [...overdueTasks, ...todayTasks, ...tomorrowTasks, ...thisWeekTasks],
+    [overdueTasks, todayTasks, tomorrowTasks, thisWeekTasks],
   );
   const hasTasks = agendaTasks.length > 0;
   const hiddenCounts = useMemo(
@@ -69,10 +72,11 @@ const TodaySectionsBoard: React.FC<TodaySectionsBoardProps> = ({
       overdue: Math.max(0, overdueTasks.length - PREVIEW_LIMIT),
       today: Math.max(0, todayTasks.length - PREVIEW_LIMIT),
       tomorrow: Math.max(0, tomorrowTasks.length - PREVIEW_LIMIT),
+      thisWeek: Math.max(0, thisWeekTasks.length - PREVIEW_LIMIT),
     }),
-    [overdueTasks.length, todayTasks.length, tomorrowTasks.length],
+    [overdueTasks.length, todayTasks.length, tomorrowTasks.length, thisWeekTasks.length],
   );
-  const totalHiddenCount = hiddenCounts.overdue + hiddenCounts.today + hiddenCounts.tomorrow;
+  const totalHiddenCount = hiddenCounts.overdue + hiddenCounts.today + hiddenCounts.tomorrow + hiddenCounts.thisWeek;
 
   return (
     <section className="mb-10">

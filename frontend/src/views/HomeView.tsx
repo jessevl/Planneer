@@ -28,11 +28,11 @@ import PomodoroTimer from '../components/pomodoro/PomodoroTimer';
 import InlineFocusTimer from '../components/pomodoro/InlineFocusTimer';
 
 // New home components
-import { RecentPagesGallery, FavoritesSection, TodaySectionsBoard } from '../components/home';
+import { RecentPagesGallery, TodaySectionsBoard } from '../components/home';
 
 // Stores
 import { useTasksStore, useTasks } from '../stores/tasksStore';
-import { usePagesStore, useRecentPages, usePinnedPages, type PagesState } from '@/stores/pagesStore';
+import { usePagesStore, useRecentPages, type PagesState } from '@/stores/pagesStore';
 import { useNavigationStore } from '../stores/navigationStore';
 import { useUIStore } from '../stores/uiStore';
 import { usePomodoroStore } from '../stores/pomodoroStore';
@@ -66,7 +66,6 @@ const HomeView: React.FC = () => {
 
   // Pages - increased limit to show more in gallery
   const recentPages = useRecentPages(8);
-  const pinnedPages = usePinnedPages();
   const pages = usePagesStore((s) => s.pagesById);
   const tasksById = useTasksStore((s) => s.tasksById);
   const taskPages = useMemo(() => {
@@ -98,6 +97,7 @@ const HomeView: React.FC = () => {
     const overdue: Task[] = [];
     const todayTasks: Task[] = [];
     const tomorrowTasks: Task[] = [];
+    const thisWeekTasks: Task[] = [];
 
     sortedTasks.forEach((task) => {
       const dueDate = dayjs(task.dueDate).startOf('day');
@@ -115,6 +115,11 @@ const HomeView: React.FC = () => {
 
       if (dayOffset === 1) {
         tomorrowTasks.push(task);
+        return;
+      }
+
+      if (dayOffset >= 2 && dayOffset <= 7) {
+        thisWeekTasks.push(task);
       }
     });
 
@@ -122,6 +127,7 @@ const HomeView: React.FC = () => {
       overdue,
       today: todayTasks,
       tomorrow: tomorrowTasks,
+      thisWeek: thisWeekTasks,
     };
   }, [tasks, todayISO]);
 
@@ -237,30 +243,19 @@ const HomeView: React.FC = () => {
             emptyDescription="Create your first page to get started"
           />
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
-            <div className="lg:col-span-2">
-              <TodaySectionsBoard
-                overdueTasks={taskBuckets.overdue}
-                todayTasks={taskBuckets.today}
-                tomorrowTasks={taskBuckets.tomorrow}
-                todayISO={todayISO}
-                taskPages={taskPages}
-                onToggleComplete={handleToggleComplete}
-                onTaskClick={handleTaskClick}
-                onViewTodayTasks={handleViewAllTasks}
-                onCreateTask={handleQuickCreateTask}
-              />
-            </div>
-
-            <div className="lg:col-span-1">
-              <FavoritesSection
-                pages={pinnedPages}
-                onPageClick={handlePageClick}
-                onCreateChild={handleCreateChildPage}
-                onCreateTask={handleCreateTask}
-              />
-            </div>
-          </div>
+          {/* Agenda board - full width */}
+          <TodaySectionsBoard
+            overdueTasks={taskBuckets.overdue}
+            todayTasks={taskBuckets.today}
+            tomorrowTasks={taskBuckets.tomorrow}
+            thisWeekTasks={taskBuckets.thisWeek}
+            todayISO={todayISO}
+            taskPages={taskPages}
+            onToggleComplete={handleToggleComplete}
+            onTaskClick={handleTaskClick}
+            onViewTodayTasks={handleViewAllTasks}
+            onCreateTask={handleQuickCreateTask}
+          />
 
         </Container>
       </div>

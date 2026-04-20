@@ -26,6 +26,7 @@ import { usePageOperations } from '@/hooks/usePageOperations';
 import { useIsMobile } from '@frameer/hooks/useMobileDetection';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useTabsStore } from '@/stores/tabsStore';
+import { useUIStore } from '@/stores/uiStore';
 import { buildPageMenuItems } from '@/hooks/usePageContextMenu';
 import type { Page, PageViewMode } from '@/types/page';
 
@@ -44,7 +45,6 @@ export interface TreeItemConfig<T> {
   getColor: (item: T) => string | null;
   getItemType: (item: T) => 'note' | 'collection' | 'tasks';
   getViewMode?: (item: T) => PageViewMode | undefined;
-  getIsPinned?: (item: T) => boolean;
   getShowChildrenInSidebar?: (item: T) => boolean | undefined;
   /** Whether this item should show children in the tree (e.g., collections don't expand) */
   shouldShowChildren?: (item: T) => boolean;
@@ -84,18 +84,13 @@ export interface TreeSectionProps<T> {
     color?: string | null; 
     parentId?: string | null; 
     viewMode?: string;
-    isPinned?: boolean;
     showChildrenInSidebar?: boolean;
   }) => void;
   onCreate?: (data: { title?: string; icon?: string | null; color?: string | null; parentId?: string | null }) => void;
   /** Delete callback - cascade: true means delete all descendants, false means move children to root */
   onDelete?: (id: string, cascade?: boolean) => void;
-  /** Pin/unpin callback */
-  onPin?: (id: string, isPinned: boolean) => void;
-  /** Get current pin state for an item */
-  getIsPinned?: (id: string) => boolean;
   onReorder?: (draggedId: string, targetId: string, parentId: string | null, position: 'before' | 'after') => void;
-  onReparent?: (draggedId: string, newParentId: string) => void;
+  onReparent?: (draggedId: string, newParentId: string | null) => void;
   /** Optional count per item */
   counts?: Record<string, number>;
   /** Optional overdue count per item */
@@ -146,8 +141,6 @@ function TreeSection<T>({
   onUpdate,
   onCreate,
   onDelete,
-  onPin,
-  getIsPinned,
   onReorder,
   onReparent,
   counts,
@@ -171,6 +164,7 @@ function TreeSection<T>({
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [focusedId, setFocusedId] = useState<string | null>(externalFocusedId ?? null);
   const [isRootDropZoneActive, setIsRootDropZoneActive] = useState(false);
+  const [isExternalDragActive, setIsExternalDragActive] = useState(false);
   
   // Use centralized page operations hook for task counting and migration (for deletion)
   const { countTasksForPage, migrateTasksToInbox } = usePageOperations();
@@ -233,12 +227,43 @@ function TreeSection<T>({
     isDescendant: checkIsDescendant,
   });
 
-  // Clear root drop zone when drag ends
+  // Clear root drop zone when internal drag ends
   useEffect(() => {
     if (!dragState.draggedId) {
       setIsRootDropZoneActive(false);
     }
   }, [dragState.draggedId]);
+
+  // Track external page drags at the window level so the root drop zone is
+  // always visible while a page card / row is being dragged, regardless of
+  // which child element the cursor is over.
+  useEffect(() => {
+    if (!enableExternalDrag) return;
+
+    const onDragStart = (e: DragEvent) => {
+      const types = e.dataTransfer?.types;
+      if (!types) return;
+      const isPageDrag =
+        Array.from(types).includes('pageid') ||
+        Array.from(types).includes('noteid');
+      if (isPageDrag) setIsExternalDragActive(true);
+    };
+
+    const onDragEnd = () => {
+      setIsExternalDragActive(false);
+    };
+
+    window.addEventListener('dragstart', onDragStart);
+    window.addEventListener('dragend', onDragEnd);
+    // drop fires when released over a valid target (dragend may not fire)
+    window.addEventListener('drop', onDragEnd);
+
+    return () => {
+      window.removeEventListener('dragstart', onDragStart);
+      window.removeEventListener('dragend', onDragEnd);
+      window.removeEventListener('drop', onDragEnd);
+    };
+  }, [enableExternalDrag]);
 
   // Flatten tree for keyboard navigation
   const flattenedIds = useMemo(() => {
@@ -302,11 +327,20 @@ function TreeSection<T>({
   const handleRootDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsRootDropZoneActive(false);
-    const draggedId = dragState.draggedId;
-    if (!draggedId || !onUpdate) return;
-    onUpdate(draggedId, { parentId: null });
-    handleDragEnd();
-  }, [dragState.draggedId, onUpdate, handleDragEnd]);
+    setIsExternalDragActive(false);
+    // Internal drag
+    if (dragState.draggedId) {
+      if (!onUpdate) return;
+      onUpdate(dragState.draggedId, { parentId: null });
+      handleDragEnd();
+      return;
+    }
+    // External drag (from PageCard / PageRow)
+    const externalId = e.dataTransfer.getData('text/plain');
+    if (externalId && onReparent) {
+      onReparent(externalId, null);
+    }
+  }, [dragState.draggedId, onUpdate, onReparent, handleDragEnd]);
 
 
 
@@ -318,7 +352,6 @@ function TreeSection<T>({
     const viewMode = config.getViewMode?.(treeItem);
     const tabsEnabled = useSettingsStore.getState().tabsEnabled;
     const openTab = useTabsStore.getState().openTab;
-    const isPinned = getIsPinned?.(itemId) ?? false;
     const showChildren = config.shouldShowChildren?.(treeItem) ?? true;
     const pageChildCount = config.getChildCount 
       ? config.getChildCount(treeItem) 
@@ -330,7 +363,6 @@ function TreeSection<T>({
       isMultiSelect: false,
       selectionCount: 1,
       tabsEnabled,
-      isPinned,
       showChildrenInSidebar: showChildren,
 
       onOpenInNewTab: tabsEnabled ? () => {
@@ -348,9 +380,11 @@ function TreeSection<T>({
 
       onCreateTask: (onCreateTask && viewMode === 'tasks') ? () => onCreateTask(itemId) : undefined,
 
-      onTogglePin: onPin ? () => onPin(itemId, !isPinned) : undefined,
-
       onToggleShowChildren: onUpdate ? () => onUpdate(itemId, { showChildrenInSidebar: !showChildren }) : undefined,
+
+      onMoveTo: () => {
+        useUIStore.getState().openPageMovePicker(itemId, config.getTitle(treeItem));
+      },
 
       onDelete: onDelete ? () => {
         requestDelete({
@@ -367,7 +401,7 @@ function TreeSection<T>({
         });
       } : undefined,
     });
-  }, [onDelete, onPin, getIsPinned, requestDelete, countDescendants, items, config, countTasksForPage, migrateTasksToInbox, onCreateChild, onCreateTask, onUpdate]);
+  }, [onDelete, requestDelete, countDescendants, items, config, countTasksForPage, migrateTasksToInbox, onCreateChild, onCreateTask, onUpdate]);
 
   // Render tree node
   const renderTreeNode = (node: TreeNode<T>, level: number = 0): React.ReactNode => {
@@ -518,8 +552,9 @@ function TreeSection<T>({
           </>
         )}
 
-        {/* Root drop zone */}
-        {isOpen && dragState.draggedId && dragState.draggedParentId && (
+        {/* Root drop zone — shown when an internal dragged item has a parent (so it CAN move to root)
+            or when an external page card / row is being dragged anywhere */}
+        {isOpen && ((dragState.draggedId && dragState.draggedParentId) || isExternalDragActive) && (
           <div
             onDragOver={handleRootDropZoneDragOver}
             onDragLeave={handleRootDropZoneDragLeave}

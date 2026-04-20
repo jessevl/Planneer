@@ -12,6 +12,7 @@ func TestMigrationsExist(t *testing.T) {
 		"003_data_cleanup",
 		"022_remove_plan_limits",
 		"021_restore_post_v17_schema",
+		"023_add_pages_is_top_level",
 	}
 
 	for _, name := range expectedMigrations {
@@ -64,6 +65,7 @@ func TestPagesCollectionFields(t *testing.T) {
 		"bodyText",
 		"workspace",
 		"parentId",
+			"isTopLevel",
 		"order",
 		"icon",
 		"color",

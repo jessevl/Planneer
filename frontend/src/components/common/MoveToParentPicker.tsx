@@ -18,7 +18,7 @@ import { useIsMobile } from '@frameer/hooks/useMobileDetection';
 import { StylizedCollectionIcon } from '@/components/common/StylizedIcons';
 import { fetchPages } from '@/api/pagesApi';
 import type { Page } from '@/types/page';
-import { Folder, Loader2, ChevronRight } from 'lucide-react';
+import { Folder, Inbox, Loader2, ChevronRight } from 'lucide-react';
 
 interface MoveToParentPickerProps {
   isOpen: boolean;
@@ -72,6 +72,11 @@ export const MoveToParentPicker: React.FC<MoveToParentPickerProps> = ({
     movePage(pageId, null);
     onClose();
   };
+
+  const handleMoveToInbox = () => {
+    movePage(pageId, null, { isTopLevel: false });
+    onClose();
+  };
   
   // Get parent title for breadcrumb display (one level only)
   const getParentBreadcrumb = (page: Page): string | null => {
@@ -109,6 +114,23 @@ export const MoveToParentPicker: React.FC<MoveToParentPickerProps> = ({
           </div>
           <div className="text-xs text-[var(--color-text-secondary)]">
             No parent (top-level page)
+          </div>
+        </div>
+      </button>
+
+      <button
+        onClick={handleMoveToInbox}
+        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left hover:bg-[var(--color-surface-secondary)] transition-colors"
+      >
+        <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-[var(--color-surface-secondary)]">
+          <Inbox className="w-5 h-5 text-[var(--color-text-secondary)]" />
+        </div>
+        <div>
+          <div className="text-sm font-medium text-[var(--color-text-primary)]">
+            Inbox
+          </div>
+          <div className="text-xs text-[var(--color-text-secondary)]">
+            Keep it unfiled until you organize it
           </div>
         </div>
       </button>

@@ -130,9 +130,6 @@ const PageTableView: React.FC<PageTableViewProps> = ({
             <span className="truncate text-sm text-[var(--color-text-primary)] font-medium">
               {page.title || 'Untitled'}
             </span>
-            {page.isPinned && (
-              <span className="ml-2 text-xs text-[var(--color-text-secondary)]">📌</span>
-            )}
           </div>
           {showExcerpts && page.excerpt && (
             <span className="text-xs text-[var(--color-text-secondary)] truncate mt-0.5">
@@ -212,7 +209,6 @@ const PageTableView: React.FC<PageTableViewProps> = ({
       isMultiSelect,
       selectionCount,
       tabsEnabled,
-      isPinned: !!page.isPinned,
       onOpenInNewTab: tabsEnabled ? () => {
         openTab({
           title: page.title,
@@ -224,7 +220,6 @@ const PageTableView: React.FC<PageTableViewProps> = ({
         });
         navigate({ to: '/pages/$id', params: { id: page.id } });
       } : undefined,
-      onTogglePin: () => updatePage(page.id, { isPinned: !page.isPinned }),
       onExportMarkdown: async () => {
         try {
           await exportPageToMarkdown(page.id, page.title);

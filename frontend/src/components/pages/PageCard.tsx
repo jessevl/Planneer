@@ -76,6 +76,8 @@ interface PageCardProps {
   enableSelection?: boolean;
   /** Whether to show the preview area (default: true) */
   showExcerpt?: boolean;
+  /** Called when another page is dropped on this card to reparent */
+  onPageDrop?: (droppedPageId: string, targetPageId: string) => void;
 }
 
 const CARD_CONFIG = { previewHeight: '168px', lines: 3, blocks: 4 };
@@ -107,6 +109,7 @@ const PageCard: React.FC<PageCardProps> = React.memo(({
   parentPage = null,
   enableSelection = true,
   showExcerpt = true,
+  onPageDrop,
 }) => {
   // Use childCount from page object (maintained by backend)
   const childCount = page.childCount || 0;
@@ -159,6 +162,35 @@ const PageCard: React.FC<PageCardProps> = React.memo(({
     e.dataTransfer.setData('text/plain', page.id);
     e.dataTransfer.setData('pageId', page.id);
   };
+
+  // Drop target state for reparenting pages within the same view
+  const [isDropTarget, setIsDropTarget] = useState(false);
+
+  const handleCardDragOver = useCallback((e: React.DragEvent) => {
+    if (!onPageDrop) return;
+    const hasPageData = e.dataTransfer.types.includes('pageid');
+    if (!hasPageData) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setIsDropTarget(true);
+  }, [onPageDrop]);
+
+  const handleCardDragLeave = useCallback((e: React.DragEvent) => {
+    const relatedTarget = e.relatedTarget as HTMLElement;
+    const currentTarget = e.currentTarget as HTMLElement;
+    if (!currentTarget.contains(relatedTarget)) {
+      setIsDropTarget(false);
+    }
+  }, []);
+
+  const handleCardDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDropTarget(false);
+    if (!onPageDrop) return;
+    const droppedId = e.dataTransfer.getData('text/plain');
+    if (!droppedId || droppedId === page.id) return;
+    onPageDrop(droppedId, page.id);
+  }, [onPageDrop, page.id]);
   const isCollection = page.viewMode === 'collection';
   const isTasks = page.viewMode === 'tasks';
   const tagList = useMemo(
@@ -316,6 +348,9 @@ const PageCard: React.FC<PageCardProps> = React.memo(({
       className={`relative ${stackPadding}`}
       draggable={draggable}
       onDragStart={handleDragStart}
+      onDragOver={handleCardDragOver}
+      onDragLeave={handleCardDragLeave}
+      onDrop={handleCardDrop}
       {...(isTouch ? longPressHandlers : {})}
     >
       {/* Mobile context menu portal */}
@@ -373,7 +408,8 @@ const PageCard: React.FC<PageCardProps> = React.memo(({
           '',
           draggable && 'cursor-grab active:cursor-grabbing',
           enableSelection && isSelected && 'bg-[var(--color-interactive-bg)]/50 ring-1 ring-[var(--color-interactive-ring)]',
-          isLongPressing && 'scale-[0.98] opacity-90'
+          isLongPressing && 'scale-[0.98] opacity-90',
+          isDropTarget && 'ring-2 ring-green-500 border-green-400 dark:border-green-600 bg-green-50/50 dark:bg-green-900/20'
         )}
       >
         {/* Clickable wrapper to capture mouse events */}

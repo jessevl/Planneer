@@ -24,6 +24,26 @@ export function isRootLevel(parentId: string | null | undefined): boolean {
 }
 
 /**
+ * Check if an item belongs in the canonical top-level tree.
+ */
+export function isTopLevelPlacement(
+  parentId: string | null | undefined,
+  isTopLevel: boolean | null | undefined
+): boolean {
+  return isRootLevel(parentId) && (isTopLevel ?? true);
+}
+
+/**
+ * Check if an item is a parentless Inbox item.
+ */
+export function isInboxPlacement(
+  parentId: string | null | undefined,
+  isTopLevel: boolean | null | undefined
+): boolean {
+  return isRootLevel(parentId) && !(isTopLevel ?? true);
+}
+
+/**
  * Constant for the root key used in children indexes.
  * Used when building parent->children maps.
  */

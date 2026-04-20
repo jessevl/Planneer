@@ -46,6 +46,8 @@ interface PageRowProps {
   enableSelection?: boolean;
   /** Additional className */
   className?: string;
+  /** Called when another page is dropped on this row to reparent */
+  onPageDrop?: (droppedPageId: string, targetPageId: string) => void;
 }
 
 const PageRow: React.FC<PageRowProps> = React.memo(({ 
@@ -58,6 +60,7 @@ const PageRow: React.FC<PageRowProps> = React.memo(({
   parentPage = null,
   enableSelection = true,
   className,
+  onPageDrop,
 }) => {
   // Use childCount from page object (maintained by backend)
   const childCount = page.childCount || 0;
@@ -112,6 +115,35 @@ const PageRow: React.FC<PageRowProps> = React.memo(({
     e.dataTransfer.setData('pageId', page.id);
   };
 
+  // Drop target state for reparenting pages within the same view
+  const [isDropTarget, setIsDropTarget] = useState(false);
+
+  const handleRowDragOver = useCallback((e: React.DragEvent) => {
+    if (!onPageDrop) return;
+    const hasPageData = e.dataTransfer.types.includes('pageid');
+    if (!hasPageData) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setIsDropTarget(true);
+  }, [onPageDrop]);
+
+  const handleRowDragLeave = useCallback((e: React.DragEvent) => {
+    const relatedTarget = e.relatedTarget as HTMLElement;
+    const currentTarget = e.currentTarget as HTMLElement;
+    if (!currentTarget.contains(relatedTarget)) {
+      setIsDropTarget(false);
+    }
+  }, []);
+
+  const handleRowDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDropTarget(false);
+    if (!onPageDrop) return;
+    const droppedId = e.dataTransfer.getData('text/plain');
+    if (!droppedId || droppedId === page.id) return;
+    onPageDrop(droppedId, page.id);
+  }, [onPageDrop, page.id]);
+
   const updatedRelative = useMemo(() => dayjs(page.updated).fromNow(), [page.updated]);
 
   // Handle click - if modifier key is pressed, handle selection; otherwise navigate
@@ -163,6 +195,9 @@ const PageRow: React.FC<PageRowProps> = React.memo(({
     <article
       draggable={draggable}
       onDragStart={handleDragStart}
+      onDragOver={handleRowDragOver}
+      onDragLeave={handleRowDragLeave}
+      onDrop={handleRowDrop}
       {...(isTouch ? longPressHandlers : {})}
       className={cn(
         'group relative cursor-pointer',
@@ -173,6 +208,7 @@ const PageRow: React.FC<PageRowProps> = React.memo(({
           : 'hover:bg-[var(--color-surface-hover)]',
         draggable && 'cursor-grab active:cursor-grabbing',
         isLongPressing && 'scale-[0.98] opacity-90',
+        isDropTarget && 'ring-2 ring-green-500 bg-green-50/50 dark:bg-green-900/20 rounded-lg',
         className
       )}
       onClick={handleRowClick}

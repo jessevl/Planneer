@@ -28,8 +28,6 @@ function createPage(overrides: Partial<Page> = {}): Page {
     isDailyNote: false,
     dailyNoteDate: null,
     isExpanded: false,
-    isPinned: false,
-    pinnedOrder: 0,
     showChildrenInSidebar: true,
     childCount: 0,
     created: '2025-01-15T00:00:00Z',

@@ -12,6 +12,7 @@ import {
 } from '@frameer/components/ui';
 
 type EinkModeSetting = 'off' | 'on';
+type RecentPagesSetting = '3' | '5' | '8' | '12';
 
 const GeneralSettings: React.FC = () => {
   const theme = useSettingsStore((s) => s.theme);
@@ -22,6 +23,8 @@ const GeneralSettings: React.FC = () => {
   const setEinkMode = useSettingsStore((s) => s.setEinkMode);
   const accentColor = useSettingsStore((s) => s.accentColor);
   const setAccentColor = useSettingsStore((s) => s.setAccentColor);
+  const recentPagesCount = useSettingsStore((s) => s.sidebar.recentPagesCount);
+  const setSidebarSettings = useSettingsStore((s) => s.setSidebarSettings);
   const autoColor = themeVariant === 'warm' ? '#E8705F' : '#3b82f6';
   const autoDarkColor = themeVariant === 'warm' ? '#F0887A' : '#58a6ff';
 
@@ -131,6 +134,23 @@ const GeneralSettings: React.FC = () => {
           })}
         </div>
       )}
+
+      <SettingsSeparator />
+
+      <SettingsSectionHeader title="Sidebar Recents" />
+      <SegmentedControl<RecentPagesSetting>
+        options={[
+          { value: '3', label: '3' },
+          { value: '5', label: '5' },
+          { value: '8', label: '8' },
+          { value: '12', label: '12' },
+        ]}
+        value={String(recentPagesCount) as RecentPagesSetting}
+        onChange={(value) => setSidebarSettings({ recentPagesCount: Number(value) as 3 | 5 | 8 | 12 })}
+      />
+      <p className="text-xs text-[var(--color-text-tertiary)]">
+        Controls how many recently edited pages appear in the sidebar quick-access section.
+      </p>
 
       <SettingsSeparator />
     </div>
