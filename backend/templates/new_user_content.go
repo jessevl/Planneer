@@ -1496,7 +1496,6 @@ var emptyNoteContent = mustMarshal(map[string]interface{}{
 	},
 })
 
-
 var keyboardShortcutsContent = mustMarshal(map[string]interface{}{
 	"heading": map[string]interface{}{
 		"id":   "heading",

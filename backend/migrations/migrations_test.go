@@ -65,7 +65,7 @@ func TestPagesCollectionFields(t *testing.T) {
 		"bodyText",
 		"workspace",
 		"parentId",
-			"isTopLevel",
+		"isTopLevel",
 		"order",
 		"icon",
 		"color",
