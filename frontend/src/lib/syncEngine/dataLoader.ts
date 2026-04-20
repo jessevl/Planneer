@@ -142,23 +142,7 @@ export async function loadInitialData(
       const deltaResult = await pagesApi.fetchPagesSince(pagesSyncMeta!.lastServerTimestamp!);
       serverTimestamp = deltaResult.serverTimestamp;
       devLog(`[SyncEngine] Delta sync found ${deltaResult.pages.length} updated pages`);
-      
-      // Also fetch pinned pages explicitly - they might be deeply nested
-      // and need to be available for sidebar even if parent wasn't updated
-      const pinnedPages = await pagesApi.fetchPinnedPages();
-      devLog(`[SyncEngine] Fetched ${pinnedPages.length} pinned pages`);
-      
-      // Merge delta pages with pinned pages (dedupe by ID)
-      const pageMap = new Map<string, Page>();
-      for (const page of deltaResult.pages) {
-        pageMap.set(page.id, page);
-      }
-      for (const page of pinnedPages) {
-        if (!pageMap.has(page.id)) {
-          pageMap.set(page.id, page);
-        }
-      }
-      serverPages = Array.from(pageMap.values());
+      serverPages = deltaResult.pages;
     } else {
       // First load OR forced refresh: Fetch ALL pages metadata (not just root)
       // This ensures pinned pages at any level, nested pages, etc. are all available

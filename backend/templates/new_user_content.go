@@ -37,7 +37,7 @@ type PageTemplate struct {
 	TasksGroupBy     string // 'section', 'dueDate', 'priority'
 	Tasks            []TaskTemplate
 	Children         []PageTemplate
-	IsPinned         bool
+	IsTopLevel       bool
 }
 
 // TaskTemplate defines the structure for creating a new task
@@ -81,7 +81,7 @@ func GetDefaultWorkspace() WorkspaceTemplate {
 				CoverAttribution: "Photo by John Doe on Unsplash",
 				Order:            0,
 				ChildrenViewMode: "gallery",
-				IsPinned:         true,
+				IsTopLevel:       true,
 				Children: []PageTemplate{
 					{
 						Title:         "Product Launch Q1",
@@ -247,7 +247,7 @@ func GetDefaultWorkspace() WorkspaceTemplate {
 				CoverImage:       "https://images.unsplash.com/photo-1505142468610-359e7d316be0?w=1400&q=80",
 				Order:            1,
 				ChildrenViewMode: "list",
-				IsPinned:         true,
+				IsTopLevel:       true,
 				Children: []PageTemplate{
 					{
 						Title:         "Daily Habits",
@@ -477,7 +477,7 @@ func GetDefaultWorkspace() WorkspaceTemplate {
 				Color:            "#10b981",
 				CoverImage:       "https://images.unsplash.com/photo-1557672172-298e090bd0f1?w=1400&q=80",
 				Order:            3,
-				IsPinned:         true,
+				IsTopLevel:       true,
 				ChildrenViewMode: "gallery",
 				Children: []PageTemplate{
 					{
@@ -515,7 +515,7 @@ func GetDefaultWorkspace() WorkspaceTemplate {
 				Order:      4,
 				Content:    gettingStartedContent,
 				Excerpt:    "Learn how to make the most of Planneer",
-				IsPinned:   true,
+				IsTopLevel: true,
 				Children: []PageTemplate{
 					{
 						Title:    "Keyboard Shortcuts",
@@ -1495,7 +1495,6 @@ var emptyNoteContent = mustMarshal(map[string]interface{}{
 		"meta": map[string]interface{}{"order": 0, "depth": 0},
 	},
 })
-
 
 var keyboardShortcutsContent = mustMarshal(map[string]interface{}{
 	"heading": map[string]interface{}{

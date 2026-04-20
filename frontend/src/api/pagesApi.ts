@@ -79,6 +79,8 @@ import { devLog, devWarn } from '@/lib/config';
 export interface FetchPagesOptions {
   /** Only fetch root-level pages (parentId is null/empty). Mutually exclusive with parentId. */
   rootOnly?: boolean;
+  /** Only fetch parentless Inbox pages. Mutually exclusive with rootOnly and parentId. */
+  inboxOnly?: boolean;
   /** Fetch children of a specific parent ID. Mutually exclusive with rootOnly. */
   parentId?: string;
   /** Filter by view mode (e.g., 'tasks' to get only task collections) */
@@ -135,8 +137,14 @@ export async function fetchPages(options?: FetchPagesOptions): Promise<FetchPage
   const filters: string[] = [];
   
   if (options?.rootOnly) {
-    // Root-only query for sidebar tree - exclude daily notes since they don't appear in the tree
+    // Root-only query for sidebar tree - exclude daily notes and Inbox pages.
     filters.push(`(parentId = '' || parentId = null)`);
+    filters.push(`isTopLevel = true`);
+    filters.push(`isDailyNote = false`);
+  }
+  if (options?.inboxOnly) {
+    filters.push(`(parentId = '' || parentId = null)`);
+    filters.push(`isTopLevel = false`);
     filters.push(`isDailyNote = false`);
   }
   if (options?.parentId) {
@@ -420,34 +428,6 @@ export async function fetchAllPagesMetadata(): Promise<Page[]> {
   }
 }
 
-/**
- * Fetch pinned pages specifically - ensures pinned pages at any level are loaded.
- * Used as a supplementary fetch during initial load.
- */
-export async function fetchPinnedPages(): Promise<Page[]> {
-  const workspaceId = getCurrentWorkspaceIdOrNull();
-  if (!workspaceId) return [];
-
-  try {
-    const result = await pb.collection('pages').getFullList({
-      filter: buildWorkspaceFilter(workspaceId, 'isPinned = true'),
-      sort: 'pinnedOrder',
-      fields: METADATA_FIELDS,
-    });
-
-    const pages = result.map(record => ({
-      ...pbToFrontend<Page>(record as Record<string, unknown>),
-      content: null,
-    }));
-
-    devLog(`[pagesApi] Fetched ${pages.length} pinned pages`);
-    return pages;
-  } catch (e) {
-    console.error('[pagesApi] fetchPinnedPages error:', e);
-    return [];
-  }
-}
-
 // ============================================================================
 // CRUD OPERATIONS
 // ============================================================================
@@ -490,7 +470,7 @@ export interface PagePatchRequest {
   /** Block IDs with only order changes - maps to new order value (bandwidth optimization) */
   blockOrders?: Record<string, number>;
   /** Metadata fields to update (title, parentId, etc.) */
-  metadata?: Partial<Pick<Page, 'title' | 'parentId' | 'icon' | 'color' | 'order' | 'viewMode' | 'childrenViewMode' | 'isExpanded' | 'isPinned' | 'isDailyNote' | 'dailyNoteDate' | 'excerpt' | 'collectionSortBy' | 'collectionSortDirection' | 'collectionGroupBy' | 'sections' | 'tasksViewMode' | 'tasksGroupBy' | 'showCompletedTasks' | 'showExcerpts' | 'savedViews' | 'activeSavedViewId'>>;
+  metadata?: Partial<Pick<Page, 'title' | 'parentId' | 'isTopLevel' | 'icon' | 'color' | 'order' | 'viewMode' | 'childrenViewMode' | 'isExpanded' | 'isDailyNote' | 'dailyNoteDate' | 'excerpt' | 'collectionSortBy' | 'collectionSortDirection' | 'collectionGroupBy' | 'sections' | 'tasksViewMode' | 'tasksGroupBy' | 'showCompletedTasks' | 'showExcerpts' | 'savedViews' | 'activeSavedViewId'>>;
 }
 
 /**
@@ -524,8 +504,8 @@ export async function deletePage(id: string): Promise<void> {
 // ============================================================================
 
 /**
- * Move orphaned child pages to root level when their parent is deleted.
- * Returns the IDs of pages that were moved to root level.
+ * Move orphaned child pages to Inbox when their parent is deleted.
+ * Returns the IDs of pages that were moved to Inbox.
  */
 export async function moveOrphanedPagesToRoot(
   parentId: string
@@ -540,7 +520,7 @@ export async function moveOrphanedPagesToRoot(
   // Update each to remove parent
   await Promise.all(
     children.map((p) =>
-      updatePage(p.id, { parentId: null })
+      updatePage(p.id, { parentId: null, isTopLevel: false })
     )
   );
 

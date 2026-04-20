@@ -157,6 +157,8 @@ export interface Page {
   // ============================================================================
   /** Parent page ID, null = root level */
   parentId: string | null;
+  /** Whether a parentless page belongs in the canonical top-level tree. */
+  isTopLevel: boolean;
   /** Position among siblings (0-based) */
   order: number;
 
@@ -255,10 +257,6 @@ export interface Page {
   isExpanded: boolean;
   /** Whether to show children in the sidebar tree (overrides default viewMode behavior) */
   showChildrenInSidebar?: boolean;
-  /** Whether the page is pinned to the top of the sidebar */
-  isPinned: boolean;
-  /** Position among pinned items (0-based, only used when isPinned=true) */
-  pinnedOrder: number;
 
   // ============================================================================
   // COMPUTED (from backend)
@@ -303,6 +301,7 @@ export interface CreatePageInput {
   title: string;
   content?: string | null;
   parentId?: string | null;
+  isTopLevel?: boolean;
   order?: number;
   icon?: string | null;
   color?: string | null;
@@ -326,6 +325,7 @@ export interface UpdatePageInput {
   title?: string;
   content?: string | null;
   parentId?: string | null;
+  isTopLevel?: boolean;
   order?: number;
   icon?: string | null;
   color?: string | null;
@@ -336,8 +336,6 @@ export interface UpdatePageInput {
   viewMode?: PageViewMode;
   childrenViewMode?: ChildrenViewMode;
   isExpanded?: boolean;
-  isPinned?: boolean;
-  pinnedOrder?: number;
   // Collection view preferences
   collectionSortBy?: 'updated' | 'created' | 'title';
   collectionSortDirection?: 'asc' | 'desc';
@@ -380,6 +378,7 @@ export const DEFAULT_PAGE_VALUES: Partial<Page> = {
   sourcePageCount: null,
   previewThumbnail: null,
   parentId: null,
+  isTopLevel: true,
   order: 0,
   icon: null,
   color: null,
@@ -392,8 +391,6 @@ export const DEFAULT_PAGE_VALUES: Partial<Page> = {
   isDailyNote: false,
   dailyNoteDate: null,
   isExpanded: false,
-  isPinned: false,
-  pinnedOrder: 0,
   childCount: 0,
 };
 

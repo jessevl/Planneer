@@ -30,7 +30,7 @@ import type {
 } from '@/types/page';
 import { toastSuccess } from '@/components/ui';
 import { buildPageTree, getAncestorChain, extractExcerpt } from '@/lib/pageUtils';
-import { isRootLevel, ROOT_KEY } from '@/lib/treeUtils';
+import { isInboxPlacement, isRootLevel, isTopLevelPlacement, ROOT_KEY } from '@/lib/treeUtils';
 import { generateId } from '@/lib/pocketbase';
 import {
   offlineCreatePage,
@@ -170,7 +170,7 @@ export interface PagesState {
   deletePages: (ids: string[]) => void;
 
   // Actions - Hierarchy
-  movePage: (id: string, newParentId: string | null) => void;
+  movePage: (id: string, newParentId: string | null, options?: { isTopLevel?: boolean }) => void;
   reorderPages: (parentId: string | null, orderedIds: string[]) => void;
 
   // Actions - Editor
@@ -215,6 +215,10 @@ function buildIndexes(pagesById: Record<string, Page>): {
   for (const page of Object.values(pagesById)) {
     // Build children index (exclude daily pages from hierarchy)
     if (!page.isDailyNote) {
+      if (isRootLevel(page.parentId) && !(page.isTopLevel ?? true)) {
+        continue;
+      }
+
       const parentKey = isRootLevel(page.parentId) ? ROOT_KEY : page.parentId!;
       if (!childrenIndex[parentKey]) {
         childrenIndex[parentKey] = [];
@@ -264,6 +268,7 @@ function insertIntoChildrenIndex(
   pagesById: Record<string, Page>
 ): Record<string, string[]> {
   if (page.isDailyNote) return childrenIndex;
+  if (isRootLevel(page.parentId) && !(page.isTopLevel ?? true)) return childrenIndex;
   
   const newIndex = { ...childrenIndex };
   const parentKey = isRootLevel(page.parentId) ? ROOT_KEY : page.parentId!;
@@ -299,8 +304,11 @@ function insertIntoChildrenIndex(
 function removeFromChildrenIndex(
   childrenIndex: Record<string, string[]>,
   pageId: string,
-  parentId: string | null
+  parentId: string | null,
+  isTopLevel: boolean | undefined
 ): Record<string, string[]> {
+  if (isRootLevel(parentId) && !(isTopLevel ?? true)) return childrenIndex;
+
   const parentKey = isRootLevel(parentId) ? ROOT_KEY : parentId!;
   
   if (!childrenIndex[parentKey]) return childrenIndex;
@@ -488,6 +496,7 @@ export const usePagesStore = create<PagesState>()(
                 // Only rebuild indexes if hierarchy changed (parentId or order)
                 const hierarchyChanged = 
                   existingPage.parentId !== mergedPage.parentId ||
+                  existingPage.isTopLevel !== mergedPage.isTopLevel ||
                   existingPage.order !== mergedPage.order ||
                   existingPage.isDailyNote !== mergedPage.isDailyNote;
                 
@@ -496,7 +505,7 @@ export const usePagesStore = create<PagesState>()(
                 
                 if (hierarchyChanged) {
                   // Remove from old parent, add to new parent
-                  newChildrenIndex = removeFromChildrenIndex(childrenIndex, record.id, existingPage.parentId);
+                  newChildrenIndex = removeFromChildrenIndex(childrenIndex, record.id, existingPage.parentId, existingPage.isTopLevel);
                   newChildrenIndex = insertIntoChildrenIndex(newChildrenIndex, mergedPage, newPagesById);
                   newDailyPagesIndex = updateDailyPagesIndex(dailyPagesIndex, mergedPage);
                 }
@@ -547,7 +556,7 @@ export const usePagesStore = create<PagesState>()(
                 // The server's hook recalculates the count and broadcasts the parent's update
                 
                 // Use incremental index update instead of full rebuild
-                const newChildrenIndex = removeFromChildrenIndex(childrenIndex, idToDelete, deletedPage.parentId);
+                const newChildrenIndex = removeFromChildrenIndex(childrenIndex, idToDelete, deletedPage.parentId, deletedPage.isTopLevel);
                 const newDailyPagesIndex = updateDailyPagesIndex(dailyPagesIndex, deletedPage, true);
                 set(
                   {
@@ -807,6 +816,8 @@ export const usePagesStore = create<PagesState>()(
         createPage: (input) => {
           const now = new Date().toISOString();
           const id = generateId();
+          const parentId = input.parentId ?? null;
+          const isTopLevel = input.isTopLevel ?? (parentId !== null ? false : Boolean(input.isDailyNote));
 
           // Build default Yoopta content if empty
           let content = input.content ?? null;
@@ -829,7 +840,7 @@ export const usePagesStore = create<PagesState>()(
           }
 
           // Calculate order among siblings - use maxOrder + 1 to ensure new items always go at the end
-          const siblings = get().getChildren(input.parentId ?? null);
+          const siblings = get().getChildren(parentId);
           const maxOrder = siblings.reduce((max, sibling) => Math.max(max, sibling.order ?? 0), -1);
           const order = maxOrder + 1;
 
@@ -840,7 +851,8 @@ export const usePagesStore = create<PagesState>()(
             excerpt: extractExcerpt(content), // Compute excerpt immediately
             created: now,
             updated: now,
-            parentId: input.parentId ?? null,
+            parentId,
+            isTopLevel,
             order,
             icon: input.icon ?? null,
             color: null,
@@ -854,8 +866,6 @@ export const usePagesStore = create<PagesState>()(
             dailyNoteDate: input.dailyNoteDate ?? null,
             isExpanded: false,
             showChildrenInSidebar: input.showChildrenInSidebar ?? (input.viewMode === 'note' || !input.viewMode),
-            isPinned: false,
-            pinnedOrder: 0,
             childCount: 0, // New pages have no children
             // Task collection fields
             sections: [],
@@ -921,6 +931,7 @@ export const usePagesStore = create<PagesState>()(
               // Only rebuild indexes if hierarchy-related fields changed
               const needsReindex = 
                 updates.parentId !== undefined ||
+                updates.isTopLevel !== undefined ||
                 updates.order !== undefined;
               
               if (needsReindex) {
@@ -956,6 +967,9 @@ export const usePagesStore = create<PagesState>()(
                     updated: new Date().toISOString() 
                   };
                   if (updates.parentId !== undefined || updates.order !== undefined) {
+                    needsReindex = true;
+                  }
+                  if (updates.isTopLevel !== undefined) {
                     needsReindex = true;
                   }
                 }
@@ -1063,7 +1077,7 @@ export const usePagesStore = create<PagesState>()(
                 
                 // If not cascade, reparent direct children to root
                 if (!cascade && page.parentId === id) {
-                  updatedById[pageId] = { ...page, parentId: null };
+                  updatedById[pageId] = { ...page, parentId: null, isTopLevel: false };
                 } else {
                   updatedById[pageId] = page;
                 }
@@ -1110,7 +1124,7 @@ export const usePagesStore = create<PagesState>()(
           } else {
             // Reparent orphans first (update their parentId), then delete
             for (const child of directChildren) {
-              offlineUpdatePage(child.id, { parentId: null }).catch(console.error);
+              offlineUpdatePage(child.id, { parentId: null, isTopLevel: false }).catch(console.error);
             }
             offlineDeletePage(id).catch(console.error);
           }
@@ -1132,7 +1146,11 @@ export const usePagesStore = create<PagesState>()(
                 // Restore children's original parent if they were reparented
                 for (const child of reparentedChildren) {
                   if (restoredById[child.id]) {
-                    restoredById[child.id] = { ...restoredById[child.id], parentId: child.originalParentId };
+                    restoredById[child.id] = {
+                      ...restoredById[child.id],
+                      parentId: child.originalParentId,
+                      isTopLevel: false,
+                    };
                   }
                 }
                 const indexes = buildIndexes(restoredById);
@@ -1240,7 +1258,7 @@ export const usePagesStore = create<PagesState>()(
           });
         },
 
-        movePage: (id, newParentId) => {
+        movePage: (id, newParentId, options) => {
           // Prevent moving to self or descendant
           if (id === newParentId) return;
           
@@ -1249,6 +1267,7 @@ export const usePagesStore = create<PagesState>()(
           if (!page) return;
           
           const oldParentId = page.parentId;
+          const newIsTopLevel = options?.isTopLevel ?? (newParentId === null);
 
           // Check if newParentId is a descendant of id
           let current = newParentId ? pagesById[newParentId] : null;
@@ -1272,6 +1291,7 @@ export const usePagesStore = create<PagesState>()(
                 [id]: {
                   ...page,
                   parentId: newParentId,
+                  isTopLevel: newIsTopLevel,
                   order,
                   updatedAt: new Date().toISOString(),
                 },
@@ -1305,7 +1325,7 @@ export const usePagesStore = create<PagesState>()(
             false,
             'movePage'
           );
-          offlineUpdatePage(id, { parentId: newParentId, order }).catch(console.error);
+          offlineUpdatePage(id, { parentId: newParentId, isTopLevel: newIsTopLevel, order }).catch(console.error);
         },
 
         reorderPages: (parentId, orderedIds) => {
@@ -1912,9 +1932,23 @@ export const useRecentPages = (limit: number = 6) => {
   
   return useMemo(() => {
     return Object.values(pagesById)
+      .filter((page) => !page.isDailyNote && page.sourceOrigin !== 'boox')
       .sort((a, b) => new Date(b.updated).getTime() - new Date(a.updated).getTime())
       .slice(0, limit);
   }, [pagesById, limit]);
+};
+
+/**
+ * Hook for getting Inbox pages (parentless but not placed at top level).
+ */
+export const useInboxPages = () => {
+  const pagesById = usePagesStore((state) => state.pagesById);
+
+  return useMemo(() => {
+    return Object.values(pagesById)
+      .filter((page) => !page.isDailyNote && page.sourceOrigin !== 'boox' && isInboxPlacement(page.parentId, page.isTopLevel))
+      .sort((a, b) => new Date(b.updated).getTime() - new Date(a.updated).getTime());
+  }, [pagesById]);
 };
 
 /**
@@ -1932,24 +1966,6 @@ export const usePageCount = () => {
       daily: pages.filter(n => n.isDailyNote).length,
     };
   }, [pagesById]);
-};
-
-/**
- * Hook for getting pinned/favorite pages (sorted by pinnedOrder).
- * More efficient than filtering all pages in a component.
- * 
- * @param limit Maximum number of pinned pages to return (default unlimited)
- */
-export const usePinnedPages = (limit?: number) => {
-  const pagesById = usePagesStore((state) => state.pagesById);
-  
-  return useMemo(() => {
-    const pinnedPages = Object.values(pagesById)
-      .filter((p) => p.isPinned)
-      .sort((a, b) => (a.pinnedOrder ?? 0) - (b.pinnedOrder ?? 0));
-    
-    return limit ? pinnedPages.slice(0, limit) : pinnedPages;
-  }, [pagesById, limit]);
 };
 
 /**

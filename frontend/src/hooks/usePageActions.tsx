@@ -19,7 +19,7 @@ import React, { useMemo, useCallback } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useShallow } from 'zustand/react/shallow';
 import {
-  Pin, PinOff, Download, FolderInput, FilePlus, ListPlus, ExternalLink,
+  Download, FolderInput, FilePlus, ListPlus, ExternalLink,
 } from 'lucide-react';
 import { usePagesStore, selectPageActions } from '@/stores/pagesStore';
 import { useTasksStore } from '@/stores/tasksStore';
@@ -61,8 +61,6 @@ export interface PageActions {
   createSubpage: () => ContextMenuItem | null;
   /** Create a task in this task collection */
   createTask: () => ContextMenuItem | null;
-  /** Pin/Unpin as favorite */
-  pin: () => ContextMenuItem;
   /** Toggle show/hide subpages in sidebar */
   toggleSidebarChildren: () => ContextMenuItem;
   /** Export page to Markdown */
@@ -147,12 +145,6 @@ export function usePageActions(options: UsePageActionsOptions): PageActions {
     };
   }, [onCreateTask, page.id, page.viewMode]);
 
-  const pin = useCallback((): ContextMenuItem => ({
-    id: 'pin',
-    label: page.isPinned ? 'Remove from favorites' : 'Pin as favorite',
-    icon: page.isPinned ? <PinOff className={iconClass} /> : <Pin className={iconClass} />,
-    onClick: () => updatePage(page.id, { isPinned: !page.isPinned }),
-  }), [page.id, page.isPinned, updatePage]);
 
   const toggleSidebarChildren = useCallback((): ContextMenuItem => {
     const currentShow = page.showChildrenInSidebar ?? (page.viewMode === 'note');
@@ -222,14 +214,13 @@ export function usePageActions(options: UsePageActionsOptions): PageActions {
 
   const forActionMenu = useCallback((): ContextMenuItem[] => {
     const items: ContextMenuItem[] = [];
-    items.push(pin());
     items.push(toggleSidebarChildren());
     items.push(exportMarkdown());
     const csv = exportCSV();
     if (csv) items.push(csv);
     items.push(deleteAction({ divider: true }));
     return items;
-  }, [pin, toggleSidebarChildren, exportMarkdown, exportCSV, deleteAction]);
+  }, [toggleSidebarChildren, exportMarkdown, exportCSV, deleteAction]);
 
   const forContextMenu = useCallback((): ContextMenuItem[] => {
     const items: ContextMenuItem[] = [];
@@ -240,22 +231,17 @@ export function usePageActions(options: UsePageActionsOptions): PageActions {
     const task = createTaskAction();
     if (task) items.push(task);
 
-    const pinItem = pin();
-    if (items.length > 0) pinItem.divider = true;
-    items.push(pinItem);
-
     items.push(exportMarkdown());
     const csv = exportCSV();
     if (csv) items.push(csv);
     items.push(deleteAction({ divider: true }));
     return items;
-  }, [openInNewTab, createSubpage, createTaskAction, pin, exportMarkdown, exportCSV, deleteAction]);
+  }, [openInNewTab, createSubpage, createTaskAction, exportMarkdown, exportCSV, deleteAction]);
 
   return useMemo(() => ({
     openInNewTab,
     createSubpage,
     createTask: createTaskAction,
-    pin,
     toggleSidebarChildren,
     exportMarkdown,
     exportCSV,
@@ -263,7 +249,7 @@ export function usePageActions(options: UsePageActionsOptions): PageActions {
     forActionMenu,
     forContextMenu,
   }), [
-    openInNewTab, createSubpage, createTaskAction, pin, toggleSidebarChildren,
+    openInNewTab, createSubpage, createTaskAction, toggleSidebarChildren,
     exportMarkdown, exportCSV, deleteAction, forActionMenu, forContextMenu,
   ]);
 }

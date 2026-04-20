@@ -51,16 +51,19 @@ import { useIsMobile, useIsDesktop } from '@frameer/hooks/useMobileDetection';
 import { PAGES_PAGINATION } from '@/lib/config';
 import { cn } from '@/lib/design-system';
 import { isBooxPage } from '@/lib/pageUtils';
+import { isInboxPlacement } from '@/lib/treeUtils';
 
 interface PagesViewProps {
   /** Route-provided page ID (from /pages/:id) */
   routePageId?: string;
   splitViewPageId?: string;
+  mode?: 'all' | 'inbox';
 }
 
 const PagesView: React.FC<PagesViewProps> = ({
   routePageId,
   splitViewPageId: routeSplitViewPageId,
+  mode = 'all',
 }) => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -193,10 +196,17 @@ const PagesView: React.FC<PagesViewProps> = ({
   const selectedPageId = routePageId ?? null;
   const hasSearchQuery = !!pagesSearchQuery.trim();
   const searchQuery = pagesSearchQuery;
+  const isInboxMode = mode === 'inbox';
 
   // Filtered pages (search)
   const filteredPages = useMemo(() => {
-    const nonDaily = pages.filter((page: Page) => !page.isDailyNote);
+    const nonDaily = pages.filter((page: Page) => {
+      if (page.isDailyNote) return false;
+      if (isInboxMode) {
+        return isInboxPlacement(page.parentId, page.isTopLevel);
+      }
+      return true;
+    });
     if (!pagesSearchQuery.trim()) return nonDaily;
     const query = pagesSearchQuery.toLowerCase();
     return nonDaily.filter((page: Page) =>
@@ -352,10 +362,15 @@ const PagesView: React.FC<PagesViewProps> = ({
     }
   }, [filterBy]);
 
-  const _title = 'All Pages';
+  const _title = isInboxMode ? 'Inbox' : 'All Pages';
   // Use totalItems from pagination for accurate count (not just loaded items)
-  const displayCount = totalItems ?? displayPages.length;
-  const subtitle = useMemo(() => `${displayCount} ${displayCount === 1 ? filterLabel : filterLabel + 's'}`, [displayCount, filterLabel]);
+  const displayCount = isInboxMode ? displayPages.length : (totalItems ?? displayPages.length);
+  const subtitle = useMemo(() => {
+    if (isInboxMode) {
+      return `${displayCount} ${displayCount === 1 ? 'unfiled page' : 'unfiled pages'}`;
+    }
+    return `${displayCount} ${displayCount === 1 ? filterLabel : filterLabel + 's'}`;
+  }, [displayCount, filterLabel, isInboxMode]);
 
   // Determine if we should show split view (reading pane enabled on desktop >= 1024px)
   const showSplitView = false;

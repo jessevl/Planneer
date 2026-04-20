@@ -17,7 +17,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { MoreVertical, Sparkles, ChevronDown, ChevronRight, Pin, FolderInput, Download, Trash2 } from 'lucide-react';
+import { MoreVertical, Sparkles, ChevronDown, ChevronRight, FolderInput, Download, Trash2 } from 'lucide-react';
 import { Popover, MobileSheet, IconPicker, LucideIcon, ToggleTile } from '@/components/ui';
 import { cn } from '@/lib/design-system';
 import { useIsMobile } from '@frameer/hooks/useMobileDetection';
@@ -118,14 +118,8 @@ const PageActionsMenu: React.FC<PageActionsMenuProps> = ({
     if (icon === null) setShowIconPicker(false);
   }, [page.id, updatePage]);
 
-  // Toggle handlers for pin and sidebar children
-  const isPinned = livePage.isPinned;
+  // Toggle handlers for sidebar children
   const showChildrenInSidebar = livePage.showChildrenInSidebar ?? (livePage.viewMode === 'note');
-
-  const handleTogglePin = useCallback(() => {
-    updatePage(page.id, { isPinned: !livePage.isPinned });
-  }, [page.id, livePage.isPinned, updatePage]);
-
   const handleToggleSidebarChildren = useCallback(() => {
     const currentShow = livePage.showChildrenInSidebar ?? (livePage.viewMode === 'note');
     updatePage(page.id, { showChildrenInSidebar: !currentShow });
@@ -266,13 +260,7 @@ const PageActionsMenu: React.FC<PageActionsMenuProps> = ({
       <div className={cn('h-px bg-[var(--color-border-default)] -mx-2', isMobile ? 'my-2' : 'my-1.5')} />
 
       {/* Pin & Sidebar toggles - compact square tiles */}
-      <div className="grid grid-cols-2 gap-1.5 py-1 px-1">
-        <ToggleTile
-          active={!!isPinned}
-          onClick={handleTogglePin}
-          label="Favorite"
-          icon={<Pin className="w-3.5 h-3.5" />}
-        />
+      <div className="grid grid-cols-1 gap-1.5 py-1 px-1">
         <ToggleTile
           active={!!showChildrenInSidebar}
           onClick={handleToggleSidebarChildren}

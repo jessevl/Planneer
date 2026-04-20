@@ -21,6 +21,7 @@ import {
   PlusIcon, 
   CheckIcon, 
   PagesIcon,
+  InboxIcon,
   HomeIcon,
   CalendarIcon,
   ClockIcon,
@@ -318,6 +319,18 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       keywords: ['pages', 'pages', 'documents'],
       onSelect: () => {
         navigate({ to: '/pages' });
+        onClose();
+      },
+    },
+    {
+      id: 'nav-inbox',
+      category: 'navigation',
+      icon: <InboxIcon className="w-5 h-5" />,
+      title: 'Go to Inbox',
+      subtitle: 'Review unfiled pages',
+      keywords: ['inbox', 'unfiled', 'pages'],
+      onSelect: () => {
+        navigate({ to: '/inbox' });
         onClose();
       },
     },

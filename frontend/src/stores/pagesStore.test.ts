@@ -52,8 +52,6 @@ function createMockPage(overrides: Partial<Page> = {}): Page {
     order: 0,
     childCount: 0,
     isExpanded: false,
-    isPinned: false,
-    pinnedOrder: 0,
     isDailyNote: false,
     dailyNoteDate: null,
     icon: null,

@@ -300,6 +300,7 @@ export const PROJECT_CRDT_FIELDS = [
 export const PAGE_CRDT_FIELDS = [
   'title',
   'parentId',
+  'isTopLevel',
   'order',
   'icon',
   'color',
@@ -314,8 +315,6 @@ export const PAGE_CRDT_FIELDS = [
   
   // Sidebar state
   'isExpanded',
-  'isPinned',
-  'pinnedOrder',
   'showChildrenInSidebar',
   
   // Collection view preferences

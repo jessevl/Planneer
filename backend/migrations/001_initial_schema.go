@@ -110,6 +110,7 @@ func init() {
 			&core.TextField{Name: "excerpt", Max: 500},
 			&core.TextField{Name: "bodyText", Max: bodyTextFieldMax},
 			&core.NumberField{Name: "order"},
+			&core.BoolField{Name: "isTopLevel"},
 			&core.TextField{Name: "icon", Max: 50},
 			&core.TextField{Name: "color", Max: 20},
 			// Cover image support
@@ -239,6 +240,7 @@ func init() {
 		})
 		pages.AddIndex("idx_pages_workspace", false, "workspace", "")
 		pages.AddIndex("idx_pages_parentId", false, "parentId", "")
+		pages.AddIndex("idx_pages_workspace_parent_top", false, "workspace,parentId,isTopLevel", "")
 		pages.AddIndex("idx_pages_viewMode", false, "viewMode", "")
 		pages.AddIndex("idx_pages_workspace_viewMode", false, "workspace, viewMode", "")
 		pages.AddIndex("idx_pages_dailyNoteDate", false, "dailyNoteDate", "")

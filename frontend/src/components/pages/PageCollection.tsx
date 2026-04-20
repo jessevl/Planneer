@@ -188,6 +188,13 @@ const PageCollection: React.FC<PageCollectionProps> = ({
   }, [hasMore, onLoadMore, isLoadingMore]);
   
   const pagesById = usePagesStore((s: PagesState) => s.pagesById);
+  const movePage = usePagesStore((s: PagesState) => s.movePage);
+
+  // Handler for dropping a page onto another page to reparent
+  const handlePageDrop = useCallback((droppedPageId: string, targetPageId: string) => {
+    if (droppedPageId === targetPageId) return;
+    movePage(droppedPageId, targetPageId);
+  }, [movePage]);
 
   // Sort pages - memoized with all dependencies
   const sortedPages = useMemo(() => {
@@ -299,6 +306,7 @@ const PageCollection: React.FC<PageCollectionProps> = ({
           draggable={draggable}
           parentPage={parentPage}
           showExcerpt={showExcerpts}
+          onPageDrop={handlePageDrop}
         />
       );
     }
@@ -310,9 +318,10 @@ const PageCollection: React.FC<PageCollectionProps> = ({
         searchQuery={searchQuery}
         draggable={draggable}
         parentPage={parentPage}
+        onPageDrop={handlePageDrop}
       />
     );
-  }, [viewMode, onPageClick, searchQuery, draggable, pagesById, showExcerpts]);
+  }, [viewMode, onPageClick, searchQuery, draggable, pagesById, showExcerpts, handlePageDrop]);
 
   // Grid or list layout
   // Use auto-fill with minmax to be responsive to container width rather than viewport

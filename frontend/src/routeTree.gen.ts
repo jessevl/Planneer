@@ -14,6 +14,7 @@ import { Route as TestEditorRouteImport } from './routes/test-editor'
 import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PagesRouteImport } from './routes/pages'
+import { Route as InboxRouteImport } from './routes/inbox'
 import { Route as HandwrittenRouteImport } from './routes/handwritten'
 import { Route as GraphRouteImport } from './routes/graph'
 import { Route as ConfirmEmailChangeRouteImport } from './routes/confirm-email-change'
@@ -45,6 +46,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
 const PagesRoute = PagesRouteImport.update({
   id: '/pages',
   path: '/pages',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InboxRoute = InboxRouteImport.update({
+  id: '/inbox',
+  path: '/inbox',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HandwrittenRoute = HandwrittenRouteImport.update({
@@ -88,6 +94,7 @@ export interface FileRoutesByFullPath {
   '/confirm-email-change': typeof ConfirmEmailChangeRoute
   '/graph': typeof GraphRoute
   '/handwritten': typeof HandwrittenRouteWithChildren
+  '/inbox': typeof InboxRoute
   '/pages': typeof PagesRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/tasks': typeof TasksRouteWithChildren
@@ -102,6 +109,7 @@ export interface FileRoutesByTo {
   '/confirm-email-change': typeof ConfirmEmailChangeRoute
   '/graph': typeof GraphRoute
   '/handwritten': typeof HandwrittenRouteWithChildren
+  '/inbox': typeof InboxRoute
   '/pages': typeof PagesRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/tasks': typeof TasksRouteWithChildren
@@ -117,6 +125,7 @@ export interface FileRoutesById {
   '/confirm-email-change': typeof ConfirmEmailChangeRoute
   '/graph': typeof GraphRoute
   '/handwritten': typeof HandwrittenRouteWithChildren
+  '/inbox': typeof InboxRoute
   '/pages': typeof PagesRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/tasks': typeof TasksRouteWithChildren
@@ -133,6 +142,7 @@ export interface FileRouteTypes {
     | '/confirm-email-change'
     | '/graph'
     | '/handwritten'
+    | '/inbox'
     | '/pages'
     | '/reset-password'
     | '/tasks'
@@ -147,6 +157,7 @@ export interface FileRouteTypes {
     | '/confirm-email-change'
     | '/graph'
     | '/handwritten'
+    | '/inbox'
     | '/pages'
     | '/reset-password'
     | '/tasks'
@@ -161,6 +172,7 @@ export interface FileRouteTypes {
     | '/confirm-email-change'
     | '/graph'
     | '/handwritten'
+    | '/inbox'
     | '/pages'
     | '/reset-password'
     | '/tasks'
@@ -176,6 +188,7 @@ export interface RootRouteChildren {
   ConfirmEmailChangeRoute: typeof ConfirmEmailChangeRoute
   GraphRoute: typeof GraphRoute
   HandwrittenRoute: typeof HandwrittenRouteWithChildren
+  InboxRoute: typeof InboxRoute
   PagesRoute: typeof PagesRouteWithChildren
   ResetPasswordRoute: typeof ResetPasswordRoute
   TasksRoute: typeof TasksRouteWithChildren
@@ -218,6 +231,13 @@ declare module '@tanstack/react-router' {
       path: '/pages'
       fullPath: '/pages'
       preLoaderRoute: typeof PagesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inbox': {
+      id: '/inbox'
+      path: '/inbox'
+      fullPath: '/inbox'
+      preLoaderRoute: typeof InboxRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/handwritten': {
@@ -309,6 +329,7 @@ const rootRouteChildren: RootRouteChildren = {
   ConfirmEmailChangeRoute: ConfirmEmailChangeRoute,
   GraphRoute: GraphRoute,
   HandwrittenRoute: HandwrittenRouteWithChildren,
+  InboxRoute: InboxRoute,
   PagesRoute: PagesRouteWithChildren,
   ResetPasswordRoute: ResetPasswordRoute,
   TasksRoute: TasksRouteWithChildren,

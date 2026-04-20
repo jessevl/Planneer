@@ -30,7 +30,7 @@
 
 import React from 'react';
 import { SidebarIcon, PlusIcon, TrashIcon, ChevronRightIcon, HomeIcon, ListChecksIcon } from '../common/Icons';
-import { PenLine, Pin, PinOff, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, MoreVertical, FolderInput, Maximize2, X } from 'lucide-react';
+import { PenLine, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, MoreVertical, FolderInput, Maximize2, X } from 'lucide-react';
 import SortFilterViewBar from './SortFilterViewBar';
 import { IconButton, Button, FlexGroup, TextSmall, LucideIcon, NavigationHistoryButtons } from '@/components/ui';
 import { CONTENT_WIDTH, CONTENT_PADDING, getRightInsetStyle } from '@/lib/layout';
@@ -129,11 +129,6 @@ interface UnifiedHeaderProps {
   
   /** Current page for content indicators */
   currentPage?: import('@/types/page').Page;
-  
-  // --- PIN BUTTON ---
-  showPinButton?: boolean;
-  isPinned?: boolean;
-  onTogglePin?: () => void;
   
   // --- DELETE BUTTON ---
   showDeleteButton?: boolean;
@@ -264,11 +259,6 @@ const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
   hideDueDateFilter = false,
   
   currentPage,
-  
-  // Pin
-  showPinButton = false,
-  isPinned = false,
-  onTogglePin,
   
   // Delete
   showDeleteButton = false,

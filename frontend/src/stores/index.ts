@@ -50,7 +50,6 @@ export {
   usePages,
   useTaskCollections,
   useRecentPages,
-  usePinnedPages,
   usePageCount,
   useDailyPageDates,
 } from './pagesStore';

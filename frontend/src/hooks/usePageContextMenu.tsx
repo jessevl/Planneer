@@ -27,12 +27,13 @@
 import React, { useMemo, useCallback } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useShallow } from 'zustand/react/shallow';
-import { Pin, FilePlus, ListPlus, Download, ExternalLink, FolderInput } from 'lucide-react';
+import { FilePlus, ListPlus, Download, ExternalLink, FolderInput, ArrowRightFromLine } from 'lucide-react';
 import { usePagesStore, selectPageActions } from '@/stores/pagesStore';
 import { useSelectionStore } from '@/stores/selectionStore';
 import { useDeleteConfirmStore } from '@/stores/deleteConfirmStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useTabsStore } from '@/stores/tabsStore';
+import { useUIStore } from '@/stores/uiStore';
 import type { ContextMenuItem } from '@/components/ui';
 import type { Page } from '@/types/page';
 import {
@@ -52,8 +53,6 @@ export interface BuildPageMenuItemsConfig {
   selectionCount: number;
   /** Whether tabs feature is enabled */
   tabsEnabled: boolean;
-  /** Current pin/favorite state */
-  isPinned: boolean;
   /** Current show-children-in-sidebar state (for subpages toggle) */
   showChildrenInSidebar?: boolean;
 
@@ -61,8 +60,8 @@ export interface BuildPageMenuItemsConfig {
   onOpenInNewTab?: () => void;
   onCreateChild?: () => void;
   onCreateTask?: () => void;
-  onTogglePin?: () => void;
   onToggleShowChildren?: () => void;
+  onMoveTo?: () => void;
   onExportMarkdown?: () => void;
   onExportCSV?: () => void;
   onDelete?: () => void;
@@ -85,7 +84,6 @@ export interface BuildPageMenuItemsConfig {
  *   isMultiSelect: false,
  *   selectionCount: 1,
  *   tabsEnabled: false,
- *   isPinned: false,
  *   onDelete: () => deletePage(id),
  * });
  *
@@ -95,12 +93,10 @@ export interface BuildPageMenuItemsConfig {
  *   isMultiSelect: false,
  *   selectionCount: 1,
  *   tabsEnabled: true,
- *   isPinned: page.isPinned,
  *   showChildrenInSidebar: page.showChildrenInSidebar,
  *   onOpenInNewTab: () => openTab(...),
  *   onCreateChild: () => createChild(page.id),
  *   onCreateTask: () => createTask(page.id),
- *   onTogglePin: () => updatePage(page.id, { isPinned: !page.isPinned }),
  *   onToggleShowChildren: () => updatePage(page.id, { showChildrenInSidebar: !show }),
  *   onExportMarkdown: () => exportPageToMarkdown(page.id, page.title),
  *   onExportCSV: () => exportTasksToCSV(page.id, page.title),
@@ -140,18 +136,6 @@ export function buildPageMenuItems(config: BuildPageMenuItemsConfig): ContextMen
     });
   }
 
-  // Toggle: Favorite (single select only)
-  if (!config.isMultiSelect && config.onTogglePin) {
-    items.push({
-      id: 'pin',
-      label: 'Favorite',
-      icon: <Pin className={iconClass} />,
-      toggled: !!config.isPinned,
-      divider: items.length > 0,
-      onClick: config.onTogglePin,
-    });
-  }
-
   // Toggle: Show subpages in sidebar
   if (config.onToggleShowChildren) {
     items.push({
@@ -160,6 +144,17 @@ export function buildPageMenuItems(config: BuildPageMenuItemsConfig): ContextMen
       icon: <FolderInput className={iconClass} />,
       toggled: !!config.showChildrenInSidebar,
       onClick: config.onToggleShowChildren,
+    });
+  }
+
+  // Move to (single select only)
+  if (!config.isMultiSelect && config.onMoveTo) {
+    items.push({
+      id: 'move-to',
+      label: 'Move to',
+      icon: <ArrowRightFromLine className={iconClass} />,
+      divider: items.length > 0,
+      onClick: config.onMoveTo,
     });
   }
 
@@ -265,7 +260,6 @@ export function usePageContextMenu({ page, onCreateChild, onCreateTask, childCou
       isMultiSelect,
       selectionCount,
       tabsEnabled,
-      isPinned: !!page.isPinned,
 
       onOpenInNewTab: tabsEnabled ? () => {
         if (onOpenInNewTab) {
@@ -288,7 +282,9 @@ export function usePageContextMenu({ page, onCreateChild, onCreateTask, childCou
       onCreateTask: (onCreateTask && page.viewMode === 'tasks') ? () => onCreateTask(page.id) : undefined,
 
 
-      onTogglePin: () => updatePage(page.id, { isPinned: !page.isPinned }),
+      onMoveTo: () => {
+        useUIStore.getState().openPageMovePicker(page.id, page.title || 'Untitled');
+      },
 
       onExportMarkdown: async () => {
         try {
@@ -327,7 +323,7 @@ export function usePageContextMenu({ page, onCreateChild, onCreateTask, childCou
     isMultiSelect, selectionCount, childCount, tabsEnabled,
     effectiveSelection, deletePage, updatePage, clearSelection,
     onCreateChild, onCreateTask, onOpenInNewTab, openTab, navigate,
-    page.id, page.title, page.icon, page.color, page.isPinned, page.viewMode, requestDelete
+    page.id, page.title, page.icon, page.color, page.viewMode, requestDelete
   ]);
   
   // Click handler with selection support

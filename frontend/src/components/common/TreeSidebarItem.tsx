@@ -230,10 +230,10 @@ const TreeSidebarItem: React.FC<TreeSidebarItemProps> = React.memo(({
       position = 'inside';
     }
     
-    // Check if it's an external note drag (from collection view - uses 'noteId')
-    const isExternalNoteDrag = e.dataTransfer.types.includes('noteid');
+    // Check if it's an external page drag (from collection view - uses 'pageId')
+    const isExternalPageDrag = e.dataTransfer.types.includes('pageid') || e.dataTransfer.types.includes('noteid');
     
-    if (isExternalNoteDrag) {
+    if (isExternalPageDrag) {
       onExternalDragOver?.(id, parentId, position, e);
     } else {
       // Internal tree drag
@@ -270,10 +270,10 @@ const TreeSidebarItem: React.FC<TreeSidebarItemProps> = React.memo(({
       position = 'inside';
     }
     
-    // Check if it's an external note drop (from collection view - uses 'noteId')
-    const isExternalNoteDrag = e.dataTransfer.types.includes('noteid');
+    // Check if it's an external page drop (from collection view - uses 'pageId')
+    const isExternalPageDrag = e.dataTransfer.types.includes('pageid') || e.dataTransfer.types.includes('noteid');
     
-    if (isExternalNoteDrag) {
+    if (isExternalPageDrag) {
       onExternalDrop?.(id, position, e);
     } else {
       // Internal tree drop

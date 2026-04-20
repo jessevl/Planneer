@@ -782,9 +782,6 @@ const PageDetailView: React.FC<PageDetailViewProps> = ({
                 }
                 
                 currentPage={page}
-                showPinButton={!isReadOnlyPage}
-                isPinned={page.isPinned}
-                onTogglePin={isReadOnlyPage ? undefined : () => onUpdatePage(page.id, { isPinned: !page.isPinned })}
                 showDeleteButton={!isReadOnlyPage}
                 onDelete={isReadOnlyPage ? undefined : () => requestDelete({
                   itemType: 'page',
@@ -968,9 +965,6 @@ const PageDetailView: React.FC<PageDetailViewProps> = ({
               }
               
               currentPage={page}
-              showPinButton={!isReadOnlyPage}
-              isPinned={page.isPinned}
-              onTogglePin={isReadOnlyPage ? undefined : () => onUpdatePage(page.id, { isPinned: !page.isPinned })}
               showDeleteButton={!isReadOnlyPage}
               onDelete={isReadOnlyPage ? undefined : () => requestDelete({
                 itemType: 'page',
@@ -1112,9 +1106,6 @@ const PageDetailView: React.FC<PageDetailViewProps> = ({
           }
           
           currentPage={page}
-          showPinButton={!editingContent && !isReadOnlyPage}
-          isPinned={page.isPinned}
-          onTogglePin={isReadOnlyPage ? undefined : () => onUpdatePage(page.id, { isPinned: !page.isPinned })}
           showDeleteButton={!editingContent && !isReadOnlyPage}
           onDelete={isReadOnlyPage ? undefined : () => requestDelete({
             itemType: 'page',
