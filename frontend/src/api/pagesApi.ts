@@ -51,8 +51,8 @@ import { PAGE_METADATA_FIELDS } from '@/lib/syncEngine/utils';
 /**
  * Fields to fetch for list/card views (excludes heavy content field).
  * Derived from PAGE_METADATA_FIELDS + additional PocketBase fields.
- * Includes BOOX file metadata so mirrored notebooks keep their PDF and preview
- * filenames when the store is refreshed from metadata-only queries.
+ * Includes file metadata so pages keep attachment and preview filenames when
+ * the store is refreshed from metadata-only queries.
  */
 const METADATA_FIELDS = [
   'id',

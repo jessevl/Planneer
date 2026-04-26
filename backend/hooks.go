@@ -16,7 +16,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"sync"
 
@@ -144,71 +143,12 @@ func RegisterHooks(app *pocketbase.PocketBase) {
 	registerSSEHook(app)
 	registerThumbnailUploadResponseHook(app)
 	registerPageChildCountHooks(app)
-	registerBooxReadOnlyHooks(app)
 	registerViewModeEnforcementHook(app)
 	registerRegistrationRestrictionHook(app) // Block new registrations
 	registerUserOnboardingHook(app)
 	registerWorkspaceDeletionHook(app)
 	registerWorkspaceUsageHooks(app)
 	registerPageDerivedFieldsHook(app)
-}
-
-func registerBooxReadOnlyHooks(app *pocketbase.PocketBase) {
-	app.OnRecordCreateRequest("pages").BindFunc(func(e *core.RecordRequestEvent) error {
-		parentID := e.Record.GetString("parentId")
-		if parentID == "" {
-			return e.Next()
-		}
-
-		parentPage, err := app.FindRecordById("pages", parentID)
-		if err == nil && parentPage.GetBool("isReadOnly") && parentPage.GetString("sourceOrigin") == booxSourceOrigin {
-			return e.ForbiddenError("Mirrored BOOX collections are read-only", nil)
-		}
-
-		return e.Next()
-	})
-
-	app.OnRecordUpdateRequest("pages").BindFunc(func(e *core.RecordRequestEvent) error {
-		if !e.Record.GetBool("isReadOnly") || e.Record.GetString("sourceOrigin") != booxSourceOrigin {
-			return e.Next()
-		}
-
-		original := e.Record.Original()
-		if original == nil {
-			return e.Next()
-		}
-
-		sourceOwnedFields := []string{
-			"title",
-			"content",
-			"excerpt",
-			"icon",
-			"color",
-			"coverImage",
-			"coverGradient",
-			"coverAttribution",
-			"viewMode",
-			"parentId",
-			"order",
-			"files",
-			"images",
-			"tags",
-		}
-		for _, fieldName := range sourceOwnedFields {
-			if !reflect.DeepEqual(e.Record.Get(fieldName), original.Get(fieldName)) {
-				return e.ForbiddenError("Mirrored BOOX pages are read-only", nil)
-			}
-		}
-
-		return e.Next()
-	})
-
-	app.OnRecordDeleteRequest("pages").BindFunc(func(e *core.RecordRequestEvent) error {
-		if e.Record.GetBool("isReadOnly") && e.Record.GetString("sourceOrigin") == booxSourceOrigin {
-			return e.ForbiddenError("Mirrored BOOX notebooks cannot be deleted manually", nil)
-		}
-		return e.Next()
-	})
 }
 
 // ============================================================================

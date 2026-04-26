@@ -24,7 +24,6 @@ import WorkspaceMembersSettings from '@/components/settings/sections/WorkspaceMe
 import WorkspaceDataSettings from '@/components/settings/sections/WorkspaceDataSettings';
 import WorkspaceDangerSettings from '@/components/settings/sections/WorkspaceDangerSettings';
 import PomodoroSettings from '@/components/settings/sections/PomodoroSettings';
-import BooxIntegrationSettings from '@/components/settings/sections/BooxIntegrationSettings';
 import StorageSettings from './StorageSettings';
 import WhisperModelsSettings from './WhisperModelsSettings';
 import ProductivityDashboard from '@/components/common/ProductivityDashboard';
@@ -33,7 +32,7 @@ import { useSettingsStore } from '@/stores/settingsStore';
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export type SettingsSection =
-  | 'general' | 'boox' | 'account' | 'storage' | 'ai-models'
+  | 'general' | 'account' | 'storage' | 'ai-models'
   | 'workspace-general' | 'workspace-members' | 'workspace-data' | 'workspace-danger'
   | 'productivity' | 'pomodoro' | 'about';
 
@@ -64,7 +63,6 @@ const navGroups: NavGroup[] = [
     title: 'Workspace',
     items: [
       { id: 'workspace-general', label: 'Settings', icon: <Building2 className="w-5 h-5" /> },
-      { id: 'boox', label: 'BOOX Integration', icon: <Download className="w-5 h-5" /> },
       { id: 'workspace-members', label: 'Members', icon: <Users className="w-5 h-5" />, adminOnly: true },
       { id: 'workspace-data', label: 'Import / Export', icon: <Download className="w-5 h-5" /> },
       { id: 'workspace-danger', label: 'Danger Zone', icon: <TrashIcon className="w-5 h-5" /> },
@@ -119,7 +117,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, initialS
   const renderSection = () => {
     switch (activeSection) {
       case 'general': return <GeneralSettings />;
-      case 'boox': return <BooxIntegrationSettings />;
       case 'account': return <AccountSettings onClose={onClose} />;
       case 'storage': return <StorageSettings />;
       case 'ai-models': return <WhisperModelsSettings />;

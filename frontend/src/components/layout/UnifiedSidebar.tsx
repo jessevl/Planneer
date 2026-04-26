@@ -53,7 +53,6 @@ import SidebarHeader from './SidebarHeader';
 import { useIsMobile } from '@frameer/hooks/useMobileDetection';
 import { usePageOperations } from '@/hooks/usePageOperations';
 import { buildPageMenuItems } from '@/hooks/usePageContextMenu';
-import { filterOutBooxPages, filterOutBooxTree } from '@/lib/pageUtils';
 
 // Types
 import type { Page, PageTreeNode, PageViewMode } from '@/types/page';
@@ -321,8 +320,6 @@ interface MainNavigationProps {
   isPages: boolean;
   isGraph: boolean;
   isTasks: boolean;
-  isHandwritten: boolean;
-  shouldShowHandwrittenNav: boolean;
   currentDateLabel: string;
   pagesEditedRecently: number;
   sidebarCounts: {
@@ -334,7 +331,6 @@ interface MainNavigationProps {
   onNavigateToPages: () => void;
   onNavigateToGraph: () => void;
   onNavigateToTasks: () => void;
-  onNavigateToHandwritten: () => void;
   taskFilterFromStore: string | null;
 }
 
@@ -400,8 +396,6 @@ const MainNavigation: React.FC<MainNavigationProps> = React.memo(({
   isPages,
   isGraph,
   isTasks,
-  isHandwritten,
-  shouldShowHandwrittenNav,
   currentDateLabel,
   pagesEditedRecently,
   sidebarCounts,
@@ -409,7 +403,6 @@ const MainNavigation: React.FC<MainNavigationProps> = React.memo(({
   onNavigateToPages,
   onNavigateToGraph,
   onNavigateToTasks,
-  onNavigateToHandwritten,
   taskFilterFromStore,
 }) => {
   const { tabsEnabled, homeContextMenu, pagesContextMenu, graphContextMenu, tasksContextMenu } = usePrimaryNavContextMenus(taskFilterFromStore);
@@ -470,17 +463,6 @@ const MainNavigation: React.FC<MainNavigationProps> = React.memo(({
       contextMenuItems: graphContextMenu,
     },
   ];
-
-  if (shouldShowHandwrittenNav) {
-    items.push({
-      key: 'handwritten',
-      icon: <PenLine className="w-5 h-5" />,
-      label: 'BOOX',
-      isActive: isHandwritten,
-      onClick: onNavigateToHandwritten,
-      trailing: <span className="text-[11px] font-medium text-[var(--color-text-tertiary)]">notes</span>,
-    });
-  }
   
   return (
     <nav className="mb-2 grid grid-cols-2 gap-2">
@@ -568,7 +550,6 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
   const isPages = currentPath === '/pages' || currentPath.startsWith('/pages/');
   const isGraph = currentPath === '/graph';
   const isTasks = currentPath.startsWith('/tasks');
-  const isHandwritten = currentPath === '/handwritten' || currentPath.startsWith('/handwritten/');
   
   // Extract IDs from URL params
   const selectedPageId = currentPath.startsWith('/pages/') ? currentPath.replace('/pages/', '') : null;
@@ -679,7 +660,6 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
     const cutoff = dayjs(todayISO).subtract(7, 'day');
     let count = 0;
     for (const page of Object.values(pagesById)) {
-      if (page.sourceOrigin === 'boox') continue;
       if (page.updated && dayjs(page.updated).isAfter(cutoff)) count++;
     }
     return count;
@@ -770,11 +750,6 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
       navigate({ to: '/tasks/$filter', params: { filter: taskFilterFromStore || 'all' } });
     }
   }, [requestNavigation, navigate, closeDrawer, taskFilterFromStore]);
-
-  const handleNavigateToHandwritten = useCallback(() => {
-    closeDrawer();
-    navigate({ to: '/handwritten' });
-  }, [closeDrawer, navigate]);
 
   // ============================================================================
   // PAGE HANDLERS
@@ -927,9 +902,8 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
   // ============================================================================
   // COMPUTED VALUES
   // ============================================================================
-  const visiblePageTree = useMemo(() => filterOutBooxTree(pageTree), [pageTree]);
+  const visiblePageTree = pageTree;
   const genericPageTree = useMemo(() => convertPageTree(visiblePageTree), [visiblePageTree]);
-  const shouldShowHandwrittenNav = true;
   const selectedPage = selectedPageId ? pagesById[selectedPageId] : null;
   const selectedPageIsInbox = selectedPage ? isInboxPlacement(selectedPage.parentId, selectedPage.isTopLevel) : false;
   // Pages tile is active only on the /pages index, not when viewing a specific page
@@ -940,15 +914,11 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
   const recentOpenedPageIds = useNavigationStore((state) => state.recentOpenedPageIds);
   const recordOpenedPage = useNavigationStore((state) => state.recordOpenedPage);
   const userPageCount = useMemo(
-    () => pages.filter((page) => !page.isDailyNote && page.sourceOrigin !== 'boox').length,
+    () => pages.filter((page) => !page.isDailyNote).length,
     [pages],
   );
   const inboxPages = useMemo(
-    () => pages.filter((page) => !page.isDailyNote && page.sourceOrigin !== 'boox' && isInboxPlacement(page.parentId, page.isTopLevel)),
-    [pages],
-  );
-  const handwrittenNotebookCount = useMemo(
-    () => pages.filter((page) => page.sourceOrigin === 'boox' && page.sourceItemType === 'notebook').length,
+    () => pages.filter((page) => !page.isDailyNote && isInboxPlacement(page.parentId, page.isTopLevel)),
     [pages],
   );
   const currentDateLabel = useMemo(() => dayjs(todayISO).format('ddd, MMM D'), [todayISO]);
@@ -960,7 +930,7 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
     }
 
     const page = pagesById[activeRecentPageId];
-    if (!page || page.isDailyNote || page.sourceOrigin === 'boox') {
+    if (!page || page.isDailyNote) {
       return;
     }
 
@@ -970,7 +940,7 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
   const recentPages = useMemo(
     () => recentOpenedPageIds
       .map((pageId: string) => pagesById[pageId])
-      .filter((page: Page | undefined): page is Page => !!page && !page.isDailyNote && page.sourceOrigin !== 'boox')
+      .filter((page: Page | undefined): page is Page => !!page && !page.isDailyNote)
       .slice(0, recentPagesCount),
     [pagesById, recentOpenedPageIds, recentPagesCount],
   );
@@ -978,7 +948,7 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
 
 
   const sidebarPages = useMemo((): SidebarPage[] => 
-    filterOutBooxPages(pages).map((n: Page) => ({
+    pages.map((n: Page) => ({
       id: n.id,
       title: n.title,
       icon: n.icon,
@@ -992,7 +962,7 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
 
   const railPages = useMemo(
     () => pages
-      .filter((page) => !page.isDailyNote && page.sourceOrigin !== 'boox' && page.isTopLevel && isRootLevel(page.parentId))
+      .filter((page) => !page.isDailyNote && page.isTopLevel && isRootLevel(page.parentId))
       .sort((a, b) => a.order - b.order || (a.title || '').localeCompare(b.title || ''))
       .slice(0, 18)
       .map((n): SidebarPage => ({
@@ -1175,14 +1145,6 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
           <SidebarRailButton icon={<PagesIcon />} label="All pages" isActive={pagesNavActive} onClick={handleNavigateToPages} contextMenuItems={pagesContextMenu} />
           <SidebarRailButton icon={<CheckIcon />} label="Tasks" isActive={isTasks} onClick={handleNavigateToTasks} contextMenuItems={tasksContextMenu} />
           <SidebarRailButton icon={<Network />} label="Graph" isActive={isGraph} onClick={handleNavigateToGraph} contextMenuItems={graphContextMenu} />
-          {shouldShowHandwrittenNav ? (
-            <SidebarRailButton
-              icon={<PenLine />}
-              label="Handwritten notes"
-              isActive={isHandwritten}
-              onClick={handleNavigateToHandwritten}
-            />
-          ) : null}
 
           <div className="my-1 h-px w-7 bg-[var(--color-border-default)]/70" />
 
@@ -1305,27 +1267,24 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
         {/* Main Navigation - Home always shown, others hidden on mobile (moved to FAB) */}
         <div className="px-1">
           <MainNavigation 
-          isHome={isHome}
-          isPages={pagesNavActive}
-          isGraph={isGraph}
-          isTasks={isTasks}
-          isHandwritten={isHandwritten}
-          shouldShowHandwrittenNav={shouldShowHandwrittenNav}
-          currentDateLabel={currentDateLabel}
-          pagesEditedRecently={pagesEditedRecently}
-          sidebarCounts={sidebarCounts}
-          onNavigateToHome={handleNavigateToHome}
-          onNavigateToPages={handleNavigateToPages}
-          onNavigateToGraph={handleNavigateToGraph}
-          onNavigateToTasks={handleNavigateToTasks}
-          onNavigateToHandwritten={handleNavigateToHandwritten}
-          taskFilterFromStore={taskFilterFromStore}
-        />
+            isHome={isHome}
+            isPages={pagesNavActive}
+            isGraph={isGraph}
+            isTasks={isTasks}
+            currentDateLabel={currentDateLabel}
+            pagesEditedRecently={pagesEditedRecently}
+            sidebarCounts={sidebarCounts}
+            onNavigateToHome={handleNavigateToHome}
+            onNavigateToPages={handleNavigateToPages}
+            onNavigateToGraph={handleNavigateToGraph}
+            onNavigateToTasks={handleNavigateToTasks}
+            taskFilterFromStore={taskFilterFromStore}
+          />
         </div>
 
         <Divider className="my-1.5" />
 
-        <div className={`flex min-h-0 flex-1 flex-col overflow-hidden ${isMobile ? 'pb-32' : ''}`}>
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <div
             ref={treeScrollRef}
             className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin"
@@ -1362,7 +1321,12 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
           </div>
 
           {recentPages.length > 0 ? (
-            <section className="mt-auto border-t border-[var(--color-border-default)]/70 px-1 pt-3">
+            <section
+              className={cn(
+                'border-t border-[var(--color-border-default)]/70 px-1 pt-3',
+                isMobile ? 'mt-3' : 'mt-auto',
+              )}
+            >
               <div className="mb-2 flex items-center gap-2 px-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-text-tertiary)]">
                 <ClockIcon className="h-3.5 w-3.5" />
                 <span>Recently opened</span>

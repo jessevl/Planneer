@@ -47,13 +47,10 @@ interface ViewPreferences {
 }
 
 // Notes-specific view preferences (stored separately for clarity)
-export type NotesFilterType = 'all' | 'notes' | 'collections' | 'tasks' | 'handwritten';
+export type NotesFilterType = 'all' | 'notes' | 'collections' | 'tasks';
 export type NotesGroupBy = 'none' | 'date';
 export type NotesSortBy = 'updated' | 'created' | 'title';
 export type NotesSortDirection = 'asc' | 'desc';
-export type HandwrittenGroupBy = 'none' | 'date';
-export type HandwrittenSortBy = 'updated' | 'created' | 'title';
-export type HandwrittenSortDirection = 'asc' | 'desc';
 
 interface NavigationState {
   // Current Location (unified - no more currentApp)
@@ -87,13 +84,6 @@ interface NavigationState {
   pagesSortDirection: NotesSortDirection;
   pagesShowExcerpts: boolean;
   pagesTagFilter: string[];
-
-  // Handwritten library view state (persisted)
-  handwrittenViewMode: ViewMode;
-  handwrittenGroupBy: HandwrittenGroupBy;
-  handwrittenSortBy: HandwrittenSortBy;
-  handwrittenSortDirection: HandwrittenSortDirection;
-  handwrittenShowExcerpts: boolean;
 
   // Actions
   navigateToView: (view: UnifiedView) => void;
@@ -139,12 +129,6 @@ interface NavigationState {
   setPagesSortDirection: (direction: NotesSortDirection) => void;
   setPagesShowExcerpts: (show: boolean) => void;
   setPagesTagFilter: (tags: string[]) => void;
-
-  setHandwrittenViewMode: (mode: ViewMode) => void;
-  setHandwrittenGroupBy: (groupBy: HandwrittenGroupBy) => void;
-  setHandwrittenSortBy: (sortBy: HandwrittenSortBy) => void;
-  setHandwrittenSortDirection: (direction: HandwrittenSortDirection) => void;
-  setHandwrittenShowExcerpts: (show: boolean) => void;
 
 }
 
@@ -230,11 +214,6 @@ export const useNavigationStore = create<NavigationState>()(
         pagesSortDirection: 'desc' as NotesSortDirection,
         pagesShowExcerpts: true,
         pagesTagFilter: [],
-        handwrittenViewMode: 'kanban' as ViewMode,
-        handwrittenGroupBy: 'none' as HandwrittenGroupBy,
-        handwrittenSortBy: 'updated' as HandwrittenSortBy,
-        handwrittenSortDirection: 'desc' as HandwrittenSortDirection,
-        handwrittenShowExcerpts: true,
 
         navigateToView: (view) => {
           // Clear all selections when navigating to a different view
@@ -418,11 +397,6 @@ export const useNavigationStore = create<NavigationState>()(
               pagesFilterBy: 'all' as NotesFilterType,
               pagesShowExcerpts: true,
               pagesTagFilter: [],
-              handwrittenViewMode: 'kanban' as ViewMode,
-              handwrittenGroupBy: 'none' as HandwrittenGroupBy,
-              handwrittenSortBy: 'updated' as HandwrittenSortBy,
-              handwrittenSortDirection: 'desc' as HandwrittenSortDirection,
-              handwrittenShowExcerpts: true,
             },
             false,
             'resetViewPreferences'
@@ -453,21 +427,6 @@ export const useNavigationStore = create<NavigationState>()(
         },
         setPagesTagFilter: (tags) => {
           set({ pagesTagFilter: tags }, false, 'setPagesTagFilter');
-        },
-        setHandwrittenViewMode: (mode) => {
-          set({ handwrittenViewMode: mode }, false, 'setHandwrittenViewMode');
-        },
-        setHandwrittenGroupBy: (groupBy) => {
-          set({ handwrittenGroupBy: groupBy }, false, 'setHandwrittenGroupBy');
-        },
-        setHandwrittenSortBy: (sortBy) => {
-          set({ handwrittenSortBy: sortBy }, false, 'setHandwrittenSortBy');
-        },
-        setHandwrittenSortDirection: (direction) => {
-          set({ handwrittenSortDirection: direction }, false, 'setHandwrittenSortDirection');
-        },
-        setHandwrittenShowExcerpts: (show) => {
-          set({ handwrittenShowExcerpts: show }, false, 'setHandwrittenShowExcerpts');
         },
       }),
       {
@@ -505,11 +464,6 @@ export const useNavigationStore = create<NavigationState>()(
             pagesFilterBy: state.pagesFilterBy,
             pagesShowExcerpts: state.pagesShowExcerpts,
             pagesTagFilter: state.pagesTagFilter,
-            handwrittenViewMode: state.handwrittenViewMode,
-            handwrittenGroupBy: state.handwrittenGroupBy,
-            handwrittenSortBy: state.handwrittenSortBy,
-            handwrittenSortDirection: state.handwrittenSortDirection,
-            handwrittenShowExcerpts: state.handwrittenShowExcerpts,
             selectedTaskPageId: state.selectedTaskPageId,
           };
           return partial;
@@ -530,11 +484,6 @@ export const useNavigationStore = create<NavigationState>()(
             pagesFilterBy: p.pagesFilterBy ?? p.notesFilterBy ?? current.pagesFilterBy,
             taskFilterOptions: p.taskFilterOptions ?? current.taskFilterOptions,
             pagesTagFilter: p.pagesTagFilter ?? [],
-            handwrittenViewMode: p.handwrittenViewMode ?? current.handwrittenViewMode,
-            handwrittenGroupBy: p.handwrittenGroupBy ?? current.handwrittenGroupBy,
-            handwrittenSortBy: p.handwrittenSortBy ?? current.handwrittenSortBy,
-            handwrittenSortDirection: p.handwrittenSortDirection ?? current.handwrittenSortDirection,
-            handwrittenShowExcerpts: p.handwrittenShowExcerpts ?? current.handwrittenShowExcerpts,
             sidebarVisible: p.sidebarVisible ?? false,
             sidebarPinned: p.sidebarPinned ?? false,
             sidePanelOpen: p.sidePanelOpen ?? false,

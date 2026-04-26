@@ -45,7 +45,6 @@ import { CustomTodoListElements, LocalCalloutUI, LocalListsUI, LocalTabsUI } fro
 import { EditorSlashMenu, EditorFloatingToolbar, EditorFloatingBlockActions } from '@/plugins/yoopta/editor-ui';
 import MobileEditorToolbar from './MobileEditorToolbar';
 import MobileActionMenu from './MobileActionMenu';
-import BooxPageEmbedPicker from './BooxPageEmbedPicker';
 import { 
   InternalLink, 
   AdvancedTablePlugin,
@@ -54,7 +53,7 @@ import {
   ImageCommands,
   BookmarkPlugin,
   PdfPlugin,
-  BooxPageEmbedPlugin,
+  ScribblePlugin,
   TranscriptionPlugin,
   ExcalidrawPlugin,
 } from '@/plugins/yoopta';
@@ -75,7 +74,6 @@ import { processImageForUpload } from '@/lib/imageUtils';
 import { uploadPageImage, removePageImage } from '@/api/pagesApi';
 import { PageEditorProvider } from '@/contexts';
 import { isGranularKey } from '@/lib/crdt';
-import { BOOX_PAGE_EMBED_BLOCK_TYPE, type BooxPageEmbedData } from '@/lib/booxPageEmbed';
 import { limitSizes } from '@/plugins/yoopta/image/limitSizes';
 import type { ImagePluginOptions } from '@/plugins/yoopta/image/types';
 
@@ -153,7 +151,7 @@ const basePlugins = [
   TableOfContentsPlugin,
   BookmarkPlugin,
   PdfPlugin,
-  BooxPageEmbedPlugin,
+  ScribblePlugin,
   TranscriptionPlugin,
   ExcalidrawPlugin,
   ThemedTabs,
@@ -611,7 +609,6 @@ const PageEditor: React.FC<PageEditorProps> = ({
   const [isUploadingDrop, setIsUploadingDrop] = useState(false);
   const [isEditorFocused, setIsEditorFocused] = useState(false);
   const [isLinkPickerOpen, setIsLinkPickerOpen] = useState(false);
-  const [isBooxPagePickerOpen, setIsBooxPagePickerOpen] = useState(false);
   const [isMobileActionMenuOpen, setIsMobileActionMenuOpen] = useState(false);
   const [inlineTagPicker, setInlineTagPicker] = useState<InlineTagPickerState | null>(null);
   // Track placeholder block to replace when inserting custom void blocks.
@@ -1178,11 +1175,6 @@ const PageEditor: React.FC<PageEditorProps> = ({
     setIsLinkPickerOpen(true);
   }, []);
 
-  const handleActionMenuBooxPage = useCallback((blockIdToDelete?: string) => {
-    blockToDeleteRef.current = blockIdToDelete;
-    setIsBooxPagePickerOpen(true);
-  }, []);
-
   // Handler for slash menu "Columns": replaces the current block with two
   // side-by-side paragraph blocks using the column layout system.
   const handleColumnsInsert = useCallback((blockIdToReplace?: string) => {
@@ -1246,11 +1238,6 @@ const PageEditor: React.FC<PageEditorProps> = ({
       return;
     }
 
-    if (blockType === BOOX_PAGE_EMBED_BLOCK_TYPE) {
-      handleActionMenuBooxPage();
-      return;
-    }
-
     if (blockType === 'Columns') {
       handleColumnsInsert();
       return;
@@ -1267,7 +1254,7 @@ const PageEditor: React.FC<PageEditorProps> = ({
     } catch (err) {
       console.error('[PageEditor] Failed to insert block directly:', err);
     }
-  }, [editor, handleActionMenuBooxPage, handleActionMenuInternalLink, handleColumnsInsert]);
+  }, [editor, handleActionMenuInternalLink, handleColumnsInsert]);
 
   // Close action menu on scroll (standard UX pattern for floating menus)
   useEffect(() => {
@@ -1763,107 +1750,6 @@ const PageEditor: React.FC<PageEditorProps> = ({
     }
   }, [editor, setDraftContent, saveCurrentPage]);
 
-  const handleBooxPageEmbedSelect = useCallback((selections: BooxPageEmbedData[]) => {
-    if (selections.length === 0) {
-      return;
-    }
-
-    const blockIdToDelete = blockToDeleteRef.current;
-    blockToDeleteRef.current = undefined;
-
-    const sortedSelections = [...selections].sort((left, right) => left.pageNumber - right.pageNumber);
-
-    if (blockIdToDelete) {
-      const oldBlock = editor.getBlock({ id: blockIdToDelete });
-      const atPosition = oldBlock?.meta?.order ?? editor.path.current;
-
-      try {
-        Blocks.deleteBlock(editor, { blockId: blockIdToDelete });
-      } catch (err) {
-        console.error('[PageEditor] Error deleting placeholder block for BOOX embed', err);
-      }
-
-      sortedSelections.forEach((selection, index) => {
-        const elementData = {
-          id: generateId(),
-          type: 'boox-page-embed',
-          children: [{ text: '' }],
-          props: {
-            nodeType: 'void' as const,
-            notebookId: selection.notebookId,
-            notebookPageId: selection.notebookPageId,
-            notebookTitle: selection.notebookTitle,
-            pageNumber: selection.pageNumber,
-            previewImageUrl: selection.previewImageUrl,
-            sourcePdfUrl: selection.sourcePdfUrl,
-            sourceModifiedAt: selection.sourceModifiedAt,
-          },
-        };
-
-        const blockData = buildBlockData({
-          type: BOOX_PAGE_EMBED_BLOCK_TYPE,
-          value: [elementData],
-        });
-
-        try {
-          Blocks.insertBlock(editor, blockData.type, {
-            at: atPosition !== null && atPosition !== undefined ? atPosition + index : undefined,
-            focus: false,
-            blockData,
-          });
-        } catch (err) {
-          console.error('[PageEditor] Error inserting BOOX page embed block', err);
-        }
-      });
-    } else {
-      sortedSelections.forEach((selection, index) => {
-        const elementData = {
-          id: generateId(),
-          type: 'boox-page-embed',
-          children: [{ text: '' }],
-          props: {
-            nodeType: 'void' as const,
-            notebookId: selection.notebookId,
-            notebookPageId: selection.notebookPageId,
-            notebookTitle: selection.notebookTitle,
-            pageNumber: selection.pageNumber,
-            previewImageUrl: selection.previewImageUrl,
-            sourcePdfUrl: selection.sourcePdfUrl,
-            sourceModifiedAt: selection.sourceModifiedAt,
-          },
-        };
-
-        const blockData = buildBlockData({
-          type: BOOX_PAGE_EMBED_BLOCK_TYPE,
-          value: [elementData],
-        });
-
-        try {
-          Blocks.insertBlock(editor, blockData.type, {
-            at: editor.path.current !== null && editor.path.current !== undefined ? editor.path.current + index : undefined,
-            focus: false,
-            blockData,
-          });
-        } catch (err) {
-          console.error('[PageEditor] Error inserting BOOX page embed block (fallback)', err);
-        }
-      }
-      );
-    }
-
-    setIsBooxPagePickerOpen(false);
-
-    const currentContent = editor.getEditorValue();
-    if (currentContent) {
-      const contentStr = JSON.stringify(currentContent);
-      setDraftContent(contentStr);
-
-      setTimeout(() => {
-        saveCurrentPage();
-      }, 0);
-    }
-  }, [editor, saveCurrentPage, setDraftContent]);
-
   const handleTitleChange = useCallback((newTitle: string) => {
     setDraftTitle(newTitle);
   }, [setDraftTitle]);
@@ -2308,7 +2194,6 @@ const PageEditor: React.FC<PageEditorProps> = ({
                         <EditorSlashMenu
                           onInternalLinkClick={handleActionMenuInternalLink}
                           onColumnsClick={handleColumnsInsert}
-                          onBooxPageClick={handleActionMenuBooxPage}
                           colMetaRef={colMetaRef}
                         />
                         <EditorFloatingToolbar />
@@ -2367,7 +2252,6 @@ const PageEditor: React.FC<PageEditorProps> = ({
           onClose={() => setIsMobileActionMenuOpen(false)}
           editor={editor}
           onInternalLinkClick={handleActionMenuInternalLink}
-          onBooxPageClick={handleActionMenuBooxPage}
         />
       )}
       
@@ -2378,12 +2262,6 @@ const PageEditor: React.FC<PageEditorProps> = ({
         onSelect={handleInternalLinkSelect}
         selectionFilter="all"
         placeholder="Search tasks and pages to link..."
-      />
-
-      <BooxPageEmbedPicker
-        isOpen={isBooxPagePickerOpen}
-        onClose={() => setIsBooxPagePickerOpen(false)}
-        onSelect={handleBooxPageEmbedSelect}
       />
     </div>
     </PageEditorProvider>

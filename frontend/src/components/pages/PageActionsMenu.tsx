@@ -131,7 +131,7 @@ const PageActionsMenu: React.FC<PageActionsMenuProps> = ({
   const deleteActionItem = useMemo(() => actions.delete({ divider: false }), [actions]);
 
   const showLayoutToggle = !page.isDailyNote;
-  const isReadOnlyMirror = page.isReadOnly && page.sourceOrigin === 'boox';
+  const isReadOnlyMirror = page.isReadOnly && Boolean(page.sourceOrigin);
   const currentViewMode = page.viewMode || 'note';
   const selectedColorName = PRESET_COLORS.find(c => c.color === page.color)?.name || 'Custom';
 
@@ -150,7 +150,7 @@ const PageActionsMenu: React.FC<PageActionsMenuProps> = ({
     <div className={cn('px-2 pb-1', isMobile ? 'pt-1' : 'pt-2')}>
       {isReadOnlyMirror && (
         <div className="mb-2 rounded-lg border border-[var(--color-border-default)] bg-[var(--color-surface-secondary)] px-3 py-2 text-xs text-[var(--color-text-secondary)]">
-          This BOOX mirror is read-only. Title and page mode are managed by sync.
+          This mirrored page is read-only. Title and page mode are managed by the external source.
         </div>
       )}
 

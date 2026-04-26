@@ -9,7 +9,7 @@
  * - TableOfContentsPlugin: Dynamic TOC from document headings
  * - BookmarkPlugin: Rich link preview cards
  * - PdfPlugin: Inline PDF embedding
- * - BooxPageEmbedPlugin: Embedded read-only BOOX notebook pages
+ * - ScribblePlugin: Inline handwriting pages with fullscreen ink editing
  * - TranscriptionPlugin: Voice-to-text via local Whisper AI
  * - TodoListRender: Custom checkbox render for TodoList
  * - actionMenuData: Shared block type data for action menus
@@ -60,12 +60,16 @@ export {
   type PdfElementProps,
 } from './pdf';
 
-// BOOX Page Embed Plugin - read-only notebook page snapshot blocks
+// Scribble Plugin - finite handwriting pages with fullscreen editing
 export {
-  BooxPageEmbedPlugin,
-  type BooxPageEmbedElementMap,
-  type BooxPageEmbedElementProps,
-} from './boox-page-embed';
+  ScribblePlugin,
+  ScribbleCommands,
+  type ScribbleElementMap,
+  type ScribbleElementProps,
+  type ScribbleSnapshot,
+  type ScribbleStroke,
+  type ScribbleTool,
+} from './scribble';
 
 // Transcription Plugin - voice-to-text using local Whisper AI
 export {

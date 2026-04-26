@@ -1,7 +1,7 @@
 /**
  * @file PdfDocumentViewer.tsx
- * @description Shared PDF document viewer used by inline embeds and standalone notebook pages
- * @app SHARED - Used by BOOX notebook pages and the Yoopta PDF plugin
+ * @description Shared PDF document viewer used by inline embeds and standalone PDF pages
+ * @app SHARED - Used by PDF-backed pages and the Yoopta PDF plugin
  *
  * Features:
  * - Inline iframe PDF rendering
@@ -9,7 +9,6 @@
  * - Shared viewer chrome with open-in-tab affordance
  *
  * Used by:
- * - BooxNotebookView
  * - PdfRender
  */
 

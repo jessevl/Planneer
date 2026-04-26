@@ -1932,7 +1932,7 @@ export const useRecentPages = (limit: number = 6) => {
   
   return useMemo(() => {
     return Object.values(pagesById)
-      .filter((page) => !page.isDailyNote && page.sourceOrigin !== 'boox')
+      .filter((page) => !page.isDailyNote)
       .sort((a, b) => new Date(b.updated).getTime() - new Date(a.updated).getTime())
       .slice(0, limit);
   }, [pagesById, limit]);
@@ -1946,7 +1946,7 @@ export const useInboxPages = () => {
 
   return useMemo(() => {
     return Object.values(pagesById)
-      .filter((page) => !page.isDailyNote && page.sourceOrigin !== 'boox' && isInboxPlacement(page.parentId, page.isTopLevel))
+      .filter((page) => !page.isDailyNote && isInboxPlacement(page.parentId, page.isTopLevel))
       .sort((a, b) => new Date(b.updated).getTime() - new Date(a.updated).getTime());
   }, [pagesById]);
 };

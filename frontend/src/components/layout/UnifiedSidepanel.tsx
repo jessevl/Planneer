@@ -489,10 +489,10 @@ const MetadataTabContent: React.FC<{
   const infoRows = [
     {
       label: 'Type',
-      value: currentPage.sourceOrigin === 'boox'
+      value: currentPage.sourceOrigin
         ? currentPage.sourceItemType === 'root'
-          ? 'boox root collection'
-          : `boox ${currentPage.sourceItemType ?? currentPage.viewMode}`
+          ? `${currentPage.sourceOrigin} root collection`
+          : `${currentPage.sourceOrigin} ${currentPage.sourceItemType ?? currentPage.viewMode}`
         : currentPage.viewMode,
     },
     { label: 'Created', value: formatDateTime(currentPage.created) },
@@ -501,9 +501,9 @@ const MetadataTabContent: React.FC<{
     { label: 'Tasks', value: String(directTaskCount) },
     { label: 'Parent', value: parentPage?.title ?? 'Workspace root' },
     { label: 'Cover', value: coverLabel },
-    ...(currentPage.sourceOrigin === 'boox'
+    ...(currentPage.sourceOrigin
       ? [
-          { label: 'Mirror source', value: 'WebDAV / BOOX' },
+          { label: 'Mirror source', value: currentPage.sourceOrigin },
           { label: 'Source path', value: currentPage.sourcePath || 'Unknown' },
           { label: 'Remote created', value: formatDateTime(currentPage.sourceCreatedAt || '') },
           { label: 'Remote updated', value: formatDateTime(currentPage.sourceModifiedAt || '') },

@@ -229,35 +229,6 @@ export function extractPagePreview(content: string, maxLines: number = 4): strin
   }
 }
 
-export function isBooxPage(page: Pick<Page, 'sourceOrigin'> | null | undefined): boolean {
-  return page?.sourceOrigin === 'boox';
-}
-
-export function isBooxRootPage(page: Pick<Page, 'sourceOrigin' | 'sourceItemType'> | null | undefined): boolean {
-  return page?.sourceOrigin === 'boox' && page?.sourceItemType === 'root';
-}
-
-export function isBooxNotebookPage(page: Pick<Page, 'sourceOrigin' | 'sourceItemType'> | null | undefined): boolean {
-  return page?.sourceOrigin === 'boox' && page?.sourceItemType === 'notebook';
-}
-
-export function filterOutBooxPages<T extends Page>(pages: T[]): T[] {
-  return pages.filter((page) => !isBooxPage(page));
-}
-
-export function filterOutBooxTree(nodes: PageTreeNode[]): PageTreeNode[] {
-  return nodes
-    .filter((node) => !isBooxPage(node.page))
-    .map((node) => ({
-      ...node,
-      children: filterOutBooxTree(node.children),
-    }));
-}
-
-export function findBooxRootPage<T extends Page>(pages: T[]): T | null {
-  return pages.find((page) => isBooxRootPage(page)) ?? null;
-}
-
 // Backward compatibility alias
 export const extractNotePreview = extractPagePreview;
 

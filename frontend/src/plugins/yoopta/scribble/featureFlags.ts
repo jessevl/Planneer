@@ -1,0 +1,1 @@
+export const SCRIBBLE_FEATURES_ENABLED = true;

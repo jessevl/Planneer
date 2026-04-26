@@ -51,7 +51,6 @@ import { useWorkspaceStore } from '@/stores/workspaceStore';
 import { syncEngine } from '@/lib/syncEngine/index';
 import { onAuthError, pb } from '@/lib/pocketbase';
 import { isSessionExpired, logError } from '@/lib/errors';
-import { ensureBooxIntegrationFresh } from '@/api/booxApi';
 import { devLog } from '@/lib/config';
 import { MobileLayoutProvider } from '@/contexts/MobileLayoutContext';
 import { PageTransition } from '@/components/layout/PageTransition';
@@ -409,24 +408,6 @@ function RootLayout() {
     loadData();
   }, [appState]);
 
-  useEffect(() => {
-    if (appState !== 'ready' || !currentWorkspaceId) {
-      return;
-    }
-
-    let cancelled = false;
-
-    ensureBooxIntegrationFresh(currentWorkspaceId)
-      .then((result) => {
-        if (result && !cancelled) {
-          return usePagesStore.getState().loadPages({ sortBy: 'updated', sortDirection: 'desc' });
-        }
-      })
-      .catch((error) => devLog('[BOOX] auto-refresh skipped', error));
-
-    return () => { cancelled = true; };
-  }, [appState, currentWorkspaceId]);
-  
   // Visibility-based sync is handled by the SyncEngine's own visibilitychange listener
   // (skips <30s hides, delta sync for 30s-5min, full refresh for 5min+)
 

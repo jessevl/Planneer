@@ -48,7 +48,7 @@ export interface TaskFilterOptions {
  */
 export interface PageFilterOptions {
   /** Filter by page type. 'all' = no filter. */
-  filterBy: 'all' | 'notes' | 'collections' | 'tasks' | 'handwritten';
+  filterBy: 'all' | 'notes' | 'collections' | 'tasks';
   /** Filter to specific tags. Empty = show all tags. */
   tags: string[];
 }

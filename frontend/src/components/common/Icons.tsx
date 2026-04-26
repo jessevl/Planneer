@@ -531,6 +531,16 @@ export const WhiteboardIcon: React.FC<{ className?: string }> = ({ className }) 
   </svg>
 );
 
+export const ScribbleIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="4" y="3" width="14" height="18" rx="2" />
+    <path d="M8 7h6" />
+    <path d="M8 13c1.6-1.8 4.6-2.4 6-.9" />
+    <path d="M18 14l2.5-2.5a1.4 1.4 0 0 0-2-2L16 12" />
+    <path d="M15.5 12.5l2 2" />
+  </svg>
+);
+
 // Menu/Hamburger icon - three horizontal lines
 export const MenuIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

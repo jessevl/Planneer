@@ -1,10 +1,10 @@
 /**
  * @file PdfFirstPagePreview.tsx
- * @description Thumbnail preview renderer for mirrored PDF cards
- * @app SHARED - Used by BOOX notebook cards
+ * @description Thumbnail preview renderer for PDF-backed page cards
+ * @app SHARED - Used by PDF preview cards
  *
  * Features:
- * - Shows backend-generated PNG thumbnails for BOOX notebook cards
+ * - Shows backend-generated PNG thumbnails for PDF preview cards
  * - Avoids client-side PDF rendering in overview cards
  * - Provides a stable empty state when the backend preview is missing
  */
@@ -41,7 +41,7 @@ const PdfFirstPagePreview: React.FC<PdfFirstPagePreviewProps> = ({
             PNG preview unavailable
           </div>
           <div className="rounded-2xl border border-dashed border-[var(--color-border-default)] bg-[var(--color-surface-base)]/70 p-3 text-sm">
-            Run BOOX sync again to generate a fresh notebook thumbnail.
+            Refresh the page attachments to generate a fresh thumbnail.
           </div>
           {pageCount ? (
             <div className="text-xs text-[var(--color-text-tertiary)]">

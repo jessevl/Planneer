@@ -30,8 +30,6 @@ interface EditorSlashMenuProps {
   onInternalLinkClick?: (blockIdToDelete?: string) => void;
   /** Callback when Columns is selected. Creates a 2-column layout at the current position. */
   onColumnsClick?: (blockIdToReplace?: string) => void;
-  /** Callback when a BOOX page embed is selected. Receives the current block ID to delete. */
-  onBooxPageClick?: (blockIdToDelete?: string) => void;
   /** Column metadata ref — used to hide Columns option when already in a column */
   colMetaRef?: React.RefObject<ColumnsMetadata>;
 }
@@ -39,7 +37,6 @@ interface EditorSlashMenuProps {
 const EditorSlashMenu: React.FC<EditorSlashMenuProps> = ({
   onInternalLinkClick,
   onColumnsClick,
-  onBooxPageClick,
   colMetaRef,
 }) => {
   const editor = useYooptaEditor();
@@ -91,20 +88,8 @@ const EditorSlashMenu: React.FC<EditorSlashMenuProps> = ({
             },
           }
         : {}),
-      ...(opt.type === 'BooxPageEmbed' && onBooxPageClick
-        ? {
-            onSelect: () => {
-              const currentBlock =
-                editor.path.current !== null
-                  ? editor.getBlock({ at: editor.path.current })
-                  : null;
-              const blockIdToDelete = currentBlock?.id;
-              setTimeout(() => onBooxPageClick(blockIdToDelete), 50);
-            },
-          }
-        : {}),
     }));
-  }, [editor, onInternalLinkClick, onColumnsClick, onBooxPageClick, colMetaRef]);
+  }, [editor, onInternalLinkClick, onColumnsClick, colMetaRef]);
 
   // Bypass our preserveContent:true wrapper for slash menu selections.
   // When the user picks a block type from the "/" menu, the slash text

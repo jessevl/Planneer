@@ -19,7 +19,6 @@ interface MobileActionMenuProps {
   onClose: () => void;
   editor: any;
   onInternalLinkClick: (blockIdToDelete?: string) => void;
-  onBooxPageClick: (blockIdToDelete?: string) => void;
 }
 
 // ============================================================================
@@ -31,7 +30,6 @@ const MobileActionMenu: React.FC<MobileActionMenuProps> = ({
   onClose,
   editor,
   onInternalLinkClick,
-  onBooxPageClick,
 }) => {
   const groupedOptions = useMemo(
     () => groupBlockOptions(BLOCK_OPTIONS),
@@ -49,14 +47,6 @@ const MobileActionMenu: React.FC<MobileActionMenuProps> = ({
       onClose();
       // Delay to let sheet close first
       setTimeout(() => onInternalLinkClick(blockIdToDelete), 50);
-    } else if (option.type === 'BooxPageEmbed') {
-      const currentBlock = editor.path?.current !== null
-        ? editor.getBlock?.({ at: editor.path.current })
-        : null;
-      const blockIdToDelete = currentBlock?.id;
-
-      onClose();
-      setTimeout(() => onBooxPageClick(blockIdToDelete), 50);
     } else {
       // Insert block using Yoopta's API
       try {
@@ -101,7 +91,7 @@ const MobileActionMenu: React.FC<MobileActionMenuProps> = ({
         onClose();
       }
     }
-  }, [editor, onBooxPageClick, onClose, onInternalLinkClick]);
+  }, [editor, onClose, onInternalLinkClick]);
 
   return (
     <MobileSheet

@@ -471,7 +471,6 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
           { v: 'notes', l: 'Notes' },
           { v: 'collections', l: 'Collections' },
           { v: 'tasks', l: 'Tasks' },
-          { v: 'handwritten', l: 'Handwritten' },
         ] as { v: NotesFilterType; l: string }[]).map(({ v, l }) => (
           <OptionRow
             key={v}

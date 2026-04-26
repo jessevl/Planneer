@@ -57,8 +57,8 @@ interface PageCollectionProps {
   onSortByChange?: (sortBy: 'updated' | 'created' | 'title') => void;
   sortDirection?: 'asc' | 'desc';
   onSortDirectionChange?: (direction: 'asc' | 'desc') => void;
-  filterBy?: 'all' | 'notes' | 'collections' | 'tasks' | 'handwritten';
-  onFilterByChange?: (filter: 'all' | 'notes' | 'collections' | 'tasks' | 'handwritten') => void;
+  filterBy?: 'all' | 'notes' | 'collections' | 'tasks';
+  onFilterByChange?: (filter: 'all' | 'notes' | 'collections' | 'tasks') => void;
   /** Page filter options (type + tags) */
   pageFilterOptions?: PageFilterOptions;
   /** Callback to change page filter options */

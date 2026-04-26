@@ -50,7 +50,6 @@ import { useNavigationStore, selectPagesViewState, selectPagesViewActions } from
 import { useIsMobile, useIsDesktop } from '@frameer/hooks/useMobileDetection';
 import { PAGES_PAGINATION } from '@/lib/config';
 import { cn } from '@/lib/design-system';
-import { isBooxPage } from '@/lib/pageUtils';
 import { isInboxPlacement } from '@/lib/treeUtils';
 
 interface PagesViewProps {
@@ -221,14 +220,6 @@ const PagesView: React.FC<PagesViewProps> = ({
     return pagesById[selectedPageId] || null;
   }, [selectedPageId, pagesById]);
 
-  useEffect(() => {
-    if (!routePageId || !selectedPage || !isBooxPage(selectedPage)) {
-      return;
-    }
-
-    navigate({ to: '/handwritten/$id', params: { id: selectedPage.id }, replace: true });
-  }, [navigate, routePageId, selectedPage]);
-
   const canUseRouteSplitView = useMemo(() => {
     return false;
   }, []);
@@ -357,7 +348,6 @@ const PagesView: React.FC<PagesViewProps> = ({
       case 'notes': return 'note';
       case 'collections': return 'collection';
       case 'tasks': return 'tasks page';
-      case 'handwritten': return 'handwritten notebook';
       default: return 'page';
     }
   }, [filterBy]);
@@ -439,10 +429,6 @@ const PagesView: React.FC<PagesViewProps> = ({
 
   // Show page view if a page is selected via route
   if (selectedPage) {
-    if (isBooxPage(selectedPage)) {
-      return null;
-    }
-
     return (
       <PageDetailView
         key={selectedPage.id}

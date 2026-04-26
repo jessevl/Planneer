@@ -50,29 +50,17 @@ describe('settingsStore', () => {
     });
   });
 
-  describe('booxIntegration', () => {
-    it('defaults to disabled', () => {
-      expect(useSettingsStore.getState().booxIntegration.enabled).toBe(false);
-    });
-
-    it('enables the boox integration gate', () => {
-      useSettingsStore.getState().setBooxIntegrationEnabled(true);
-      expect(useSettingsStore.getState().booxIntegration.enabled).toBe(true);
-    });
-  });
-
   describe('resetSettings', () => {
     it('resets all settings to defaults', () => {
       useSettingsStore.getState().setTheme('dark');
       useSettingsStore.getState().setOfflineSettings({ noteContentRetentionDays: 30 });
-      useSettingsStore.getState().setBooxIntegrationEnabled(true);
       
       useSettingsStore.getState().resetSettings();
       
       const state = useSettingsStore.getState();
       expect(state.theme).toBe('system');
       expect(state.offlineSettings.noteContentRetentionDays).toBe(7);
-      expect(state.booxIntegration.enabled).toBe(false);
+      expect(state.sidebar.recentPagesCount).toBe(5);
     });
   });
 });

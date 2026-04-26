@@ -384,9 +384,6 @@ export function applyPageFilterOptions(
       case 'tasks':
         result = result.filter(p => p.viewMode === 'tasks');
         break;
-      case 'handwritten':
-        result = result.filter(p => p.sourceOrigin === 'boox' && p.sourceItemType === 'notebook');
-        break;
     }
   }
 

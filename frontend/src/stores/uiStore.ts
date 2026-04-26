@@ -35,7 +35,7 @@ interface PageMoveState {
 }
 
 // Settings modal section types (mirrors SettingsModal.tsx)
-export type SettingsSection = 'general' | 'boox' | 'account' | 'storage' | 'ai-models' | 'workspace-general' | 'workspace-members' | 'workspace-data' | 'workspace-danger' | 'productivity' | 'pomodoro' | 'about';
+export type SettingsSection = 'general' | 'account' | 'storage' | 'ai-models' | 'workspace-general' | 'workspace-members' | 'workspace-data' | 'workspace-danger' | 'productivity' | 'pomodoro' | 'about';
 
 interface SettingsModalState {
   isOpen: boolean;

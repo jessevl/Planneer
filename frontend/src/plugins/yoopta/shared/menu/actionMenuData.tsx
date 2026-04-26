@@ -23,6 +23,7 @@ import {
   MicIcon,
   LayoutIcon,
   WhiteboardIcon,
+  ScribbleIcon,
   ColumnsIcon,
 } from '@/components/common/Icons';
 
@@ -66,13 +67,13 @@ export const BLOCK_OPTIONS: BlockOption[] = [
   { type: 'TableOfContents', title: 'Table of Contents', description: 'Navigate document headings', icon: <TableOfContentsIcon className="w-5 h-5" />, group: 'Content' },
   { type: 'Tabs', title: 'Tabs', description: 'Tabbed content panels', icon: <LayoutIcon className="w-5 h-5" />, group: 'Content' },
   { type: 'Whiteboard', title: 'Whiteboard', description: 'Draw and diagram', icon: <WhiteboardIcon className="w-5 h-5" />, group: 'Content' },
+  { type: 'Scribble', title: 'Scribble', description: 'Add a full-page handwriting sheet', icon: <ScribbleIcon className="w-5 h-5" />, group: 'Content' },
   { type: 'Columns', title: 'Columns', description: 'Side-by-side block layout', icon: <ColumnsIcon className="w-5 h-5" />, group: 'Content' },
 
   // Links & Media
   { type: 'InternalLink', title: 'Link to Page', description: 'Link to another page', icon: <PinIcon className="w-5 h-5" />, group: 'Links & Media' },
   { type: 'Bookmark', title: 'Bookmark', description: 'Save a link as visual bookmark', icon: <BookmarkIcon className="w-5 h-5" />, group: 'Links & Media' },
   { type: 'Image', title: 'Image', description: 'Upload or embed an image', icon: <ImageIcon className="w-5 h-5" />, group: 'Links & Media' },
-  { type: 'BooxPageEmbed', title: 'BOOX Page', description: 'Embed a page from a synced BOOX notebook', icon: <DocumentIcon className="w-5 h-5" />, group: 'Links & Media' },
   // Temporarily disabled until fully implemented and styled:
   // Video, File, Embed
   { type: 'Pdf', title: 'PDF (Alpha)', description: 'Embed a PDF document', icon: <DocumentIcon className="w-5 h-5" />, group: 'Links & Media' },

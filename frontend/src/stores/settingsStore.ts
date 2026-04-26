@@ -43,16 +43,6 @@ export interface OfflineSettings {
   noteContentRetentionDays: 0 | 7 | 14 | 30;
 }
 
-/**
- * BOOX notebook mirror integration settings.
- * This only gates the feature surface locally; connection secrets and sync
- * orchestration will live in backend-backed configuration.
- */
-export interface BooxIntegrationSettings {
-  /** Enables the BOOX integration UI and related feature paths. */
-  enabled: boolean;
-}
-
 export interface SidebarSettings {
   /** Number of recent pages shown in sidebar quick access. */
   recentPagesCount: 3 | 5 | 8 | 12;
@@ -65,7 +55,6 @@ interface SettingsState {
   accentColor: AccentColor;
   offlineSettings: OfflineSettings;
   sidebar: SidebarSettings;
-  booxIntegration: BooxIntegrationSettings;
   /** Preserved for future browser-style tab support. Hidden in the UI for now. */
   tabsEnabled: boolean;
   /** Preserved flag for future tab setting rollout. */
@@ -80,7 +69,6 @@ interface SettingsState {
   setAccentColor: (color: AccentColor) => void;
   setOfflineSettings: (settings: Partial<OfflineSettings>) => void;
   setSidebarSettings: (settings: Partial<SidebarSettings>) => void;
-  setBooxIntegrationEnabled: (enabled: boolean) => void;
   setTabsEnabled: (enabled: boolean) => void;
   setTabRetentionPolicy: (policy: TabRetentionPolicy) => void;
   resetSettings: () => void;
@@ -97,9 +85,6 @@ const DEFAULT_SETTINGS = {
   sidebar: {
     recentPagesCount: 5,
   } as SidebarSettings,
-  booxIntegration: {
-    enabled: false,
-  } as BooxIntegrationSettings,
   tabsEnabled: false,
   tabsEnabledExplicitlySet: false,
   tabRetentionPolicy: 'all' as TabRetentionPolicy, // Default: keep all tabs
@@ -144,17 +129,6 @@ export const useSettingsStore = create<SettingsState>()(
           }),
           false,
           'setSidebarSettings'
-        ),
-
-        setBooxIntegrationEnabled: (enabled) => set(
-          (state) => ({
-            booxIntegration: {
-              ...state.booxIntegration,
-              enabled,
-            },
-          }),
-          false,
-          'setBooxIntegrationEnabled'
         ),
 
         setTabsEnabled: (enabled) => set(
@@ -202,9 +176,6 @@ export const useSettingsStore = create<SettingsState>()(
             } else if (typeof persisted.einkMode !== 'boolean') {
               persisted.einkMode = false;
             }
-          }
-          if (version <= 6 && persisted && typeof persisted.booxIntegration !== 'object') {
-            persisted.booxIntegration = { enabled: false };
           }
           if (version <= 7 && persisted && typeof persisted.sidebar !== 'object') {
             persisted.sidebar = { recentPagesCount: 5 };

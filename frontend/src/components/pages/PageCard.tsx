@@ -207,17 +207,16 @@ const PageCard: React.FC<PageCardProps> = React.memo(({
     return '';
   }, [page.content, page.excerpt]);
   const hasStructuredPreview = Boolean(page.previewStructured && page.previewStructured.length > 0);
-  const booxPdfFilename = useMemo(() => {
-    if (page.sourceOrigin !== 'boox' || page.sourceItemType !== 'notebook') {
+  const pdfFilename = useMemo(() => {
+    if (!page.previewThumbnail) {
       return null;
     }
     return page.files?.find((file) => file.toLowerCase().endsWith('.pdf')) ?? page.files?.[0] ?? null;
-  }, [page.files, page.sourceItemType, page.sourceOrigin]);
-  const booxPdfUrl = booxPdfFilename ? getPageFileUrl(page.id, booxPdfFilename) : null;
-  const booxThumbUrl = (page.sourceOrigin === 'boox' && page.previewThumbnail)
+  }, [page.files, page.previewThumbnail]);
+  const pdfThumbnailUrl = page.previewThumbnail
     ? getPageFileUrl(page.id, page.previewThumbnail)
     : null;
-  const isBooxNotebook = page.sourceOrigin === 'boox' && page.sourceItemType === 'notebook';
+  const isPdfBackedPage = Boolean(pdfFilename && pdfThumbnailUrl);
   const previewMediaItems = useMemo<PreviewMediaItem[]>(() => {
     const items: PreviewMediaItem[] = [];
     const seenKeys = new Set<string>();
@@ -270,7 +269,7 @@ const PageCard: React.FC<PageCardProps> = React.memo(({
 
     return items;
   }, [page.coverImage, page.files, page.id, page.images]);
-  const hasInlineMediaPreview = previewMediaItems.length > 0 && !isCollection && !isTasks && !isBooxNotebook;
+  const hasInlineMediaPreview = previewMediaItems.length > 0 && !isCollection && !isTasks && !isPdfBackedPage;
 
   const updatedRelative = useMemo(() => dayjs(page.updated).fromNow(), [page.updated]);
   const pageModeBadge = PAGE_MODE_BADGE_CONFIG[page.viewMode] ?? PAGE_MODE_BADGE_CONFIG.note;
@@ -278,8 +277,8 @@ const PageCard: React.FC<PageCardProps> = React.memo(({
     ? 'collection'
     : isTasks
       ? 'tasks'
-      : isBooxNotebook
-        ? 'boox'
+      : isPdfBackedPage
+        ? 'pdf'
         : (page.content || hasStructuredPreview || preview)
           ? 'note'
           : 'meta';
@@ -444,7 +443,7 @@ const PageCard: React.FC<PageCardProps> = React.memo(({
               className={cn(
                 'relative overflow-hidden bg-[color-mix(in_srgb,var(--color-surface-base)_58%,var(--color-surface-inset))]',
                 'h-[168px]',
-                isBooxNotebook ? 'p-0' : 'p-4',
+                isPdfBackedPage ? 'p-0' : 'p-4',
               )}
               style={{ minHeight: CARD_CONFIG.previewHeight }}
             >
@@ -453,10 +452,10 @@ const PageCard: React.FC<PageCardProps> = React.memo(({
                   <CardPreviewCollection pageId={page.id} />
                 ) : previewMode === 'tasks' ? (
                   <CardPreviewTasks pageId={page.id} />
-                ) : previewMode === 'boox' ? (
+                ) : previewMode === 'pdf' ? (
                   <PdfFirstPagePreview
-                    title={page.title || 'BOOX notebook'}
-                    thumbnailUrl={booxThumbUrl}
+                    title={page.title || 'PDF page'}
+                    thumbnailUrl={pdfThumbnailUrl}
                     pageCount={page.sourcePageCount}
                   />
                 ) : hasInlineMediaPreview ? (

@@ -15,13 +15,11 @@ import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PagesRouteImport } from './routes/pages'
 import { Route as InboxRouteImport } from './routes/inbox'
-import { Route as HandwrittenRouteImport } from './routes/handwritten'
 import { Route as GraphRouteImport } from './routes/graph'
 import { Route as ConfirmEmailChangeRouteImport } from './routes/confirm-email-change'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TasksFilterRouteImport } from './routes/tasks.$filter'
 import { Route as PagesIdRouteImport } from './routes/pages.$id'
-import { Route as HandwrittenIdRouteImport } from './routes/handwritten.$id'
 
 const VerifyEmailRoute = VerifyEmailRouteImport.update({
   id: '/verify-email',
@@ -53,11 +51,6 @@ const InboxRoute = InboxRouteImport.update({
   path: '/inbox',
   getParentRoute: () => rootRouteImport,
 } as any)
-const HandwrittenRoute = HandwrittenRouteImport.update({
-  id: '/handwritten',
-  path: '/handwritten',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const GraphRoute = GraphRouteImport.update({
   id: '/graph',
   path: '/graph',
@@ -83,24 +76,17 @@ const PagesIdRoute = PagesIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => PagesRoute,
 } as any)
-const HandwrittenIdRoute = HandwrittenIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => HandwrittenRoute,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/confirm-email-change': typeof ConfirmEmailChangeRoute
   '/graph': typeof GraphRoute
-  '/handwritten': typeof HandwrittenRouteWithChildren
   '/inbox': typeof InboxRoute
   '/pages': typeof PagesRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/tasks': typeof TasksRouteWithChildren
   '/test-editor': typeof TestEditorRoute
   '/verify-email': typeof VerifyEmailRoute
-  '/handwritten/$id': typeof HandwrittenIdRoute
   '/pages/$id': typeof PagesIdRoute
   '/tasks/$filter': typeof TasksFilterRoute
 }
@@ -108,14 +94,12 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/confirm-email-change': typeof ConfirmEmailChangeRoute
   '/graph': typeof GraphRoute
-  '/handwritten': typeof HandwrittenRouteWithChildren
   '/inbox': typeof InboxRoute
   '/pages': typeof PagesRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/tasks': typeof TasksRouteWithChildren
   '/test-editor': typeof TestEditorRoute
   '/verify-email': typeof VerifyEmailRoute
-  '/handwritten/$id': typeof HandwrittenIdRoute
   '/pages/$id': typeof PagesIdRoute
   '/tasks/$filter': typeof TasksFilterRoute
 }
@@ -124,14 +108,12 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/confirm-email-change': typeof ConfirmEmailChangeRoute
   '/graph': typeof GraphRoute
-  '/handwritten': typeof HandwrittenRouteWithChildren
   '/inbox': typeof InboxRoute
   '/pages': typeof PagesRouteWithChildren
   '/reset-password': typeof ResetPasswordRoute
   '/tasks': typeof TasksRouteWithChildren
   '/test-editor': typeof TestEditorRoute
   '/verify-email': typeof VerifyEmailRoute
-  '/handwritten/$id': typeof HandwrittenIdRoute
   '/pages/$id': typeof PagesIdRoute
   '/tasks/$filter': typeof TasksFilterRoute
 }
@@ -141,14 +123,12 @@ export interface FileRouteTypes {
     | '/'
     | '/confirm-email-change'
     | '/graph'
-    | '/handwritten'
     | '/inbox'
     | '/pages'
     | '/reset-password'
     | '/tasks'
     | '/test-editor'
     | '/verify-email'
-    | '/handwritten/$id'
     | '/pages/$id'
     | '/tasks/$filter'
   fileRoutesByTo: FileRoutesByTo
@@ -156,14 +136,12 @@ export interface FileRouteTypes {
     | '/'
     | '/confirm-email-change'
     | '/graph'
-    | '/handwritten'
     | '/inbox'
     | '/pages'
     | '/reset-password'
     | '/tasks'
     | '/test-editor'
     | '/verify-email'
-    | '/handwritten/$id'
     | '/pages/$id'
     | '/tasks/$filter'
   id:
@@ -171,14 +149,12 @@ export interface FileRouteTypes {
     | '/'
     | '/confirm-email-change'
     | '/graph'
-    | '/handwritten'
     | '/inbox'
     | '/pages'
     | '/reset-password'
     | '/tasks'
     | '/test-editor'
     | '/verify-email'
-    | '/handwritten/$id'
     | '/pages/$id'
     | '/tasks/$filter'
   fileRoutesById: FileRoutesById
@@ -187,7 +163,6 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ConfirmEmailChangeRoute: typeof ConfirmEmailChangeRoute
   GraphRoute: typeof GraphRoute
-  HandwrittenRoute: typeof HandwrittenRouteWithChildren
   InboxRoute: typeof InboxRoute
   PagesRoute: typeof PagesRouteWithChildren
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -240,13 +215,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InboxRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/handwritten': {
-      id: '/handwritten'
-      path: '/handwritten'
-      fullPath: '/handwritten'
-      preLoaderRoute: typeof HandwrittenRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/graph': {
       id: '/graph'
       path: '/graph'
@@ -282,27 +250,8 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PagesIdRouteImport
       parentRoute: typeof PagesRoute
     }
-    '/handwritten/$id': {
-      id: '/handwritten/$id'
-      path: '/$id'
-      fullPath: '/handwritten/$id'
-      preLoaderRoute: typeof HandwrittenIdRouteImport
-      parentRoute: typeof HandwrittenRoute
-    }
   }
 }
-
-interface HandwrittenRouteChildren {
-  HandwrittenIdRoute: typeof HandwrittenIdRoute
-}
-
-const HandwrittenRouteChildren: HandwrittenRouteChildren = {
-  HandwrittenIdRoute: HandwrittenIdRoute,
-}
-
-const HandwrittenRouteWithChildren = HandwrittenRoute._addFileChildren(
-  HandwrittenRouteChildren,
-)
 
 interface PagesRouteChildren {
   PagesIdRoute: typeof PagesIdRoute
@@ -328,7 +277,6 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ConfirmEmailChangeRoute: ConfirmEmailChangeRoute,
   GraphRoute: GraphRoute,
-  HandwrittenRoute: HandwrittenRouteWithChildren,
   InboxRoute: InboxRoute,
   PagesRoute: PagesRouteWithChildren,
   ResetPasswordRoute: ResetPasswordRoute,

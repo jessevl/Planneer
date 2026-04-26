@@ -1497,7 +1497,7 @@ const CollectionModeContent: React.FC<CollectionModeContentProps> = ({
 
   // Page filter options state for collection filtering
   const [pageFilterOptions, setPageFilterOptions] = useState<PageFilterOptions>(DEFAULT_PAGE_FILTER_OPTIONS);
-  const [collectionFilterBy, setCollectionFilterBy] = useState<'all' | 'notes' | 'collections' | 'tasks' | 'handwritten'>('all');
+  const [collectionFilterBy, setCollectionFilterBy] = useState<'all' | 'notes' | 'collections' | 'tasks'>('all');
 
   // Compute existing tags from children for tag filter suggestions
   const existingPageTags = useMemo(() => {

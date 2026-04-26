@@ -101,8 +101,6 @@ func RegisterRoutes(app *pocketbase.PocketBase, se *core.ServeEvent) {
 	se.Router.GET("/api/pages/{pageId}/export", func(e *core.RequestEvent) error {
 		return ExportSinglePage(e, app)
 	}).Bind(apis.RequireAuth())
-
-	registerBooxRoutes(app, se)
 }
 
 // ============================================================================
@@ -575,9 +573,6 @@ func handlePagePatch(e *core.RequestEvent, app *pocketbase.PocketBase) error {
 	page, err := app.FindRecordById("pages", pageId)
 	if err != nil {
 		return e.NotFoundError("Page not found", nil)
-	}
-	if page.GetBool("isReadOnly") && page.GetString("sourceOrigin") == booxSourceOrigin {
-		return e.ForbiddenError("Mirrored BOOX notebooks are read-only", nil)
 	}
 
 	// Verify access
