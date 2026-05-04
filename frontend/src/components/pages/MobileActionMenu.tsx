@@ -8,6 +8,7 @@
  */
 import React, { memo, useCallback, useMemo } from 'react';
 import { MobileSheet } from '@/components/ui';
+import { insertBlockWithFocus } from '@/plugins/yoopta/utils/insertBlockWithFocus';
 import { BLOCK_OPTIONS, groupBlockOptions, type BlockOption } from '@/plugins/yoopta/shared/menu';
 
 // ============================================================================
@@ -52,7 +53,6 @@ const MobileActionMenu: React.FC<MobileActionMenuProps> = ({
       try {
         // Get current selection/path BEFORE closing sheet
         const currentPath = editor.path?.current;
-        const focus = editor.selection?.focus;
         
         // Close sheet
         onClose();
@@ -60,28 +60,7 @@ const MobileActionMenu: React.FC<MobileActionMenuProps> = ({
         // Insert block immediately at current position
         requestAnimationFrame(() => {
           try {
-            // Restore focus first (with safety check)
-            // Check if editor has valid state before focusing
-            if (editor && editor.children && Object.keys(editor.children).length > 0) {
-              try {
-                editor.focus();
-              } catch (err) {
-                // Ignore focus errors - editor might be in transition
-                console.debug('[MobileActionMenu] Could not focus editor:', err);
-              }
-            }
-            
-            // Use Yoopta's insertBlock with path option to insert at cursor position
-            // If we have a current path, insert after it
-            if (currentPath !== null && currentPath !== undefined) {
-              editor.insertBlock(option.type, { at: currentPath, focus: true });
-            } else if (focus) {
-              // Fallback: use focus path
-              editor.insertBlock(option.type, { focus: true });
-            } else {
-              // Last resort: just insert and let Yoopta decide
-              editor.insertBlock(option.type);
-            }
+            insertBlockWithFocus(editor, option.type, { order: currentPath ?? null });
           } catch (err) {
             console.error('[MobileActionMenu] Failed to insert block:', err);
           }

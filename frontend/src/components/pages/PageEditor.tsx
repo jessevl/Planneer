@@ -74,6 +74,13 @@ import { processImageForUpload } from '@/lib/imageUtils';
 import { uploadPageImage, removePageImage } from '@/api/pagesApi';
 import { PageEditorProvider } from '@/contexts';
 import { isGranularKey } from '@/lib/crdt';
+import { focusBlockAtOrder } from '@/plugins/yoopta/utils/focusBlockAtOrder';
+import { insertBlockAtCurrentPath, insertBlockWithFocus } from '@/plugins/yoopta/utils/insertBlockWithFocus';
+import {
+  applyBlockMarkdownShortcut,
+  applyInlineMarkdownShortcut,
+  getCurrentSlateContext as getYooptaCurrentSlateContext,
+} from '@/plugins/yoopta/utils/markdownShortcutCommands';
 import { limitSizes } from '@/plugins/yoopta/image/limitSizes';
 import type { ImagePluginOptions } from '@/plugins/yoopta/image/types';
 
@@ -159,11 +166,6 @@ const basePlugins = [
 
 const MARKS = [Bold, Italic, CodeMark, Underline, Strike, Highlight];
 
-type InlineMarkdownShortcut = {
-  pattern: RegExp;
-  marks: Array<'bold' | 'italic' | 'strike' | 'code'>;
-};
-
 type InlineTagPickerState = {
   blockId: string;
   path: number[];
@@ -174,18 +176,6 @@ type InlineTagPickerState = {
   left: number;
   highlightedIndex: number;
 };
-
-const INLINE_MARKDOWN_SHORTCUTS: InlineMarkdownShortcut[] = [
-  { pattern: /(^|\s)(\*\*\*([^*\n]+)\*\*\*)$/, marks: ['bold', 'italic'] },
-  { pattern: /(^|\s)(___([^_\n]+)___)$/, marks: ['bold', 'italic'] },
-  { pattern: /(^|\s)(\*\*([^*\n]+)\*\*)$/, marks: ['bold'] },
-  { pattern: /(^|\s)(__([^_\n]+)__)$/, marks: ['bold'] },
-  { pattern: /(^|\s)(\*([^*\n]+)\*)$/, marks: ['italic'] },
-  { pattern: /(^|\s)(_([^_\n]+)_)$/, marks: ['italic'] },
-  { pattern: /(^|\s)(~~([^~\n]+)~~)$/, marks: ['strike'] },
-  { pattern: /(^|\s)(~([^~\n]+)~)$/, marks: ['strike'] },
-  { pattern: /(^|\s)(`([^`\n]+)`)$/, marks: ['code'] },
-];
 
 function normalizeTagValue(tag: string): string {
   return tag.trim().replace(/^#+/, '').replace(/\s+/g, ' ');
@@ -679,18 +669,7 @@ const PageEditor: React.FC<PageEditorProps> = ({
   }, [currentPageTags, inlineTagPicker, tagSuggestions]);
 
   const getCurrentSlateContext = useCallback(() => {
-    const currentOrder = editor.path.current;
-    if (currentOrder === null || currentOrder === undefined) return null;
-
-    const currentBlock = Object.values(editor.getEditorValue()).find(
-      (block: any) => block?.meta?.order === currentOrder,
-    ) as any;
-    if (!currentBlock?.id) return null;
-
-    const slateEditor = editor.blockEditorsMap[currentBlock.id];
-    if (!slateEditor) return null;
-
-    return { blockId: currentBlock.id as string, slateEditor };
+    return getYooptaCurrentSlateContext(editor);
   }, [editor]);
 
   // === COLUMN LAYOUT ===
@@ -939,7 +918,7 @@ const PageEditor: React.FC<PageEditorProps> = ({
       setActiveTextMarks(new Set());
     };
   }, [editor, setActiveTextMarks, usesPortableEditorToolbar]);
-  
+
   // Listen for FAB format events on handheld editor devices.
   useEffect(() => {
     if (!usesPortableEditorToolbar) return;
@@ -963,13 +942,9 @@ const PageEditor: React.FC<PageEditorProps> = ({
           // Trigger action menu
           handleOpenMobileActionMenu();
         } else {
-          const currentPath = editor.path?.current;
-
-          if (currentPath !== null && currentPath !== undefined) {
-            editor.insertBlock(blockType, { at: currentPath, focus: true });
-          } else {
-            editor.insertBlock(blockType, { focus: true });
-          }
+          insertBlockAtCurrentPath(editor, blockType, {
+            scrollContainer: scrollContainerRef.current,
+          });
         }
       } catch (err) {
         console.error('[PageEditor] Failed to insert block from FAB:', err);
@@ -1244,13 +1219,9 @@ const PageEditor: React.FC<PageEditorProps> = ({
     }
 
     try {
-      const currentPath = editor.path?.current;
-
-      if (currentPath !== null && currentPath !== undefined) {
-        editor.insertBlock(blockType, { at: currentPath, focus: true });
-      } else {
-        editor.insertBlock(blockType, { focus: true });
-      }
+      insertBlockAtCurrentPath(editor, blockType, {
+        scrollContainer: scrollContainerRef.current,
+      });
     } catch (err) {
       console.error('[PageEditor] Failed to insert block directly:', err);
     }
@@ -1568,52 +1539,15 @@ const PageEditor: React.FC<PageEditorProps> = ({
     setInlineTagPicker((prev) => (prev === null ? prev : null));
   }, [currentPageTags, editor.blockEditorsMap, inlineTagPicker, onTagsChange]);
 
-  const tryApplyInlineMarkdownShortcut = useCallback((trailingText: string) => {
-    const context = getCurrentSlateContext();
-    if (!context) return false;
+  const tryApplyInlineMarkdownShortcut = useCallback(
+    (trailingText: string) => applyInlineMarkdownShortcut(editor, trailingText),
+    [editor],
+  );
 
-    const { slateEditor } = context;
-    const selection = slateEditor.selection;
-    if (!selection || !Range.isCollapsed(selection)) return false;
-
-    const node = SlateEditor.node(slateEditor, selection.anchor.path);
-    const textNode = node[0] as { text?: string };
-    if (!textNode || typeof textNode.text !== 'string') return false;
-
-    const textBeforeCursor = textNode.text.slice(0, selection.anchor.offset);
-
-    for (const shortcut of INLINE_MARKDOWN_SHORTCUTS) {
-      const match = textBeforeCursor.match(shortcut.pattern);
-      if (!match) continue;
-
-      const matchedToken = match[2];
-      const content = match[3];
-      if (!matchedToken || !content) continue;
-
-      const startOffset = selection.anchor.offset - matchedToken.length;
-      if (startOffset < 0) continue;
-
-      Transforms.select(slateEditor, {
-        anchor: { path: selection.anchor.path, offset: startOffset },
-        focus: { path: selection.anchor.path, offset: selection.anchor.offset },
-      });
-      Transforms.delete(slateEditor);
-      const formattedLeaf = shortcut.marks.reduce<Record<string, unknown>>(
-        (acc, mark) => {
-          acc[mark] = true;
-          return acc;
-        },
-        { text: content },
-      );
-      const nodesToInsert = trailingText
-        ? [formattedLeaf, { text: trailingText }]
-        : [formattedLeaf, { text: '' }];
-      Transforms.insertNodes(slateEditor, nodesToInsert as any);
-      return true;
-    }
-
-    return false;
-  }, [editor, getCurrentSlateContext]);
+  const tryApplyBlockMarkdownShortcut = useCallback(
+    () => applyBlockMarkdownShortcut(editor),
+    [editor],
+  );
 
   useEffect(() => {
     if (!inlineTagPicker) return;
@@ -1849,6 +1783,12 @@ const PageEditor: React.FC<PageEditorProps> = ({
       }
     }
 
+    if (e.key === ' ' && tryApplyBlockMarkdownShortcut()) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+
     if ((e.key === ' ' || e.key === '.' || e.key === ',' || e.key === '!' || e.key === '?' || e.key === ';' || e.key === ':') && tryApplyInlineMarkdownShortcut(e.key)) {
       e.preventDefault();
       e.stopPropagation();
@@ -1906,7 +1846,7 @@ const PageEditor: React.FC<PageEditorProps> = ({
       blockToDeleteRef.current = currentBlockId;
       setIsLinkPickerOpen(true);
     }
-  }, [canCreateInlineTag, closeInlineTagPicker, commitInlineTag, editor, inlineTagOptions, inlineTagPicker, tryApplyInlineMarkdownShortcut]);
+  }, [canCreateInlineTag, closeInlineTagPicker, commitInlineTag, editor, inlineTagOptions, inlineTagPicker, tryApplyBlockMarkdownShortcut, tryApplyInlineMarkdownShortcut]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -2091,6 +2031,7 @@ const PageEditor: React.FC<PageEditorProps> = ({
           
           <div 
             ref={editorAreaRef}
+            data-testid="page-editor-surface"
             className={cn(
               "py-6 min-h-[600px] relative",
               hideHero && "px-1 py-2 min-h-0 bg-transparent dark:bg-transparent shadow-none overflow-y-auto scrollbar-thin"
@@ -2208,6 +2149,7 @@ const PageEditor: React.FC<PageEditorProps> = ({
                   Mirrors Notion's behavior of clicking below content to add text. */}
               {!readOnly && !hideHero && (
                 <div
+                  data-testid="page-editor-trailing-space"
                   className="min-h-[120px] cursor-text"
                   onMouseDown={(e) => {
                     e.preventDefault();
@@ -2216,11 +2158,12 @@ const PageEditor: React.FC<PageEditorProps> = ({
                       const sorted = Object.values(blocks)
                         .filter((b: any) => (b as any).id !== ROW_LAYOUT_KEY)
                         .sort((a: any, b: any) => a.meta.order - b.meta.order);
+                      const insertAt = sorted.length;
                       // Prevent handleChange from auto-joining this block into a column
                       skipAutoJoinRef.current = true;
-                      editor.insertBlock('Paragraph', {
-                        at: sorted.length,
-                        focus: true,
+                      insertBlockWithFocus(editor, 'Paragraph', {
+                        order: insertAt,
+                        scrollContainer: scrollContainerRef.current,
                       });
                     } catch {
                       // Fallback: just insert at what we assume is the end

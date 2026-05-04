@@ -21,6 +21,7 @@ import { BlockOptions, useBlockActions } from '@yoopta/ui/block-options';
 import { DragHandle } from '@yoopta/ui/block-dnd';
 import { PlusIcon, GripVertical, ChevronRight } from 'lucide-react';
 import type { ColumnsMetadata } from '@/hooks/useEditorRowLayout';
+import { insertBlockWithFocus } from '@/plugins/yoopta/utils/insertBlockWithFocus';
 import { BLOCK_OPTIONS } from '@/plugins/yoopta/shared/menu/actionMenuData';
 
 // Block types that support content-preserving "Turn Into" conversion
@@ -379,7 +380,7 @@ const EditorFloatingBlockActions: React.FC<EditorFloatingBlockActionsProps> = ({
     const floatingBlock = Blocks.getBlock(editor, { id: blockId });
     if (!floatingBlock) return;
     const nextOrder = floatingBlock.meta.order + 1;
-    editor.insertBlock('Paragraph', { at: nextOrder, focus: true });
+    insertBlockWithFocus(editor, 'Paragraph', { order: nextOrder });
   };
 
   const onDragClick = (blockId: string | null) => {
