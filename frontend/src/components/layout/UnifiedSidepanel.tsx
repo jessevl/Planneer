@@ -280,7 +280,7 @@ const UnifiedSidepanel: React.FC<UnifiedSidepanelProps> = ({
           />
         )}
         {activeTab === 'task-editor' && (
-          <div className="flex h-full min-h-0 w-full flex-1 overflow-hidden bg-[var(--color-surface-primary)]">
+          <div className="flex h-full min-h-0 w-full flex-1 overflow-hidden">
             <TaskDetailPane
               mode={pane.snapshot.mode}
               task={selectedTask}

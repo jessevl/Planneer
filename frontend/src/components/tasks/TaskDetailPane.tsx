@@ -157,7 +157,7 @@ const TaskDetailPane: React.FC<TaskDetailPaneProps> = ({
   // Empty state when no task is selected
   if (!mode) {
     return (
-      <div className="flex h-full min-h-0 w-full flex-1 items-center justify-center bg-[var(--color-surface-primary)]">
+      <div className="flex h-full min-h-0 w-full flex-1 items-center justify-center">
         <div className="text-center text-[var(--color-text-secondary)]">
           <SquareCheck className="w-16 h-16 mx-auto mb-4 opacity-30" strokeWidth={1.5} />
           <p className="text-lg font-medium mb-1">Select a task</p>
@@ -168,12 +168,12 @@ const TaskDetailPane: React.FC<TaskDetailPaneProps> = ({
   }
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-[var(--color-surface-primary)]">
+    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden">
       {showHeader ? (
         <div className="sticky top-0 z-30">
           <UnifiedHeader
             currentTitle={mode === 'create' ? 'New Task' : 'Edit Task'}
-            className="border-b-0 bg-[var(--color-surface-primary)]/70 backdrop-blur-xl"
+            className="border-b-0 bg-[color-mix(in_srgb,var(--color-surface-base)_85%,transparent)]"
             breadcrumbs={[]}
             onTitleClick={undefined}
             inSplitView={true}
@@ -214,7 +214,7 @@ const TaskDetailPane: React.FC<TaskDetailPaneProps> = ({
       </div>
 
       {/* Footer with actions */}
-      <div className="mt-auto flex-shrink-0 border-t border-[var(--color-border-subtle)] bg-[var(--color-surface-primary)] px-4 py-3">
+      <div className="mt-auto flex-shrink-0 border-t border-[var(--color-border-subtle)] px-4 py-3">
         <div className="flex items-center justify-between">
           <div>
             {mode === 'edit' && (
