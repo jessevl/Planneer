@@ -61,7 +61,7 @@ import AddTaskForm from '../tasks/AddTaskForm';
 import TaskDetailPane from '../tasks/TaskDetailPane';
 import ConfirmDiscardModal from '../common/ConfirmDiscardModal';
 import SectionManagerModal from './SectionManagerModal';
-import { IconButton, Button, LucideIcon, SmartEmptyState, ResizeHandle } from '../ui';
+import { IconButton, Button, LucideIcon, SmartEmptyState, ResizeHandle, FLOATING_PANEL_SURFACE_CLASSNAME } from '../ui';
 import { SavedViewsBar } from '../ui/SavedViewsBar';
 import type { TaskViewConfig, CollectionViewConfig, PageSavedView } from '@/types/savedView';
 import { PlusIcon, ChevronDownIcon, ChevronRightIcon, PagesIcon, SettingsIcon } from '../common/Icons';
@@ -1349,10 +1349,21 @@ const PageModeContent: React.FC<PageModeContentProps> = ({
         />
       </div>
 
-      {/* Sub-pages section - compact list below editor (hidden on mobile) */}
+      {/* Sub-pages section - floating panel below editor (hidden on mobile) */}
       {!isMobile && (totalChildCount > 0 || childrenExpanded) && (
-        <div className="flex-shrink-0 border-t border-[var(--color-border-default)] bg-[var(--color-surface-inset)]/50">
-          <div className="max-w-3xl mx-auto px-6 py-3">
+        <div
+          className="flex-shrink-0"
+          style={{
+            paddingLeft: 'max(var(--layout-left-inset, 0px), 12px)',
+            paddingRight: 'max(var(--layout-right-inset, 0px), 12px)',
+            paddingBottom: '12px',
+          }}
+        >
+          <div
+            className={cn(FLOATING_PANEL_SURFACE_CLASSNAME, 'px-4 py-3')}
+            style={{ backgroundColor: 'color-mix(in srgb, var(--color-surface-inset) 50%, transparent)' }}
+          >
+          <div className="max-w-3xl mx-auto">
             <button
               onClick={() => setChildrenExpanded(!childrenExpanded)}
               className="flex items-center gap-2 text-sm font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
@@ -1404,6 +1415,7 @@ const PageModeContent: React.FC<PageModeContentProps> = ({
                 )}
               </div>
             )}
+          </div>
           </div>
         </div>
       )}
@@ -1661,7 +1673,7 @@ const CollectionModeContent: React.FC<CollectionModeContentProps> = ({
 
       <div
         className="relative z-10 w-full"
-        style={getRightInsetStyle(contentRightInsetPx)}
+        style={contentRightInsetPx > 0 ? { paddingLeft: 'var(--layout-left-inset, 0px)', ...getRightInsetStyle(contentRightInsetPx) } : { paddingLeft: 'var(--layout-left-inset, 0px)', paddingRight: 'var(--layout-right-inset, 0px)' }}
       >
         <div
           className={cn(
@@ -2037,7 +2049,7 @@ const TaskModeContent: React.FC<TaskModeContentProps> = ({
       
       <div
         className="py-2 pb-32 md:pb-6 space-y-6 w-full relative z-10"
-        style={getRightInsetStyle(contentRightInsetPx)}
+        style={contentRightInsetPx > 0 ? { paddingLeft: 'var(--layout-left-inset, 0px)', ...getRightInsetStyle(contentRightInsetPx) } : { paddingLeft: 'var(--layout-left-inset, 0px)', paddingRight: 'var(--layout-right-inset, 0px)' }}
       >
       <div className="max-w-5xl mx-auto px-4 md:px-6 space-y-4">
         {/* View Controls Bar - saved views + sort/filter/view inline */}

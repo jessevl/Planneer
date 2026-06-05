@@ -31,8 +31,7 @@ import relativeTime from 'dayjs/plugin/relativeTime';
 import PageActionBar from './PageActionBar';
 import ItemIcon from '../common/ItemIcon';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { Modal, TagBadge, InlineTagInput } from '@/components/ui';
-import { getRightInsetStyle } from '@/lib/layout';
+import { Modal, TagBadge, InlineTagInput, FLOATING_PANEL_SURFACE_CLASSNAME } from '@/components/ui';
 
 dayjs.extend(relativeTime);
 
@@ -284,7 +283,10 @@ export const PageHero: React.FC<PageHeroProps> = ({
     return imageBrightness === 'loading' ? true : imageBrightness === 'light';
   }, [hasCover, isGradient, cover, imageBrightness, theme]);
 
-  const contentInsetStyle = getRightInsetStyle(contentRightInsetPx);
+  const contentInsetStyle: React.CSSProperties = {
+    paddingLeft: 'var(--layout-left-inset, 0px)',
+    paddingRight: contentRightInsetPx > 0 ? `${contentRightInsetPx}px` : 'var(--layout-right-inset, 0px)',
+  };
 
   // Build the cover style
   const coverStyle = useMemo(() => {
@@ -636,15 +638,18 @@ export const PageHero: React.FC<PageHeroProps> = ({
               )}
 
               {/* Hero card */}
-              <div className={cn(
-                'transition-all',
-                hasCover
-                  ? 'rounded-xl bg-[var(--color-surface-base)]/80 backdrop-blur-xl shadow-lg shadow-black/5 dark:shadow-black/20 border border-white/50 dark:border-[var(--color-border-default)]/30 p-5 eink-content-card'
-                  : cn(
-                      'pb-4',
-                      isNoteLikeView ? 'md:px-6' : 'md:px-0'
-                    )
-              )}>
+              <div
+                className={cn(
+                  'transition-all',
+                  hasCover
+                    ? cn(FLOATING_PANEL_SURFACE_CLASSNAME, 'p-5')
+                    : cn(
+                        'pb-4',
+                        isNoteLikeView ? 'md:px-6' : 'md:px-0'
+                      )
+                )}
+                style={hasCover ? { backgroundImage: 'none' } : undefined}
+              >
                 {/* Type badges row */}
                 {pageId && (
                   <div className="flex items-center gap-2 mb-3 overflow-x-auto scrollbar-hide">

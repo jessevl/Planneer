@@ -22,9 +22,9 @@ import { cn } from '@/lib/design-system';
 // Those can create the wrong containing block for Yoopta's position:fixed
 // floating block actions, causing the drag handle to drift when the shell
 // layout changes (for example when the left sidebar expands/collapses).
-export const FLOATING_SURFACE_CLASSNAME = 'flex flex-col overflow-hidden rounded-[22px] border border-[var(--color-border-default)] bg-[color-mix(in_srgb,var(--color-surface-base)_88%,transparent)] shadow-[0_20px_70px_-34px_rgba(15,23,42,0.42)] eink-shell-surface';
+export const FLOATING_SURFACE_CLASSNAME = 'flex flex-col overflow-hidden rounded-[22px] shell-surface eink-shell-surface';
 
-export const FLOATING_PANEL_SURFACE_CLASSNAME = cn('pointer-events-auto backdrop-blur-xl', FLOATING_SURFACE_CLASSNAME);
+export const FLOATING_PANEL_SURFACE_CLASSNAME = cn('pointer-events-auto shell-surface-blur', FLOATING_SURFACE_CLASSNAME);
 
 export interface FloatingPanelProps {
   /** Panel contents rendered inside the shared floating surface. */

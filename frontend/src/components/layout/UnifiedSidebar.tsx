@@ -1122,7 +1122,10 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
   // ============================================================================
   if (isRail) {
     return (
-      <aside className="relative z-10 flex h-full w-full flex-col select-none overflow-x-hidden overflow-y-hidden bg-transparent px-2 py-2 eink-shell-surface-secondary">
+      <aside
+        className="relative z-10 flex h-full w-full flex-col select-none overflow-x-hidden overflow-y-hidden px-2 py-2 eink-shell-surface-secondary"
+        style={{ backgroundImage: 'linear-gradient(180deg, color-mix(in srgb, var(--color-surface-primary) 40%, transparent) 0%, color-mix(in srgb, var(--color-surface-base) 20%, transparent) 100%)' }}
+      >
         <div className="flex flex-1 flex-col items-center gap-1 overflow-x-hidden overflow-y-hidden">
           <SidebarRailButton
             icon={<PanelLeftOpen />}
@@ -1227,11 +1230,15 @@ const UnifiedSidebar: React.FC<UnifiedSidebarProps> = ({
       onMouseEnter={clearPendingHoverClose}
       onMouseLeave={scheduleHoverClose}
       className={`relative flex flex-col select-none flex-shrink-0 ${
-        isMobile 
-          ? 'h-full bg-[var(--color-surface-secondary)]' 
-          : 'h-full bg-transparent'
+        isMobile
+          ? 'h-full bg-[var(--color-surface-secondary)]'
+          : 'h-full'
       } eink-shell-surface-secondary`}
-      style={isMobile ? undefined : { width: '100%', minWidth: 0 }}
+      style={isMobile ? undefined : {
+        width: '100%',
+        minWidth: 0,
+        backgroundImage: 'linear-gradient(180deg, color-mix(in srgb, var(--color-surface-primary) 40%, transparent) 0%, color-mix(in srgb, var(--color-surface-base) 20%, transparent) 100%)',
+      }}
     >
       <nav className={`relative z-10 flex flex-col w-full h-full ${isMobile ? 'px-0' : 'px-2'} overflow-x-hidden overflow-y-hidden ${isMobile ? 'pb-3' : 'pb-3'}`}>
         {!isMobile && (

@@ -60,6 +60,14 @@ export const getRightInsetStyle = (rightInsetPx = 0) =>
 export const getLeftInsetStyle = (leftInsetPx = 0) =>
   leftInsetPx > 0 ? { paddingLeft: `${leftInsetPx}px` } : undefined;
 
+/** Shared style for content that must stay clear of both left and right floating panels. */
+export const getCombinedInsetStyle = (leftInsetPx = 0, rightInsetPx = 0) => {
+  return {
+    paddingLeft: leftInsetPx > 0 ? `${leftInsetPx}px` : 'var(--desktop-left-sidebar-reserve, 0px)',
+    paddingRight: rightInsetPx > 0 ? `${rightInsetPx}px` : undefined,
+  };
+};
+
 export const FLOATING_PANEL_GUTTER_PX = 12;
 
 export const getFloatingPanelReserveWidth = (

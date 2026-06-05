@@ -118,7 +118,10 @@ const FloatingSidePanelLayout: React.FC<FloatingSidePanelLayoutProps> = ({
           : null,
       )}
       containerStyle={panelLayoutGeometry.containerStyle}
-      surfaceStyle={panelLayoutGeometry.surfaceStyle}
+      surfaceStyle={{
+        ...panelLayoutGeometry.surfaceStyle,
+        ...(isPortalled ? { '--layout-left-inset': '0px' } as React.CSSProperties : {}),
+      }}
     >
       {renderPanel({
         mode: isOpen ? 'expanded' : 'collapsed',

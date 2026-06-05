@@ -628,7 +628,7 @@ const PagesView: React.FC<PagesViewProps> = ({
               sidePanelOpen={sidePanelOpen}
             />
 
-            <div className="pt-[calc(var(--header-height)+1.5rem)] py-2 pb-32 md:pb-6">
+            <div className="pt-[calc(var(--header-height)+1.5rem)] py-2 pb-32 md:pb-6" style={{ paddingLeft: 'var(--layout-left-inset, 0px)', paddingRight: 'var(--layout-right-inset, 0px)' }}>
               <div className="max-w-5xl mx-auto px-4 md:px-6">
               <PageCollection
                 pages={displayPages}

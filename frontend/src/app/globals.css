@@ -2171,7 +2171,9 @@ html, body, #__next {
 
 .glass-toolbar,
 .glass-panel-nav {
-  background: color-mix(in srgb, var(--color-surface-base) 80%, transparent);
+  background: color-mix(in srgb, var(--color-surface-base) 75%, transparent);
+  background-image: linear-gradient(135deg, color-mix(in srgb, var(--color-accent-primary) 6%, transparent) 0%, transparent 65%);
+  box-shadow: none;
 }
 
 .glass-toolbar-lighter {

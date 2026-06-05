@@ -36,7 +36,7 @@ import { LANDING_URL } from '@/lib/config';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { NavigationBlocker } from '@/components/common/NavigationBlocker';
 import { useHydration } from '@/hooks/useHydration';
-import { useIsDesktop, useIsMobile, useIsStandalone } from '@frameer/hooks/useMobileDetection';
+import { useIsMobile } from '@frameer/hooks/useMobileDetection';
 import { useSyncStore } from '@/stores/syncStore';
 import { useSessionValidator } from '@/hooks/useSessionValidator';
 import { useWorkspaceAccess } from '@/hooks/useWorkspaceAccess';
@@ -54,10 +54,7 @@ import { isSessionExpired, logError } from '@/lib/errors';
 import { devLog } from '@/lib/config';
 import { MobileLayoutProvider } from '@/contexts/MobileLayoutContext';
 import { PageTransition } from '@/components/layout/PageTransition';
-import { cn } from '@/lib/design-system';
-import { FLOATING_SURFACE_CLASSNAME } from '@/components/ui';
 import { UNIFIED_SIDEBAR_DEFAULT_EXPANDED_WIDTH, UNIFIED_SIDEBAR_FLOATING_GUTTER, UNIFIED_SIDEBAR_RAIL_WIDTH } from '@/components/layout/UnifiedSidebar';
-import { getFloatingPanelReserveWidth, FLOATING_PANEL_GUTTER_PX } from '@/lib/layout';
 import FloatingSidePanelLayout from '@/components/layout/FloatingSidePanelLayout';
 import { DesktopFloatingPanelContext, useDesktopFloatingPanelProvider } from '@/contexts/DesktopFloatingPanelContext';
 
@@ -89,9 +86,6 @@ const scheduleIdleWarmup = (callback: () => void): (() => void) => {
   return () => globalThis.clearTimeout(handle);
 };
 
-// Compute sidepanel reserve inline to avoid importing the entire UnifiedSidepanel module
-const UNIFIED_SIDEPANEL_FLOATING_RESERVE_WIDTH = getFloatingPanelReserveWidth(328, FLOATING_PANEL_GUTTER_PX);
-
 // Lazy load LoginForm - only needed for unauthenticated users
 const LoginForm = lazy(() => import('@/components/auth/LoginForm').then(m => ({ default: m.LoginForm })));
 
@@ -121,12 +115,9 @@ type WorkspaceErrorType = 'removed' | 'deleted' | 'not_found' | null;
 
 function RootLayout() {
   const isHydrated = useHydration();
-  const isDesktop = useIsDesktop();
   const isMobile = useIsMobile();
-  const isStandalone = useIsStandalone();
   const sidebarVisible = useNavigationStore((s) => s.sidebarVisible);
   const sidebarPinned = useNavigationStore((s) => s.sidebarPinned);
-  const sidePanelOpen = useNavigationStore((s) => s.sidePanelOpen);
   const setSidebarVisible = useNavigationStore((s) => s.setSidebarVisible);
   const clearSelection = useSelectionStore((s) => s.clearSelection);
   const setSelectionMode = useSelectionStore((s) => s.setSelectionMode);
@@ -141,13 +132,7 @@ function RootLayout() {
 
   const desktopFloatingPanelValue = useDesktopFloatingPanelProvider();
   const gutter = UNIFIED_SIDEBAR_FLOATING_GUTTER;
-  const supportsFloatingRightPanel = location.pathname.startsWith('/tasks') || location.pathname.startsWith('/pages');
-  const fallbackRightPanelReserve = isDesktop && supportsFloatingRightPanel && sidePanelOpen
-    ? UNIFIED_SIDEPANEL_FLOATING_RESERVE_WIDTH
-    : 0;
-  const effectiveRightPanelReserve = desktopFloatingPanelValue.rightPanelReserve > 0
-    ? desktopFloatingPanelValue.rightPanelReserve
-    : fallbackRightPanelReserve;
+  const effectiveRightPanelReserve = desktopFloatingPanelValue.rightPanelReserve;
 
   const renderSidebarPanel = useCallback(
     ({ mode, width, setWidth }: { mode: 'collapsed' | 'expanded'; width: number; setWidth: (width: number) => void }) => (
@@ -571,12 +556,8 @@ function RootLayout() {
           Desktop: Layered layout with paper-style main content
           Mobile: Traditional flat layout
         */}
-        <div 
-          className={`fixed top-0 left-0 right-0 bottom-0 w-screen flex flex-col overflow-hidden ${
-            isMobile 
-              ? 'bg-[var(--color-surface-base)]' 
-              : 'layout-background'
-          }`}
+        <div
+          className="fixed top-0 left-0 right-0 bottom-0 w-screen flex flex-col overflow-hidden bg-[var(--color-surface-base)]"
           style={{ minHeight: '100lvh', height: '100lvh' }}
         >
           <div
@@ -614,36 +595,31 @@ function RootLayout() {
                     railWidth={UNIFIED_SIDEBAR_RAIL_WIDTH}
                     defaultExpandedWidth={UNIFIED_SIDEBAR_DEFAULT_EXPANDED_WIDTH}
                     gutterPx={gutter}
+                    applyContentInset={false}
                     contentClassName="flex flex-col"
                     renderPanel={renderSidebarPanel}
                   >
-                    <div
-                      ref={desktopFloatingPanelValue.setRightPanelPortalElement}
-                      className="absolute inset-0 pointer-events-none z-20"
-                    />
-                    <div
-                      className="flex-1 flex flex-col overflow-hidden transition-[padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
-                      style={{
-                        marginLeft: -gutter,
-                        paddingLeft: gutter,
-                        paddingTop: `max(${gutter}px, env(safe-area-inset-top))`,
-                        paddingBottom: gutter,
-                        paddingRight: effectiveRightPanelReserve > 0
-                          ? effectiveRightPanelReserve
-                          : `max(${gutter}px, env(safe-area-inset-right))`,
-                      }}
-                    >
-                      <main className={cn(
-                        FLOATING_SURFACE_CLASSNAME,
-                        'flex-1 flex flex-col overflow-hidden',
-                      )} style={{ margin: 0 }}>
-                        <ErrorBoundary context="MainContent">
-                          <PageTransition>
-                            <Outlet />
-                          </PageTransition>
-                        </ErrorBoundary>
-                      </main>
-                    </div>
+                    {({ reserveWidth: leftReserve }) => (
+                      <>
+                        <div
+                          ref={desktopFloatingPanelValue.setRightPanelPortalElement}
+                          className="absolute inset-0 pointer-events-none z-30"
+                        />
+                        <main
+                          className="flex-1 flex flex-col overflow-hidden bg-[var(--color-surface-base)]"
+                          style={{
+                            '--layout-left-inset': `${leftReserve}px`,
+                            '--layout-right-inset': `${effectiveRightPanelReserve}px`,
+                          } as React.CSSProperties}
+                        >
+                          <ErrorBoundary context="MainContent">
+                            <PageTransition>
+                              <Outlet />
+                            </PageTransition>
+                          </ErrorBoundary>
+                        </main>
+                      </>
+                    )}
                   </FloatingSidePanelLayout>
                 </div>
               </DesktopFloatingPanelContext.Provider>

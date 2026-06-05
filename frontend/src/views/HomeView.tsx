@@ -213,6 +213,7 @@ const HomeView: React.FC = () => {
           }
         />
 
+        <div style={{ paddingLeft: 'var(--layout-left-inset, 0px)', paddingRight: 'var(--layout-right-inset, 0px)' }}>
         <Container className="mx-auto max-w-[1400px] pt-[calc(var(--header-height)+1.25rem)] py-2 px-4 pb-32 md:pb-12">
           
           {/* Hero Section - Compact */}
@@ -258,6 +259,7 @@ const HomeView: React.FC = () => {
           />
 
         </Container>
+        </div>
       </div>
 
       {/* Immersive Pomodoro Timer */}

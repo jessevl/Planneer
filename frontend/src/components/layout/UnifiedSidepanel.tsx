@@ -232,12 +232,7 @@ const UnifiedSidepanel: React.FC<UnifiedSidepanelProps> = ({
       style={{ width: UNIFIED_SIDEPANEL_DOCK_WIDTH }}
     >
       {/* Header */}
-      <div className={cn(
-        'sticky top-0 z-20 border-b border-[var(--color-border-subtle)] px-3 py-3 backdrop-blur-xl eink-shell-surface-secondary',
-        floating
-          ? 'bg-[color-mix(in_srgb,var(--color-surface-base)_72%,transparent)]'
-          : 'bg-[var(--color-surface-secondary)]/88',
-      )}>
+      <div className="sticky top-0 z-20 px-3 py-3 eink-shell-surface-secondary">
         <div className="flex items-center gap-2">
           <div className="min-w-0 flex-1">
             <TabBar

@@ -310,8 +310,13 @@ const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
         className
       )}>
         <div
-          className="relative pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
-          style={getRightInsetStyle(desktopRightInsetPx)}
+          className="relative"
+          style={{
+            paddingLeft: 'max(env(safe-area-inset-left), var(--layout-left-inset, 0px))',
+            paddingRight: desktopRightInsetPx > 0
+              ? `${desktopRightInsetPx}px`
+              : 'max(env(safe-area-inset-right), var(--layout-right-inset, 0px))',
+          }}
         >
         <div
           className={cn(

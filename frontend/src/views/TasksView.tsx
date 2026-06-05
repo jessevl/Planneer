@@ -1,4 +1,3 @@
-import { getFloatingPanelLayout, getRightInsetStyle } from '@/lib/layout';
 /**
  * @file TasksView.tsx
  * @description Main view component for the Tasks App using Zustand stores directly
@@ -519,7 +518,6 @@ const TasksView: React.FC<TasksViewProps> = ({
                 contentRightInsetPx={reserveWidth}
               />
             )}
-            <div style={getRightInsetStyle(reserveWidth)}>
             <UnifiedHeader
               sidebarVisible={sidebarVisible}
               onToggleSidebar={toggleSidebar}
@@ -559,6 +557,7 @@ const TasksView: React.FC<TasksViewProps> = ({
               showDeleteButton={false}
             />
 
+            <div style={{ paddingLeft: 'var(--layout-left-inset, 0px)', paddingRight: 'var(--layout-right-inset, 0px)' }}>
             <Container className="pt-[calc(var(--header-height)+1.5rem)] py-2">
               {!isTaskPageView && (
                 <div className="mb-2">

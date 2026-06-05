@@ -60,7 +60,6 @@ import {
 import CommandPalette, { type SearchSelection } from '@/components/common/CommandPalette';
 import { StatusBanner, TagPickerMenu } from '@/components/ui';
 import { cn } from '@/lib/design-system';
-import { getRightInsetStyle } from '@/lib/layout';
 import PageHero from './PageHero';
 import { usePagesStore, type PagesState } from '@/stores/pagesStore';
 import { useDeleteConfirmStore } from '@/stores/deleteConfirmStore';
@@ -2003,7 +2002,10 @@ const PageEditor: React.FC<PageEditorProps> = ({
 
         <div
           className="w-full"
-          style={!hideHero ? getRightInsetStyle(contentRightInsetPx) : undefined}
+          style={!hideHero ? {
+            paddingLeft: 'var(--layout-left-inset, 0px)',
+            paddingRight: contentRightInsetPx > 0 ? `${contentRightInsetPx}px` : 'var(--layout-right-inset, 0px)',
+          } : undefined}
         >
           <div
             className={cn(
