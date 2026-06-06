@@ -122,18 +122,85 @@ interface PageEditorProps {
   contentRightInsetPx?: number;
 }
 
+// Yoopta's list plugins call insertBlock({focus: true}) inside their Enter
+// key handler, which tries to focus the new block synchronously before React
+// has rendered it. This wrapper re-applies focus via focusBlockAtOrder in a
+// requestAnimationFrame so the DOM is present when focus is set.
+// Capture each handler BEFORE extend() overwrites plugin.events in-place.
+const _origTodoListKeyDown = TodoList.getPlugin.events?.onKeyDown;
+const _origBulletedListKeyDown = BulletedList.getPlugin.events?.onKeyDown;
+const _origNumberedListKeyDown = NumberedList.getPlugin.events?.onKeyDown;
+
+function wrapListKeyDown(
+  original: ((editor: YooEditor, slate: any, options: any) => React.KeyboardEventHandler | void) | undefined,
+): typeof original {
+  if (!original) return undefined;
+  return (editor, slate, options) => {
+    const origHandler = original(editor, slate, options);
+    return (event: React.KeyboardEvent) => {
+      // For non-plain Enter, pass through untouched (Shift+Enter, Cmd+Enter, etc.)
+      if (event.key !== 'Enter' || event.shiftKey || event.metaKey || event.ctrlKey) {
+        origHandler?.(event);
+        return;
+      }
+
+      // Capture state BEFORE the handler runs.
+      // Yoopta's focusBlock schedules setPath in a nested setTimeout so
+      // editor.path.current is stale by the time we read it after origHandler.
+      const preOrder = editor.path.current;
+
+      // If the block is empty, Yoopta exits the list (inserts a paragraph at
+      // preOrder). Otherwise, the new/target block lands at preOrder + 1.
+      let isEmptyBlock = false;
+      if (preOrder !== null && preOrder !== undefined) {
+        const block = Object.values(editor.getEditorValue() ?? {}).find(
+          (b: any) => b?.meta?.order === preOrder,
+        ) as any;
+        if (block) {
+          const getText = (node: any): string => {
+            if (typeof node?.text === 'string') return node.text;
+            if (Array.isArray(node?.children)) return node.children.map(getText).join('');
+            return '';
+          };
+          isEmptyBlock = (block.value?.map(getText).join('') ?? '').trim().length === 0;
+        }
+      }
+
+      origHandler?.(event);
+
+      if (preOrder === null || preOrder === undefined) return;
+      const targetOrder = isEmptyBlock ? preOrder : preOrder + 1;
+
+      // Yoopta's insertBlock({focus:true}) calls focusBlock synchronously before
+      // React renders the new block, so blockEditorsMap has no entry for it yet
+      // and the focus call silently fails. requestAnimationFrame defers until
+      // after the browser paint, by which point React has mounted the new block
+      // and focusBlockAtOrder can successfully call editor.focusBlock().
+      requestAnimationFrame(() => {
+        focusBlockAtOrder(editor, { order: targetOrder });
+      });
+    };
+  };
+}
+
 // Base plugins that don't need dynamic configuration
 // Use our custom TodoList render instead of shadcn's ListsUI.TodoList.
 // The shadcn render's onMouseDown+Elements.updateElement approach is sluggish
 // on rapid clicks; our custom render uses onClick and local token styling
 // and CSS-only styling via design-system tokens.
-const ThemedTodoList = TodoList.extend({ elements: CustomTodoListElements });
+const ThemedTodoList = TodoList.extend({
+  elements: CustomTodoListElements,
+  events: { onKeyDown: wrapListKeyDown(_origTodoListKeyDown) as any },
+});
 
 // Extend BulletedList with themed render for explicit list-disc class.
 // Stock BulletedList renders bare <ul><li> with no classes; it relies
 // entirely on CSS rules for bullet markers, which Safari can miss when a
 // block type conversion coincides with a React re-render.
-const ThemedBulletedList = BulletedList.extend({ elements: LocalListsUI.BulletedList });
+const ThemedBulletedList = BulletedList.extend({
+  elements: LocalListsUI.BulletedList,
+  events: { onKeyDown: wrapListKeyDown(_origBulletedListKeyDown) as any },
+});
 
 // Extend stock Callout with local element renders.
 // Keeps built-in block options UI (callout theme)
@@ -143,7 +210,10 @@ const ThemedCallout = Callout.extend({ elements: LocalCalloutUI });
 // Extend NumberedList with themed render that uses useNumberListCount hook
 // for proper sequential numbering across blocks (stock renders each block as
 // a separate <ol> starting at 1).
-const ThemedNumberedList = NumberedList.extend({ elements: LocalListsUI.NumberedList });
+const ThemedNumberedList = NumberedList.extend({
+  elements: LocalListsUI.NumberedList,
+  events: { onKeyDown: wrapListKeyDown(_origNumberedListKeyDown) as any },
+});
 
 // Extend headless plugins with themed renders. Stock plugins render plain <div>
 // wrappers without styling — the themed versions provide proper visual UI.
