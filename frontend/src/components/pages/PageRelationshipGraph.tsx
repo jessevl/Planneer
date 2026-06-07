@@ -157,6 +157,7 @@ function paginateGraphNodes(
   }
 
   const pageOrder = new Map(allPages.map((page) => [page.id, page.order ?? 0]));
+  const pageUpdated = new Map(allPages.map((page) => [page.id, page.updated]));
   const pageChildrenByParent = new Map<string | null, string[]>();
   const parentByNodeId = new Map<string, string | null>();
 
@@ -173,7 +174,8 @@ function paginateGraphNodes(
     childIds.sort((left, right) => {
       const leftPageId = graph.nodesById[left]?.entityId ?? '';
       const rightPageId = graph.nodesById[right]?.entityId ?? '';
-      return (pageOrder.get(leftPageId) ?? 0) - (pageOrder.get(rightPageId) ?? 0)
+      return (pageUpdated.get(rightPageId) ?? '').localeCompare(pageUpdated.get(leftPageId) ?? '')
+        || (pageOrder.get(leftPageId) ?? 0) - (pageOrder.get(rightPageId) ?? 0)
         || (graph.nodesById[left]?.title ?? '').localeCompare(graph.nodesById[right]?.title ?? '');
     });
     pageChildrenByParent.set(parentId, childIds);
