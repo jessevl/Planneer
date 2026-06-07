@@ -124,6 +124,16 @@ class SyncEngine {
   }
 
   /**
+   * Stop protecting a record from SSE updates after `delayMs`.
+   * Matches the queue processor's grace period so any in-flight echo SSE is still ignored.
+   */
+  unmarkRecordSyncing(recordId: string, delayMs: number = 500): void {
+    setTimeout(() => {
+      this.syncingRecords.delete(recordId);
+    }, delayMs);
+  }
+
+  /**
    * Set the current workspace ID. Only operations for this workspace will be synced.
    */
   setWorkspace(workspaceId: string | null): void {

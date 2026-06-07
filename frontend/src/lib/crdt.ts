@@ -332,6 +332,9 @@ export const PAGE_CRDT_FIELDS = [
   'activeSavedViewId',
   // Tags
   'tags',
+  // File arrays — must be tracked so SSE updates propagate through the CRDT merge path
+  'images',
+  'files',
   // Filter options (JSON-encoded)
   'tasksFilterOptions',
   'collectionFilterOptions',

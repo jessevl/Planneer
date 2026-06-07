@@ -66,6 +66,8 @@ export interface ImageUploadResult {
   alt: string;
   /** Thumbnail URL (512x512 from PocketBase) */
   thumbnailUrl?: string;
+  /** Updated page.images array after the upload (all filenames, including the new one) */
+  images: string[];
 }
 
 /**

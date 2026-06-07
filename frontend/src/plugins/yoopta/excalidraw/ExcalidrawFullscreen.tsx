@@ -27,8 +27,10 @@ import {
   normalizeDefaultStrokeColor,
 } from './defaults';
 import { useCurrentPageId } from '@/contexts';
-import { uploadPageImage } from '@/api/pagesApi';
+import { uploadPageImage, removePageImage } from '@/api/pagesApi';
+import { usePagesStore } from '@/stores/pagesStore';
 import { useIsDarkMode } from '@/hooks/useIsDarkMode';
+import { syncEngine } from '@/lib/syncEngine';
 
 // ============================================================================
 // TYPES
@@ -37,6 +39,7 @@ import { useIsDarkMode } from '@/hooks/useIsDarkMode';
 interface ExcalidrawFullscreenProps {
   snapshot: string | null;
   blockId: string;
+  currentThumbnailUrl?: string | null;
   onClose: (snapshot: string, elementCount: number, thumbnailUrl: string | null) => void;
 }
 
@@ -210,6 +213,7 @@ function getPersistedAppState(appState: AppState): PersistedAppState {
 const ExcalidrawFullscreen: React.FC<ExcalidrawFullscreenProps> = ({
   snapshot,
   blockId,
+  currentThumbnailUrl,
   onClose,
 }) => {
   const pageId = useCurrentPageId();
@@ -217,7 +221,9 @@ const ExcalidrawFullscreen: React.FC<ExcalidrawFullscreenProps> = ({
   const [api, setApi] = useState<ExcalidrawImperativeAPI | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const thumbnailTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const latestThumbnailUrlRef = useRef<string | null>(null);
+  // Tracks the last uploaded thumbnail URL so the previous one can be deleted when a new one is uploaded.
+  // Initialised from the block's current thumbnailUrl so the very first replacement also cleans up.
+  const latestThumbnailUrlRef = useRef<string | null>(currentThumbnailUrl ?? null);
   const [activeTool, setActiveTool] = useState<AppState['activeTool']['type']>('selection');
   const appStateRef = useRef<AppState | null>(null);
   const selectedElementsRef = useRef<readonly ExcalidrawElement[]>([]);
@@ -227,18 +233,55 @@ const ExcalidrawFullscreen: React.FC<ExcalidrawFullscreenProps> = ({
   // Parse initial scene data
   const initialScene = useRef<SceneData | null>(normalizeSceneForTheme(parseInitialScene(snapshot), isDark));
 
-  // Generate + upload thumbnail
+  // Generate + upload thumbnail, deleting the previously uploaded one to prevent accumulation.
+  // Marks the page as "syncing" so the echo SSE from PocketBase's image update is ignored —
+  // otherwise applyRemoteContentToEditor can run with stale content and revert the just-set
+  // thumbnailUrl on the editor block, causing the inline card to lose its thumbnail.
   const saveThumbnail = useCallback(async (): Promise<string | null> => {
     if (!api || !pageId) return null;
 
     const blob = await generateThumbnailBlob(api);
     if (!blob) return null;
 
-    const url = await uploadThumbnail(pageId, blob);
-    if (url) {
+    syncEngine.markRecordSyncing(pageId);
+
+    try {
+      const prevUrl = latestThumbnailUrlRef.current;
+      const file = new File([blob], `wb_thumb_${Date.now()}.png`, { type: 'image/png' });
+      const result = await uploadPageImage(pageId, file, 800, 600);
+      const url = result.src;
+
       latestThumbnailUrlRef.current = url;
+
+      const prevFilename = (prevUrl && prevUrl !== url)
+        ? prevUrl.split('/').pop()?.split('?')[0]
+        : undefined;
+      if (prevFilename?.startsWith('wb_thumb_')) {
+        syncEngine.markRecordSyncing(pageId);
+        removePageImage(pageId, prevFilename)
+          .catch((err) => {
+            console.error('[ExcalidrawFullscreen] Failed to remove old thumbnail:', err);
+          })
+          .finally(() => {
+            syncEngine.unmarkRecordSyncing(pageId);
+          });
+      }
+
+      // Surgical store update: swap old filename for new one, preserving all other images
+      // (e.g. other whiteboards' thumbnails). Using the store's current value rather than
+      // result.images avoids a race where PocketBase hasn't yet persisted sibling uploads.
+      const newFilename = url.split('/').pop()?.split('?')[0];
+      const currentImages = usePagesStore.getState().pagesById[pageId]?.images ?? [];
+      const updatedImages = [
+        ...currentImages.filter((img) => img !== prevFilename && img !== newFilename),
+        ...(newFilename ? [newFilename] : []),
+      ];
+      usePagesStore.getState().setPageImages(pageId, updatedImages);
+
+      return url;
+    } finally {
+      syncEngine.unmarkRecordSyncing(pageId);
     }
-    return url;
   }, [api, pageId]);
 
   // Set up fallback thumbnail timer

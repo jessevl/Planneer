@@ -176,6 +176,7 @@ export interface PagesState {
   // Actions - Editor
   selectPage: (id: string | null, isNew?: boolean, forceRefresh?: boolean, isBackground?: boolean) => Promise<void>;
   setDraftTitle: (title: string) => void;
+  setPageImages: (pageId: string, images: string[]) => void;
   setDraftContent: (content: string) => void;
   saveCurrentPage: () => Promise<void>;
   discardDraft: () => void;
@@ -1493,6 +1494,17 @@ export const usePagesStore = create<PagesState>()(
             );
           }
         },
+
+        setPageImages: (pageId, images) =>
+          set(
+            (state) => {
+              const page = state.pagesById[pageId];
+              if (!page) return state;
+              return { pagesById: { ...state.pagesById, [pageId]: { ...page, images } } };
+            },
+            false,
+            'setPageImages',
+          ),
 
         setDraftTitle: (title) => set({ draftTitle: title, isDirty: true }, false, 'setDraftTitle'),
         setDraftContent: (content) =>

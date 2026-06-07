@@ -45,9 +45,10 @@ interface TodaySectionsBoardProps {
   onTaskClick: (taskId: string) => void;
   /** Open the Today task view */
   onViewTodayTasks: () => void;
-  /** Open the Upcoming task view */
   /** Start quick task creation */
   onCreateTask: () => void;
+  /** Add task to a specific date group column */
+  onAddTaskToGroup?: (groupKey: string) => void;
 }
 
 const TodaySectionsBoard: React.FC<TodaySectionsBoardProps> = ({
@@ -61,6 +62,7 @@ const TodaySectionsBoard: React.FC<TodaySectionsBoardProps> = ({
   onTaskClick,
   onViewTodayTasks,
   onCreateTask,
+  onAddTaskToGroup,
 }) => {
   const agendaTasks = useMemo(
     () => [...overdueTasks, ...todayTasks, ...tomorrowTasks, ...thisWeekTasks],
@@ -124,6 +126,7 @@ const TodaySectionsBoard: React.FC<TodaySectionsBoardProps> = ({
           visibleGroupKeys={HOME_AGENDA_GROUPS}
           maxTasksPerGroup={PREVIEW_LIMIT}
           embedded={true}
+          onAddTaskToGroup={onAddTaskToGroup ? (groupKey) => onAddTaskToGroup(groupKey) : undefined}
           renderGroupFooter={({ groupKey, hiddenCount }) => {
             if (hiddenCount <= 0) return null;
 

@@ -685,6 +685,7 @@ export async function uploadPageImage(
     sizes: { width, height },
     alt,
     thumbnailUrl,
+    images,
   };
 }
 
@@ -700,6 +701,15 @@ export async function removePageImage(pageId: string, filename: string): Promise
   formData.append('images-', filename);
 
   await pb.collection('pages').update(pageId, formData);
+}
+
+/**
+ * Fetch just the images filenames array for a page directly from PocketBase.
+ * Used to bypass the local store's stale images field when doing thumbnail cleanup.
+ */
+export async function getPageImages(pageId: string): Promise<string[]> {
+  const result = await pb.collection('pages').getOne(pageId, { fields: 'images' });
+  return ((result as unknown as Record<string, unknown>).images as string[]) ?? [];
 }
 
 // =============================================================================

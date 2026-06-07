@@ -17,7 +17,9 @@
  */
 import React, { useMemo, useCallback } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { getTodayISO, dayjs } from '../lib/dateUtils';
+import { getTodayISO, dayjs, getToday } from '../lib/dateUtils';
+import { dateGroupToDate } from '../lib/dateGroups';
+import type { DateGroupKey } from '../lib/dateGroups';
 import { Container } from '@/components/ui';
 import { 
   Calendar,
@@ -63,6 +65,7 @@ const HomeView: React.FC = () => {
   // UI store
   const startEditingTask = useUIStore((s) => s.startEditingTask);
   const createTaskInContext = useUIStore((s) => s.createTaskInContext);
+  const startCreatingTask = useUIStore((s) => s.startCreatingTask);
 
   // Pages - increased limit to show more in gallery
   const recentPages = useRecentPages(8);
@@ -176,8 +179,13 @@ const HomeView: React.FC = () => {
   }, [createTaskInContext]);
 
   const handleQuickCreateTask = useCallback(() => {
-    createTaskInContext();
-  }, [createTaskInContext]);
+    startCreatingTask();
+  }, [startCreatingTask]);
+
+  const handleAddTaskToGroup = useCallback((groupKey: string) => {
+    const date = dateGroupToDate(groupKey as DateGroupKey, getToday());
+    startCreatingTask(date ? { defaultDueDate: date } : undefined);
+  }, [startCreatingTask]);
 
   const handleTaskClick = useCallback((taskId: string) => {
     startEditingTask(taskId);
@@ -256,6 +264,7 @@ const HomeView: React.FC = () => {
             onTaskClick={handleTaskClick}
             onViewTodayTasks={handleViewAllTasks}
             onCreateTask={handleQuickCreateTask}
+            onAddTaskToGroup={handleAddTaskToGroup}
           />
 
         </Container>

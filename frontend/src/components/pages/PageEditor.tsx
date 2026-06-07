@@ -70,7 +70,7 @@ import { withErrorBoundary } from '@/components/common/ErrorBoundary';
 import { PageContentError } from '@/lib/errors';
 import { syncEngine } from '@/lib/syncEngine/index';
 import { processImageForUpload } from '@/lib/imageUtils';
-import { uploadPageImage, removePageImage } from '@/api/pagesApi';
+import { uploadPageImage, removePageImage, getPageImages } from '@/api/pagesApi';
 import { PageEditorProvider } from '@/contexts';
 import { isGranularKey } from '@/lib/crdt';
 import { focusBlockAtOrder } from '@/plugins/yoopta/utils/focusBlockAtOrder';
@@ -422,6 +422,32 @@ const DEFAULT_YOOPTA_CONTENT: YooptaContentValue = {
  * Parse JSON content and validate it's proper Yoopta format.
  * Throws PageContentError if content is malformed.
  */
+// Returns a map of blockId → wb_thumb filename for every live whiteboard block in the content.
+function extractWhiteboardThumbnails(contentJson: string): Map<string, string> {
+  const map = new Map<string, string>();
+  try {
+    const parsed = JSON.parse(contentJson) as Record<string, unknown>;
+    for (const [blockId, block] of Object.entries(parsed)) {
+      if (typeof block !== 'object' || !block) continue;
+      const b = block as Record<string, unknown>;
+      if (b.type !== 'Whiteboard') continue;
+      const value = b.value as Array<Record<string, unknown>> | undefined;
+      if (!Array.isArray(value)) continue;
+      for (const element of value) {
+        const props = element.props as Record<string, unknown> | undefined;
+        const thumbnailUrl = props?.thumbnailUrl;
+        if (typeof thumbnailUrl === 'string' && thumbnailUrl) {
+          const filename = thumbnailUrl.split('/').pop()?.split('?')[0];
+          if (filename?.startsWith('wb_thumb_')) map.set(blockId, filename);
+        }
+      }
+    }
+  } catch {
+    // ignore parse errors
+  }
+  return map;
+}
+
 function parseContent(content: unknown): YooptaContentValue {
   // Empty content is valid - use default
   if (!content) {
@@ -690,6 +716,8 @@ const PageEditor: React.FC<PageEditorProps> = ({
   const pendingDraftIdleRef = useRef<number | null>(null);
   const pendingDraftTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inlineTagRefreshRafRef = useRef<number | null>(null);
+  // Tracks blockId → wb_thumb filename for live whiteboard blocks so we can detect removals/replacements
+  const whiteboardThumbnailsRef = useRef<Map<string, string>>(new Map());
 
   const currentPageTags = useMemo(() => {
     if (!tags) return [] as string[];
@@ -885,6 +913,65 @@ const PageEditor: React.FC<PageEditorProps> = ({
       setMountedForPageId(pageId);
     }
   }, [pageId, mountedForPageId]);
+
+  // Seed the whiteboard thumbnail tracker and clean up any accumulated wb_thumb_* orphans.
+  // Only fetches from PocketBase when the page actually has whiteboard data to avoid an
+  // unnecessary round-trip on every page navigation.
+  useEffect(() => {
+    const content = usePagesStore.getState().draftContent;
+    whiteboardThumbnailsRef.current = extractWhiteboardThumbnails(content ?? '');
+
+    if (!pageId) return;
+
+    // Bail if the content hasn't been parsed yet (initial mount before selectPage finishes).
+    // Without content, we can't safely identify orphans — every live wb_thumb file would
+    // look orphaned and get deleted.
+    if (!content) return;
+
+    // Count whiteboard blocks in content; only run cleanup if every live whiteboard block
+    // already has a thumbnailUrl. Otherwise a freshly-added empty whiteboard would make us
+    // think its existing PB thumbnail (uploaded but not yet reflected in editor props) is
+    // orphaned.
+    let whiteboardBlockCount = 0;
+    try {
+      const parsed = JSON.parse(content) as Record<string, unknown>;
+      for (const block of Object.values(parsed)) {
+        if (typeof block === 'object' && block && (block as Record<string, unknown>).type === 'Whiteboard') {
+          whiteboardBlockCount++;
+        }
+      }
+    } catch {
+      return;
+    }
+    if (whiteboardBlockCount !== whiteboardThumbnailsRef.current.size) return;
+
+    const storeImages = usePagesStore.getState().pagesById[pageId]?.images ?? [];
+    const hasWbData =
+      whiteboardThumbnailsRef.current.size > 0 ||
+      storeImages.some((img) => img.startsWith('wb_thumb_'));
+    if (!hasWbData) return;
+
+    const referenced = new Set(whiteboardThumbnailsRef.current.values());
+    const pid = pageId;
+    getPageImages(pid).then((images) => {
+      const orphaned = images.filter(
+        (img) => img.startsWith('wb_thumb_') && !referenced.has(img),
+      );
+      if (orphaned.length === 0) return;
+      const cleanedImages = images.filter((img) => !orphaned.includes(img));
+      syncEngine.markRecordSyncing(pid);
+      Promise.all(orphaned.map((filename) =>
+        removePageImage(pid, filename).catch((err) => {
+          console.error('[PageEditor] Failed to remove accumulated whiteboard thumbnail on mount:', err);
+        })
+      )).finally(() => {
+        syncEngine.unmarkRecordSyncing(pid);
+      });
+      usePagesStore.getState().setPageImages(pid, cleanedImages);
+    }).catch(() => {
+      // Non-critical
+    });
+  }, [pageId]);
   
   // Track editor focus using Yoopta's native events
   // This avoids DOM event interception that causes mobile keyboard issues
@@ -1435,7 +1522,50 @@ const PageEditor: React.FC<PageEditorProps> = ({
     if (newContent === currentDraft) return;
 
     setDraftContent(newContent);
-  }, [setDraftContent]);
+
+    // When whiteboard blocks are completely removed, clean up their thumbnails.
+    // We check block ID existence in the parsed content (not thumbnailUrl presence)
+    // because applyRemoteContentToEditor can temporarily clear a block's thumbnailUrl
+    // (when stale server content arrives before the latest save), which would cause
+    // false-positive orphan detection and delete thumbnails for still-live blocks.
+    if (pageId) {
+      const newThumbnails = extractWhiteboardThumbnails(newContent);
+      const prev = whiteboardThumbnailsRef.current;
+
+      // Get ALL block IDs in the new content (not just those with thumbnailUrls)
+      let newBlockIds: Set<string>;
+      try {
+        const parsed = JSON.parse(newContent) as Record<string, unknown>;
+        newBlockIds = new Set(Object.keys(parsed));
+      } catch {
+        newBlockIds = new Set(newThumbnails.keys());
+      }
+
+      // Only delete thumbnails for blocks that no longer exist in the content at all
+      const filesToDelete: string[] = [];
+      for (const [blockId, oldFilename] of prev.entries()) {
+        if (!newBlockIds.has(blockId)) {
+          filesToDelete.push(oldFilename);
+        }
+      }
+
+      if (filesToDelete.length > 0) {
+        const pid = pageId;
+        syncEngine.markRecordSyncing(pid);
+        Promise.all(filesToDelete.map((filename) =>
+          removePageImage(pid, filename).catch((err) => {
+            console.error('[PageEditor] Failed to remove orphaned whiteboard thumbnail:', err);
+          })
+        )).finally(() => {
+          syncEngine.unmarkRecordSyncing(pid);
+        });
+        const currentImages = usePagesStore.getState().pagesById[pid]?.images ?? [];
+        usePagesStore.getState().setPageImages(pid, currentImages.filter((img) => !filesToDelete.includes(img)));
+      }
+
+      whiteboardThumbnailsRef.current = newThumbnails;
+    }
+  }, [pageId, setDraftContent]);
 
   const schedulePendingDraftFlush = useCallback(() => {
     if (pendingDraftIdleRef.current !== null || pendingDraftTimeoutRef.current) {

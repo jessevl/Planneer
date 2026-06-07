@@ -190,14 +190,15 @@ const DESCRIPTION_MAX_LENGTH = FORM_VALIDATION.TASK_DESCRIPTION_MAX_LENGTH;
       if (sel) setParentPageId(sel.id);
     }
     // Date default: when creating from 'today' or 'upcoming' view, default dueDate to today
+    // Prefer defaultDueDate if explicitly provided (e.g., tomorrow column)
     if (currentView === 'today' || currentView === 'upcoming') {
-      const today = dayjs().format('YYYY-MM-DD');
-      setDueDate(today);
+      const dateToUse = defaultDueDate ?? dayjs().format('YYYY-MM-DD');
+      setDueDate(dateToUse);
       // momentary flash to indicate autofill
       setFlashDue(true);
       setTimeout(() => setFlashDue(false), 600);
     }
-  }, [initialTask, mode, selectedTaskPageId, taskPages, currentView]);
+  }, [initialTask, mode, selectedTaskPageId, taskPages, currentView, defaultDueDate]);
 
   // flash indicators that appear briefly after autofill
   const [flashDue, setFlashDue] = useState(false);

@@ -231,7 +231,7 @@ const PageCard: React.FC<PageCardProps> = React.memo(({
       pushItem({
         key: `image:${filename}`,
         kind: 'image',
-        label: 'Image',
+        label: filename.startsWith('wb_thumb_') ? 'Whiteboard' : 'Image',
         src: getPageImageUrl(page.id, filename, true),
       });
     }

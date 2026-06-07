@@ -216,10 +216,34 @@ const UnifiedSidepanel: React.FC<UnifiedSidepanelProps> = ({
     }
   }, [currentPage, hasEditorTab, openSidePanel, openTaskPane, startCreatingTask]);
 
+  const handleCreateTaskForGroup = React.useCallback((sectionKey: string) => {
+    const todayISO = getTodayISO();
+    let defaultDueDate: string;
+    switch (sectionKey) {
+      case 'today':
+        defaultDueDate = todayISO;
+        break;
+      case 'tomorrow':
+        defaultDueDate = dayjs(todayISO).add(1, 'day').format('YYYY-MM-DD');
+        break;
+      case 'this-week':
+        defaultDueDate = dayjs(todayISO).endOf('week').format('YYYY-MM-DD');
+        break;
+      default:
+        defaultDueDate = dayjs(todayISO).add(14, 'day').format('YYYY-MM-DD');
+    }
+    const defaults = { defaultDueDate };
+    if (hasEditorTab) {
+      openSidePanel('task-editor');
+      openTaskPane('create', null, defaults);
+    } else {
+      startCreatingTask(defaults);
+    }
+  }, [hasEditorTab, openSidePanel, openTaskPane, startCreatingTask]);
+
   // ── Render ────────────────────────────────────────────────────────────
 
   const showClear = activeTab === 'task-editor' && pane.snapshot.mode === 'edit';
-  const showCreate = activeTab === 'task-overview';
 
   return (
     <aside
@@ -242,10 +266,9 @@ const UnifiedSidepanel: React.FC<UnifiedSidepanelProps> = ({
             />
           </div>
 
-          {(showClear || showCreate) && (
+          {showClear && (
             <div className="glass-panel-nav eink-shell-surface flex h-11 flex-shrink-0 items-center gap-1 px-2">
-              {showCreate && <HeaderAction icon={Plus} label="Create task" onClick={handleCreateTask} />}
-              {showClear && <HeaderAction icon={X} label="Clear opened task" onClick={pane.reset} />}
+              <HeaderAction icon={X} label="Clear opened task" onClick={pane.reset} />
             </div>
           )}
         </div>
@@ -304,6 +327,7 @@ const UnifiedSidepanel: React.FC<UnifiedSidepanelProps> = ({
             taskCollections={taskCollections}
             toggleComplete={toggleComplete}
             onTaskClick={handleTaskClick}
+            onCreateTask={handleCreateTaskForGroup}
           />
         )}
       </div>
@@ -645,7 +669,8 @@ const TaskOverviewTabContent: React.FC<{
   taskCollections: Page[];
   toggleComplete: (taskId: string) => void;
   onTaskClick: (taskId: string) => void;
-}> = ({ todayTasks, upcomingTasks, taskCollections, toggleComplete, onTaskClick }) => {
+  onCreateTask?: (sectionKey: string) => void;
+}> = ({ todayTasks, upcomingTasks, taskCollections, toggleComplete, onTaskClick, onCreateTask }) => {
   const todayISO = React.useMemo(() => getTodayISO(), []);
 
   const taskGroups = React.useMemo(() => {
@@ -697,6 +722,7 @@ const TaskOverviewTabContent: React.FC<{
             onToggleComplete={toggleComplete}
             onTaskClick={onTaskClick}
             showEmptyState={group.showEmptyState}
+            onCreateTask={onCreateTask ? () => onCreateTask(group.key) : undefined}
           />
         ))}
       </div>
@@ -713,13 +739,25 @@ const TaskOverviewSection: React.FC<{
   onToggleComplete: (taskId: string) => void;
   onTaskClick: (taskId: string) => void;
   showEmptyState?: boolean;
-}> = ({ title, tasks, taskPages, todayISO, onToggleComplete, onTaskClick, showEmptyState = false }) => (
+  onCreateTask?: () => void;
+}> = ({ title, tasks, taskPages, todayISO, onToggleComplete, onTaskClick, showEmptyState = false, onCreateTask }) => (
   <section>
     <div className="mb-2 flex items-center justify-between gap-3 px-1">
       <div className="flex items-center gap-2">
         <p className="text-sm font-semibold text-[var(--color-text-primary)]">{title}</p>
         <span className="text-xs text-[var(--color-text-tertiary)]">{tasks.length}</span>
       </div>
+      {onCreateTask && (
+        <button
+          type="button"
+          onClick={onCreateTask}
+          className="ml-auto flex items-center justify-center rounded-full p-1 text-[var(--color-text-tertiary)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-secondary)]"
+          aria-label={`Add task to ${title}`}
+          title={`Add task to ${title}`}
+        >
+          <Plus size={14} strokeWidth={2.5} />
+        </button>
+      )}
     </div>
 
     {tasks.length ? (

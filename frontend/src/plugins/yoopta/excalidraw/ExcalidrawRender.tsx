@@ -80,6 +80,7 @@ export default function ExcalidrawRender({
           <ExcalidrawFullscreen
             snapshot={snapshot}
             blockId={blockId}
+            currentThumbnailUrl={thumbnailUrl}
             onClose={handleClose}
           />
         </React.Suspense>
