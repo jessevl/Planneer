@@ -194,6 +194,31 @@ export function formatJournalDate(isoDate: string): string {
   return parseDate(isoDate).format('dddd, MMMM D');
 }
 
+/**
+ * Format an ISO timestamp (or date string) as a compact relative label for
+ * use in search results, list subtitles, etc.
+ *
+ * Examples: "just now", "5m ago", "2h ago", "yesterday", "Jan 5", "Mar 2024"
+ */
+export function formatUpdatedAt(isoTimestamp: string | null | undefined): string {
+  if (!isoTimestamp) return '';
+  const ts = dayjs(isoTimestamp);
+  const now = dayjs();
+  const diffSeconds = now.diff(ts, 'second');
+
+  if (diffSeconds < 60) return 'just now';
+  const diffMinutes = now.diff(ts, 'minute');
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+  const diffHours = now.diff(ts, 'hour');
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffHours < 48) return 'yesterday';
+  const diffDays = now.diff(ts, 'day');
+  if (diffDays < 7) return `${diffDays}d ago`;
+  // Same year: "Jan 5", otherwise "Jan 2023"
+  if (ts.year() === now.year()) return ts.format('MMM D');
+  return ts.format('MMM YYYY');
+}
+
 // ============================================================================
 // Re-export dayjs for cases needing full functionality
 // ============================================================================

@@ -37,7 +37,7 @@ import { usePagesStore, type PagesState } from '@/stores/pagesStore';
 import { useTasksStore } from '@/stores/tasksStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useIsMobile } from '@frameer/hooks/useMobileDetection';
-import { getTodayISO } from '@/lib/dateUtils';
+import { getTodayISO, formatUpdatedAt } from '@/lib/dateUtils';
 import type { Task } from '@/types/task';
 import type { Page } from '@/types/page';
 
@@ -60,6 +60,8 @@ interface Command {
   keywords?: string[];
   onSelect: () => void;
   shortcut?: string;
+  /** ISO timestamp string for search results; rendered as a compact relative label */
+  updatedAt?: string;
 }
 
 /** Selection result for when used as a picker */
@@ -150,6 +152,11 @@ const ResultItem: React.FC<ResultItemProps> = ({
           </div>
         )}
       </div>
+      {command.updatedAt && (
+        <span className="flex-shrink-0 text-[11px] text-[var(--color-text-tertiary)] tabular-nums">
+          {formatUpdatedAt(command.updatedAt)}
+        </span>
+      )}
       {command.shortcut && !isMobile && <ShortcutBadge keys={command.shortcut} />}
     </button>
   );
@@ -412,6 +419,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
           searchableTitle: task.title,
           subtitle: subtitleNode,
           searchableSubtitle: typeof defaultSubtitle === 'string' ? defaultSubtitle : undefined,
+          updatedAt: task.updated,
           onSelect: () => {
             if (isSelectionMode && onSelect) {
               onSelect(makeTaskSelection(task));
@@ -448,6 +456,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
           searchableTitle: page.title || 'Untitled',
           subtitle: subtitleNode,
           searchableSubtitle: typeof defaultSubtitle === 'string' ? defaultSubtitle : undefined,
+          updatedAt: page.updated,
           onSelect: () => {
             if (isSelectionMode && onSelect) {
               onSelect(makePageSelection(page));
