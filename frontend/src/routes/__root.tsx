@@ -168,6 +168,11 @@ function RootLayout() {
   const pendingAuthRecoveryRef = useRef<Promise<boolean> | null>(null);
   // Track current workspace to detect switches
   const prevWorkspaceIdRef = useRef<string | null>(null);
+  // Whether the app has reached 'ready' at least once for the current login.
+  // The SessionExpiredModal is meant for in-app expiries (preserving unsaved
+  // work); during bootstrap there's nothing to preserve and transient 401s
+  // (cold start, clock skew, slow first load) shouldn't surface the modal.
+  const hasBeenReadyRef = useRef(false);
   
   // Auth state
   const { user, authLoading, initializeAuth, logout } = useAuthStore(
@@ -188,10 +193,24 @@ function RootLayout() {
     }))
   );
   
+  // Flip hasBeenReadyRef on the first 'ready', reset on logout/unauthenticated.
+  // This bounds the SessionExpiredModal to the in-app lifecycle, not bootstrap.
+  useEffect(() => {
+    if (appState === 'ready') {
+      hasBeenReadyRef.current = true;
+    } else if (appState === 'unauthenticated') {
+      hasBeenReadyRef.current = false;
+    }
+  }, [appState]);
+
   // Session validation - validates auth token periodically and on focus
   useSessionValidator({
     validationInterval: 60000, // Check every minute
     onSessionExpired: () => {
+      // Don't surface the modal during initial bootstrap. The validator keeps
+      // running and proactive refresh still happens; we only gate the UI.
+      if (!hasBeenReadyRef.current) return;
+
       const authState = useAuthStore.getState();
       if (Date.now() - authState.lastValidatedAt < 10000) {
         return;
@@ -266,6 +285,9 @@ function RootLayout() {
 
       void pendingAuthRecoveryRef.current.then((recovered) => {
         if (recovered || showSessionExpired || !useAuthStore.getState().user) return;
+        // Silent refresh still runs above; only suppress the modal until the
+        // app has been ready (so fresh-login transient 401s don't trip it).
+        if (!hasBeenReadyRef.current) return;
         setWorkspaceError(null);
         setShowSessionExpired(true);
       });
@@ -360,6 +382,15 @@ function RootLayout() {
       } catch (error) {
         // Check for specific error types
         if (isSessionExpired(error)) {
+          // Before the app has been ready, a 401 here is almost always a
+          // bootstrap blip (cold start, clock skew, slow first load) — not a
+          // genuine in-app expiry. Proceed to ready; subsequent interactions
+          // will hit the live validator/refresh path if auth is actually bad.
+          if (!hasBeenReadyRef.current) {
+            setAppState('ready');
+            return;
+          }
+
           const authState = useAuthStore.getState();
           if (Date.now() - authState.lastValidatedAt < 10000) {
             setAppState('ready');
