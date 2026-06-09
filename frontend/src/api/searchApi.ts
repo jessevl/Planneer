@@ -10,10 +10,16 @@ import { pb } from '@/lib/pocketbase';
 // TYPES
 // ============================================================================
 
+/**
+ * Snippet fields contain FTS5-highlighted text with <MARK>...</MARK> sentinels
+ * wrapping matched tokens. Render via the HighlightedText helper, not innerHTML.
+ */
 export interface TaskSearchResult {
   id: string;
   title: string;
   description?: string;
+  titleSnippet?: string;
+  descriptionSnippet?: string;
   dueDate?: string;
   priority?: string;
   parentPageId?: string;
@@ -25,6 +31,8 @@ export interface PageSearchResult {
   id: string;
   title: string;
   excerpt?: string;
+  titleSnippet?: string;
+  bodySnippet?: string;
   icon?: string;
   parentId?: string;
   viewMode?: string;

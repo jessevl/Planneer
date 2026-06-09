@@ -30,6 +30,7 @@ import {
 } from '@/components/common/Icons';
 import { TaskCheckbox } from '@/components/ui';
 import ItemIcon from '@/components/common/ItemIcon';
+import HighlightedText from '@/components/common/HighlightedText';
 import MobileDrawer from '@/components/layout/MobileDrawer';
 import { useLocalSearch } from '@/hooks/useLocalSearch';
 import { usePagesStore, type PagesState } from '@/stores/pagesStore';
@@ -50,8 +51,12 @@ interface Command {
   id: string;
   category: CommandCategory;
   icon: React.ReactNode;
-  title: string;
-  subtitle?: string;
+  title: React.ReactNode;
+  subtitle?: React.ReactNode;
+  /** Plain-text title used for keyword filtering in quick actions / navigation */
+  searchableTitle?: string;
+  /** Plain-text subtitle used for keyword filtering */
+  searchableSubtitle?: string;
   keywords?: string[];
   onSelect: () => void;
   shortcut?: string;
@@ -194,14 +199,14 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
   const searchFilterType = selectionFilter === 'task' ? 'tasks' : selectionFilter === 'note' ? 'pages' : 'all';
   
   // Use shared local search hook
-  const { tasks: mergedTasks, pages: mergedPages, isSearching } = useLocalSearch({
+  const { tasks: mergedTasks, pages: mergedPages, snippetsById, isSearching } = useLocalSearch({
     query,
     filterType: searchFilterType,
     excludeDailyNotes: isSelectionMode, // Exclude daily notes in selection mode
     showOnEmpty: isSelectionMode, // Show results immediately in selection mode
     localLimit: isSelectionMode ? 8 : undefined,
   });
-  
+
   // Wrap in an object for compatibility with existing code
   const mergedResults = useMemo(() => ({
     tasks: mergedTasks,
@@ -382,7 +387,15 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       // Add task results
       mergedResults.tasks.forEach(task => {
         const collectionName = task.parentPageId ? pagesById[task.parentPageId]?.title : undefined;
-        
+        const snippets = snippetsById[task.id];
+        const defaultSubtitle = isSelectionMode
+          ? collectionName || 'Task'
+          : (task.completed ? 'Completed task' : (task.dueDate || 'Task'));
+        // Prefer a query-matched body snippet when FTS hit the description.
+        const subtitleNode = snippets?.bodySnippet
+          ? <HighlightedText text={snippets.bodySnippet} />
+          : defaultSubtitle;
+
         commands.push({
           id: `task-${task.id}`,
           category: 'search',
@@ -395,10 +408,10 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
               className="pointer-events-none"
             />
           ),
-          title: task.title,
-          subtitle: isSelectionMode 
-            ? collectionName || 'Task' 
-            : (task.completed ? 'Completed task' : (task.dueDate || 'Task')),
+          title: <HighlightedText text={snippets?.titleSnippet} fallback={task.title} />,
+          searchableTitle: task.title,
+          subtitle: subtitleNode,
+          searchableSubtitle: typeof defaultSubtitle === 'string' ? defaultSubtitle : undefined,
           onSelect: () => {
             if (isSelectionMode && onSelect) {
               onSelect(makeTaskSelection(task));
@@ -411,9 +424,15 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
           },
         });
       });
-      
+
       // Add note results
       mergedResults.pages.forEach(page => {
+        const snippets = snippetsById[page.id];
+        const defaultSubtitle = page.excerpt || (page.viewMode === 'tasks' ? 'Tasks' : page.viewMode === 'collection' ? 'Collection' : 'Note');
+        const subtitleNode = snippets?.bodySnippet
+          ? <HighlightedText text={snippets.bodySnippet} />
+          : defaultSubtitle;
+
         commands.push({
           id: `note-${page.id}`,
           category: 'search',
@@ -425,8 +444,10 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
               size="sm"
             />
           ),
-          title: page.title || 'Untitled',
-          subtitle: page.excerpt || (page.viewMode === 'tasks' ? 'Tasks' : page.viewMode === 'collection' ? 'Collection' : 'Note'),
+          title: <HighlightedText text={snippets?.titleSnippet} fallback={page.title || 'Untitled'} />,
+          searchableTitle: page.title || 'Untitled',
+          subtitle: subtitleNode,
+          searchableSubtitle: typeof defaultSubtitle === 'string' ? defaultSubtitle : undefined,
           onSelect: () => {
             if (isSelectionMode && onSelect) {
               onSelect(makePageSelection(page));
@@ -529,11 +550,15 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({
       return commands;
     }
     
-    // Filter quick actions and navigation by query
+    // Filter quick actions and navigation by query. Search-result commands now
+    // carry ReactNode titles, so we fall back to searchableTitle / searchableSubtitle
+    // when the rendered node isn't a string.
     const matchesQuery = (cmd: Command): boolean => {
       if (!lowerQuery) return true;
-      const titleMatch = cmd.title.toLowerCase().includes(lowerQuery);
-      const subtitleMatch = cmd.subtitle?.toLowerCase().includes(lowerQuery);
+      const titleStr = cmd.searchableTitle ?? (typeof cmd.title === 'string' ? cmd.title : '');
+      const subtitleStr = cmd.searchableSubtitle ?? (typeof cmd.subtitle === 'string' ? cmd.subtitle : '');
+      const titleMatch = titleStr.toLowerCase().includes(lowerQuery);
+      const subtitleMatch = subtitleStr.toLowerCase().includes(lowerQuery);
       const keywordMatch = cmd.keywords?.some(k => k.includes(lowerQuery));
       return titleMatch || subtitleMatch || keywordMatch || false;
     };

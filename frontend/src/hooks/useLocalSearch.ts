@@ -1,10 +1,19 @@
 /**
  * @file useLocalSearch.ts
- * @description Shared hook for local-first search with FTS fallback
+ * @description Shared hook for FTS-primary search with instant local fallback
  * @app SHARED - Used by CommandPalette and InternalLinkPicker
- * 
- * Provides instant local search results from Zustand stores,
- * merged with full-text search results from the backend.
+ *
+ * Strategy:
+ * - When a query is present, FTS is the source of truth. Local-store title
+ *   substring matches render instantly as a placeholder while FTS is in
+ *   flight, then FTS results take over ordering once they arrive.
+ * - Results are ranked by a composite score that boosts title matches over
+ *   body-only matches, with FTS bm25 as a tiebreaker.
+ * - When the query is empty (selection mode), results come from the local
+ *   store sorted by `updated` DESC; for tasks, completed items are pushed
+ *   to the bottom.
+ * - FTS-returned snippets (with <MARK>...</MARK> sentinels) are surfaced
+ *   via `snippetsById` for the consumer to render with HighlightedText.
  */
 import { useMemo, useEffect } from 'react';
 import { useSearch } from '@/hooks/useSearch';
@@ -14,17 +23,18 @@ import { UI } from '@/lib/config';
 import type { Task } from '@/types/task';
 import type { Page } from '@/types/page';
 
-// Backward compat alias
-type Note = Page;
+export interface ResultSnippets {
+  /** Title with <MARK> sentinels (when matched) */
+  titleSnippet?: string;
+  /** Body/description excerpt with <MARK> sentinels */
+  bodySnippet?: string;
+}
 
 export interface LocalSearchOptions {
-  /** Search query string */
   query: string;
-  /** Filter results to specific type */
   filterType?: 'all' | 'tasks' | 'pages';
-  /** Exclude daily notes from results */
   excludeDailyNotes?: boolean;
-  /** Max results per type for local search */
+  /** Max combined results per type */
   localLimit?: number;
   /** Whether to show items when query is empty */
   showOnEmpty?: boolean;
@@ -32,15 +42,65 @@ export interface LocalSearchOptions {
 
 export interface LocalSearchResults {
   tasks: Task[];
-  pages: Note[];
+  pages: Page[];
+  /** Snippets keyed by item id; only populated for FTS-matched rows */
+  snippetsById: Record<string, ResultSnippets>;
   isSearching: boolean;
 }
 
+// ============================================================================
+// SCORING
+// ============================================================================
+
+// Score bands keep title matches above body-only matches regardless of bm25.
+const SCORE_TITLE_EXACT = 1000;
+const SCORE_TITLE_PREFIX = 800;
+const SCORE_TITLE_WORD_PREFIX = 600;
+const SCORE_TITLE_SUBSTRING = 400;
+const SCORE_BODY_ONLY = 200;
+
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Cache compiled regexes per query string — compiled once per render pass
+// since lowerQuery is the same for all candidates within a single useMemo run.
+const wordBoundaryCache = new Map<string, RegExp>();
+function wordBoundaryRegex(lowerQuery: string): RegExp {
+  let re = wordBoundaryCache.get(lowerQuery);
+  if (!re) {
+    re = new RegExp(`(?:^|[\\s-])${escapeRegex(lowerQuery)}`);
+    wordBoundaryCache.set(lowerQuery, re);
+  }
+  return re;
+}
+
+function titleScore(title: string, lowerQuery: string): number {
+  const t = title.toLowerCase();
+  if (t === lowerQuery) return SCORE_TITLE_EXACT;
+  if (t.startsWith(lowerQuery)) return SCORE_TITLE_PREFIX;
+  if (wordBoundaryRegex(lowerQuery).test(t)) return SCORE_TITLE_WORD_PREFIX;
+  if (t.includes(lowerQuery)) return SCORE_TITLE_SUBSTRING;
+  return 0;
+}
+
 /**
- * Hook for local-first search across tasks and pages.
- * 
- * Returns instant results from local stores, merged with FTS results.
- * Deduplicates by ID, preferring local store data over FTS data.
+ * Compose a final score. Higher is better.
+ * - Title band wins outright if the title matches.
+ * - bm25 (lower-is-better) is folded in as a small bonus within a band.
+ */
+function compositeScore(title: string, lowerQuery: string, bm25Rank: number | null): number {
+  const titleBand = titleScore(title, lowerQuery);
+  // bm25 returns a negative number from sqlite (smaller = better match);
+  // we just need a deterministic monotonic tiebreak in [0, 1).
+  const ftsBonus = bm25Rank != null ? 1 / (1 + Math.abs(bm25Rank)) : 0;
+  if (titleBand > 0) return titleBand + ftsBonus;
+  // Body-only match: title didn't match but FTS hit body/description/excerpt.
+  return bm25Rank != null ? SCORE_BODY_ONLY + ftsBonus : 0;
+}
+
+/**
+ * Hook for FTS-primary search across tasks and pages with instant local fallback.
  */
 export function useLocalSearch({
   query,
@@ -50,115 +110,145 @@ export function useLocalSearch({
   showOnEmpty = false,
 }: LocalSearchOptions): LocalSearchResults {
   const tasksById = useTasksStore((s) => s.tasksById);
-  const notesById = usePagesStore((s: PagesState) => s.pagesById);
-  
-  // Full-text search hook
-  const { results: ftsResults, isSearching, doSearch } = useSearch({ 
-    debounceMs: UI.SEARCH_DEBOUNCE_MS 
+  const pagesById = usePagesStore((s: PagesState) => s.pagesById);
+
+  const { results: ftsResults, isSearching, doSearch } = useSearch({
+    debounceMs: UI.SEARCH_DEBOUNCE_MS,
   });
-  
-  // Trigger FTS when query changes (using useEffect for side effects)
+
   useEffect(() => {
     if (query.trim()) {
       doSearch(query);
     }
   }, [query, doSearch]);
-  
-  // Local search - instant results from stores
-  const localResults = useMemo(() => {
+
+  return useMemo<LocalSearchResults>(() => {
     const lowerQuery = query.toLowerCase().trim();
-    
-    if (!lowerQuery && !showOnEmpty) {
-      return { tasks: [], notes: [] };
+    const snippetsById: Record<string, ResultSnippets> = {};
+
+    // ========================================================================
+    // EMPTY QUERY — recents from local store
+    // ========================================================================
+    if (!lowerQuery) {
+      if (!showOnEmpty) {
+        return { tasks: [], pages: [], snippetsById, isSearching: false };
+      }
+
+      const tasks: Task[] = filterType === 'pages'
+        ? []
+        : Object.values(tasksById)
+            .sort((a, b) => {
+              // Incomplete first, then most-recently-updated first.
+              if (a.completed !== b.completed) return a.completed ? 1 : -1;
+              return (b.updated || '').localeCompare(a.updated || '');
+            })
+            .slice(0, localLimit);
+
+      const pages: Page[] = filterType === 'tasks'
+        ? []
+        : Object.values(pagesById)
+            .filter((p) => !excludeDailyNotes || !p.isDailyNote)
+            .sort((a, b) => (b.updated || '').localeCompare(a.updated || ''))
+            .slice(0, localLimit);
+
+      return { tasks, pages, snippetsById, isSearching: false };
     }
-    
-    // Search/filter tasks
-    let matchedTasks: Task[] = [];
+
+    // ========================================================================
+    // QUERY PRESENT — FTS primary, with instant local fallback while pending
+    // ========================================================================
+
+    // Collect FTS-known ids and snippets per type. FTS is the authoritative
+    // signal when it's available; we still merge in any local title-substring
+    // matches that FTS didn't surface (e.g. unsynced items, FTS lag).
+    const ftsTaskRankById = new Map<string, number>();
+    const ftsPageRankById = new Map<string, number>();
+
+    // Only forward snippets that actually contain <MARK> sentinels. FTS5's
+    // snippet() returns text from its column even when the match was on a
+    // different column, so an unmarked snippet is just noise — we'd rather
+    // fall back to the existing subtitle (parent collection / stored excerpt).
     if (filterType !== 'pages') {
-      if (lowerQuery) {
-        matchedTasks = Object.values(tasksById)
-          .filter(task => 
-            task.title.toLowerCase().includes(lowerQuery) ||
-            task.description?.toLowerCase().includes(lowerQuery)
-          )
-          .slice(0, localLimit);
-      } else if (showOnEmpty) {
-        matchedTasks = Object.values(tasksById).slice(0, localLimit);
+      for (const t of ftsResults?.tasks ?? []) {
+        ftsTaskRankById.set(t.id, t.rank);
+        snippetsById[t.id] = {
+          titleSnippet: hasMark(t.titleSnippet) ? t.titleSnippet : undefined,
+          bodySnippet: hasMark(t.descriptionSnippet) ? t.descriptionSnippet : undefined,
+        };
       }
     }
-    
-    // Search/filter pages
-    let matchedNotes: Note[] = [];
+
     if (filterType !== 'tasks') {
-      const pageFilter = (note: Note) => {
-        if (excludeDailyNotes && note.isDailyNote) return false;
-        if (!lowerQuery) return true;
-        return (
-          note.title.toLowerCase().includes(lowerQuery)
-        );
-      };
-      
-      if (lowerQuery || showOnEmpty) {
-        matchedNotes = Object.values(notesById)
-          .filter(pageFilter)
-          .sort((a, b) => (b.updated || '').localeCompare(a.updated || ''))
-          .slice(0, localLimit);
+      for (const p of ftsResults?.pages ?? []) {
+        ftsPageRankById.set(p.id, p.rank);
+        snippetsById[p.id] = {
+          titleSnippet: hasMark(p.titleSnippet) ? p.titleSnippet : undefined,
+          bodySnippet: hasMark(p.bodySnippet) ? p.bodySnippet : undefined,
+        };
       }
     }
-    
-    return { tasks: matchedTasks, pages: matchedNotes };
-  }, [query, tasksById, notesById, filterType, excludeDailyNotes, localLimit, showOnEmpty]);
-  
-  // Merge local and FTS results
-  const mergedResults = useMemo((): LocalSearchResults => {
-    const seenTaskIds = new Set<string>();
-    const seenNoteIds = new Set<string>();
-    
-    const tasks: Task[] = [];
-    const pages: Note[] = [];
-    
-    // Local results first (they appear instantly)
-    localResults.tasks.forEach(t => {
-      if (!seenTaskIds.has(t.id)) {
-        seenTaskIds.add(t.id);
-        tasks.push(t);
-      }
-    });
-    
-    localResults.pages?.forEach(n => {
-      if (!seenNoteIds.has(n.id)) {
-        seenNoteIds.add(n.id);
-        pages.push(n);
-      }
-    });
-    
-    // Add FTS results
+
+    // -------- Tasks
+    let tasks: Task[] = [];
     if (filterType !== 'pages') {
-      ftsResults?.tasks.forEach(t => {
-        if (!seenTaskIds.has(t.id)) {
-          seenTaskIds.add(t.id);
-          const localTask = tasksById[t.id];
-          if (localTask) tasks.push(localTask);
+      const candidateIds = new Set<string>(ftsTaskRankById.keys());
+      // Add local title-substring matches so instant results show before FTS lands.
+      for (const t of Object.values(tasksById)) {
+        if (candidateIds.has(t.id)) continue;
+        if (
+          t.title.toLowerCase().includes(lowerQuery) ||
+          t.description?.toLowerCase().includes(lowerQuery)
+        ) {
+          candidateIds.add(t.id);
         }
-      });
+      }
+
+      tasks = Array.from(candidateIds)
+        .map((id) => tasksById[id])
+        .filter((t): t is Task => !!t)
+        .map((t) => ({
+          item: t,
+          score: compositeScore(t.title, lowerQuery, ftsTaskRankById.get(t.id) ?? null),
+        }))
+        .filter((x) => x.score > 0)
+        .sort((a, b) => {
+          // Completed tasks sink within their score band.
+          if (a.item.completed !== b.item.completed) return a.item.completed ? 1 : -1;
+          return b.score - a.score;
+        })
+        .slice(0, localLimit)
+        .map((x) => x.item);
     }
-    
+
+    // -------- Pages
+    let pages: Page[] = [];
     if (filterType !== 'tasks') {
-      // Use pages if available, fall back to deprecated pages
-      const ftsNotes = ftsResults?.pages ?? ftsResults?.pages ?? [];
-      ftsNotes.forEach(n => {
-        if (!seenNoteIds.has(n.id)) {
-          seenNoteIds.add(n.id);
-          const localNote = notesById[n.id];
-          if (localNote && (!excludeDailyNotes || !localNote.isDailyNote)) {
-            pages.push(localNote);
-          }
+      const candidateIds = new Set<string>(ftsPageRankById.keys());
+      for (const p of Object.values(pagesById)) {
+        if (candidateIds.has(p.id)) continue;
+        if (excludeDailyNotes && p.isDailyNote) continue;
+        if (p.title.toLowerCase().includes(lowerQuery)) {
+          candidateIds.add(p.id);
         }
-      });
+      }
+
+      pages = Array.from(candidateIds)
+        .map((id) => pagesById[id])
+        .filter((p): p is Page => !!p && (!excludeDailyNotes || !p.isDailyNote))
+        .map((p) => ({
+          item: p,
+          score: compositeScore(p.title, lowerQuery, ftsPageRankById.get(p.id) ?? null),
+        }))
+        .filter((x) => x.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, localLimit)
+        .map((x) => x.item);
     }
-    
-    return { tasks, pages, isSearching };
-  }, [localResults, ftsResults, tasksById, notesById, filterType, excludeDailyNotes, isSearching]);
-  
-  return mergedResults;
+
+    return { tasks, pages, snippetsById, isSearching };
+  }, [query, tasksById, pagesById, ftsResults, filterType, excludeDailyNotes, localLimit, showOnEmpty, isSearching]);
+}
+
+function hasMark(s: string | undefined): boolean {
+  return !!s && s.includes('<MARK>');
 }

@@ -253,14 +253,32 @@ func handleSearch(e *core.RequestEvent, app *pocketbase.PocketBase) error {
 
 func searchTasks(app *pocketbase.PocketBase, ftsQuery, workspaceId string, limit int) []map[string]any {
 	var taskResults []struct {
-		Id          string  `db:"id"`
-		Title       string  `db:"title"`
-		Description string  `db:"description"`
-		Rank        float64 `db:"rank"`
+		Id                 string  `db:"id"`
+		Title              string  `db:"title"`
+		Description        string  `db:"description"`
+		DueDate            string  `db:"dueDate"`
+		Priority           string  `db:"priority"`
+		ParentPageId       string  `db:"parentPageId"`
+		Completed          bool    `db:"completed"`
+		TitleSnippet       string  `db:"title_snippet"`
+		DescriptionSnippet string  `db:"description_snippet"`
+		Rank               float64 `db:"rank"`
 	}
 
+	// FTS5 column indices for tasks_fts: 0=id, 1=workspace, 2=title, 3=description.
+	// All task fields are selected from the JOIN so no per-row FindRecordById is needed.
 	err := app.DB().NewQuery(`
-		SELECT t.id, t.title, t.description, bm25(tasks_fts) as rank
+		SELECT
+			t.id,
+			t.title,
+			t.description,
+			t.dueDate,
+			t.priority,
+			t.parentPageId,
+			t.completed,
+			highlight(tasks_fts, 2, '<MARK>', '</MARK>') as title_snippet,
+			snippet(tasks_fts, 3, '<MARK>', '</MARK>', '…', 12) as description_snippet,
+			bm25(tasks_fts) as rank
 		FROM tasks_fts
 		JOIN tasks t ON tasks_fts.id = t.id
 		WHERE tasks_fts MATCH {:query}
@@ -280,32 +298,50 @@ func searchTasks(app *pocketbase.PocketBase, ftsQuery, workspaceId string, limit
 
 	tasks := make([]map[string]any, 0, len(taskResults))
 	for _, r := range taskResults {
-		if task, err := app.FindRecordById("tasks", r.Id); err == nil {
-			tasks = append(tasks, map[string]any{
-				"id":           task.Id,
-				"title":        task.GetString("title"),
-				"description":  task.GetString("description"),
-				"dueDate":      task.GetString("dueDate"),
-				"priority":     task.GetString("priority"),
-				"parentPageId": task.GetString("parentPageId"),
-				"completed":    task.GetBool("completed"),
-				"rank":         r.Rank,
-			})
-		}
+		tasks = append(tasks, map[string]any{
+			"id":                 r.Id,
+			"title":              r.Title,
+			"description":        r.Description,
+			"titleSnippet":       r.TitleSnippet,
+			"descriptionSnippet": r.DescriptionSnippet,
+			"dueDate":            r.DueDate,
+			"priority":           r.Priority,
+			"parentPageId":       r.ParentPageId,
+			"completed":          r.Completed,
+			"rank":               r.Rank,
+		})
 	}
 	return tasks
 }
 
 func searchPages(app *pocketbase.PocketBase, ftsQuery, workspaceId string, limit int) []map[string]any {
 	var pageResults []struct {
-		Id      string  `db:"id"`
-		Title   string  `db:"title"`
-		Excerpt string  `db:"excerpt"`
-		Rank    float64 `db:"rank"`
+		Id           string  `db:"id"`
+		Title        string  `db:"title"`
+		Excerpt      string  `db:"excerpt"`
+		Icon         string  `db:"icon"`
+		ParentId     string  `db:"parentId"`
+		ViewMode     string  `db:"viewMode"`
+		TitleSnippet string  `db:"title_snippet"`
+		BodySnippet  string  `db:"body_snippet"`
+		Rank         float64 `db:"rank"`
 	}
 
+	// FTS5 column indices for pages_fts: 0=id, 1=workspace, 2=title, 3=excerpt, 4=bodyText.
+	// Only bodyText snippet is requested — it provides the richest context and
+	// avoids a redundant excerpt snippet pass. excerpt is still selected as the
+	// plain-text fallback subtitle when no body match is present.
 	err := app.DB().NewQuery(`
-		SELECT p.id, p.title, p.excerpt, bm25(pages_fts) as rank
+		SELECT
+			p.id,
+			p.title,
+			p.excerpt,
+			p.icon,
+			p.parentId,
+			p.viewMode,
+			highlight(pages_fts, 2, '<MARK>', '</MARK>') as title_snippet,
+			snippet(pages_fts, 4, '<MARK>', '</MARK>', '…', 16) as body_snippet,
+			bm25(pages_fts) as rank
 		FROM pages_fts
 		JOIN pages p ON pages_fts.id = p.id
 		WHERE pages_fts MATCH {:query}
@@ -325,17 +361,17 @@ func searchPages(app *pocketbase.PocketBase, ftsQuery, workspaceId string, limit
 
 	pages := make([]map[string]any, 0, len(pageResults))
 	for _, r := range pageResults {
-		if page, err := app.FindRecordById("pages", r.Id); err == nil {
-			pages = append(pages, map[string]any{
-				"id":       page.Id,
-				"title":    page.GetString("title"),
-				"excerpt":  page.GetString("excerpt"),
-				"icon":     page.GetString("icon"),
-				"parentId": page.GetString("parentId"),
-				"viewMode": page.GetString("viewMode"),
-				"rank":     r.Rank,
-			})
-		}
+		pages = append(pages, map[string]any{
+			"id":           r.Id,
+			"title":        r.Title,
+			"excerpt":      r.Excerpt,
+			"titleSnippet": r.TitleSnippet,
+			"bodySnippet":  r.BodySnippet,
+			"icon":         r.Icon,
+			"parentId":     r.ParentId,
+			"viewMode":     r.ViewMode,
+			"rank":         r.Rank,
+		})
 	}
 	return pages
 }
