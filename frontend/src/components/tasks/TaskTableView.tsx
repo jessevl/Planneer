@@ -127,11 +127,19 @@ const TaskTableView: React.FC<TaskTableViewProps> = ({
         id: 'tag',
         label: 'Tag',
         width: '110px',
-        render: (task) => task.tag ? (
-          <TagBadge tag={task.tag} compact />
-        ) : (
-          <span className="text-xs text-[var(--color-text-secondary)]">—</span>
-        ),
+        render: (task) => {
+          const tags = task.tag ? task.tag.split(',').map(t => t.trim()).filter(Boolean) : [];
+          if (tags.length === 0) return <span className="text-xs text-[var(--color-text-secondary)]">—</span>;
+          const overflow = tags.length - 2;
+          return (
+            <div className="flex items-center gap-1 flex-wrap">
+              {tags.slice(0, 2).map(t => <TagBadge key={t} tag={t} compact />)}
+              {overflow > 0 && (
+                <span className="text-[10px] font-medium text-[var(--color-text-tertiary)] px-1">+{overflow}</span>
+              )}
+            </div>
+          );
+        },
       },
       {
         id: 'subtasks',

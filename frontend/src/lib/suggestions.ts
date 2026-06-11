@@ -45,12 +45,20 @@ export const friendlyToISO = (l: string): string => {
   return parsed.isValid() ? parsed.format('YYYY-MM-DD') : '';
 };
 
-export const getTokenAt = (val: string, pos: number, projects: { title: string }[]): { type: 'taskPage'|'date'|'prio', start: number, end: number, token: string } | null => {
+export const getTokenAt = (val: string, pos: number, projects: { title: string }[]): { type: 'taskPage'|'date'|'prio'|'tag', start: number, end: number, token: string } | null => {
   const n = val.length, clamped = Math.max(0, Math.min(pos, n));
-  // first look for # or @ tokens in the current word
+  // find start of current word segment
   let segStart = clamped - 1;
   while (segStart >= 0 && val[segStart] !== ' ') segStart--;
   const segmentStart = segStart + 1;
+  // check if current word starts with '+' → tag token
+  if (val[segmentStart] === '+') {
+    let end = segmentStart + 1;
+    while (end < n && val[end] !== ' ') end++;
+    const token = val.slice(segmentStart + 1, end);
+    return { type: 'tag', start: segmentStart, end, token };
+  }
+  // look for # or @ tokens in the current word
   let start = -1;
   for (let i = Math.min(clamped - 1, n - 1); i >= segmentStart; i--) {
     if (val[i] === '#' || val[i] === '@') { start = i; break; }

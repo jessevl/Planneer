@@ -290,7 +290,17 @@ const TaskRow: React.FC<TaskRowProps> = React.memo(({
                       <RepeatIcon className="w-3.5 h-3.5 text-[var(--color-text-tertiary)]" />
                     </span>
                   )}
-                  {task.tag && <TagBadge tag={task.tag} compact />}
+                  {(() => {
+                    const tags = task.tag ? task.tag.split(',').map(t => t.trim()).filter(Boolean) : [];
+                    const max = variant === 'card' ? 1 : 2;
+                    const overflow = tags.length - max;
+                    return <>
+                      {tags.slice(0, max).map(t => <TagBadge key={t} tag={t} compact />)}
+                      {overflow > 0 && (
+                        <span className="text-[10px] font-medium text-[var(--color-text-tertiary)] px-1">+{overflow}</span>
+                      )}
+                    </>;
+                  })()}
                   {variant === 'row' && subtaskProgress && (
                     <SubtaskBadge
                       total={subtaskProgress.total}

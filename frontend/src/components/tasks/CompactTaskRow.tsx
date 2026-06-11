@@ -302,9 +302,16 @@ const CompactTaskRow: React.FC<CompactTaskRowProps> = React.memo(({
               </span>
             )}
 
-            {task.tag && (
-              <TagBadge tag={task.tag} compact />
-            )}
+            {(() => {
+              const tags = task.tag ? task.tag.split(',').map(t => t.trim()).filter(Boolean) : [];
+              const overflow = tags.length - 1;
+              return <>
+                {tags.slice(0, 1).map(t => <TagBadge key={t} tag={t} compact />)}
+                {overflow > 0 && (
+                  <span className="text-[10px] font-medium text-[var(--color-text-tertiary)] px-1">+{overflow}</span>
+                )}
+              </>;
+            })()}
 
             {subtaskProgress && (
               <SubtaskBadge

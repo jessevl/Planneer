@@ -9,8 +9,8 @@
  */
 'use client';
 
-import React, { useState, useRef, useCallback, useMemo } from 'react';
-import { flushSync } from 'react-dom';
+import React, { useState, useRef, useCallback, useMemo, useLayoutEffect } from 'react';
+import { flushSync, createPortal } from 'react-dom';
 import useClickOutside from '@/hooks/useClickOutside';
 import { useIsMobile } from '@frameer/hooks/useMobileDetection';
 import { Button, TextSmall } from '@/components/ui';
@@ -37,6 +37,8 @@ interface RecurrenceSelectorProps {
   disabled?: boolean;
   /** Custom trigger element */
   trigger?: React.ReactNode;
+  /** Render the desktop dropdown via a fixed-position portal (sidepanel mode) */
+  usePortal?: boolean;
 }
 
 type QuickOption = {
@@ -66,11 +68,26 @@ const RecurrenceSelector: React.FC<RecurrenceSelectorProps> = ({
   inModal = false,
   disabled = false,
   trigger,
+  usePortal = false,
 }) => {
   const isMobile = useIsMobile();
   const [isOpen, setIsOpen] = useState(false);
   const [mode, setMode] = useState<'quick' | 'custom'>('quick');
   const containerRef = useRef<HTMLDivElement>(null);
+  const [portalStyle, setPortalStyle] = React.useState<React.CSSProperties | null>(null);
+
+  useLayoutEffect(() => {
+    if (!isOpen || !usePortal || isMobile) { setPortalStyle(null); return; }
+    const el = containerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    setPortalStyle(
+      spaceBelow < 200
+        ? { position: 'fixed' as const, bottom: window.innerHeight - rect.top + 4, left: rect.left, width: rect.width, zIndex: 9999 }
+        : { position: 'fixed' as const, top: rect.bottom + 4, left: rect.left, width: rect.width, zIndex: 9999 }
+    );
+  }, [isOpen, usePortal, isMobile]);
   
   // Custom state
   const [customInterval, setCustomInterval] = useState(value?.interval || 2);
@@ -355,29 +372,40 @@ const RecurrenceSelector: React.FC<RecurrenceSelectorProps> = ({
           </div>
         </MobileSheet>
       ) : !isMobile && isOpen ? (
-        /* Desktop: Dropdown */
-        <div className="absolute top-full left-0 mt-1 z-50 w-56 bg-[var(--color-surface-primary)] border border-[var(--color-border-default)] rounded-xl shadow-lg overflow-hidden">
-          {mode === 'quick' ? (
-            <>
-              <div className="p-1.5">
-                {renderQuickOptions(false)}
-                <button
-                  type="button"
-                  onClick={() => setMode('custom')}
-                  className="w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-[var(--color-surface-secondary)] text-[var(--color-text-primary)]"
-                >
-                  <SettingsIcon className="w-4 h-4 opacity-60" />
-                  <span className="text-sm font-medium">Custom...</span>
-                </button>
-              </div>
-              <div className="border-t border-[var(--color-border-subtle)] p-1.5">
-                {renderClearOption(false)}
-              </div>
-            </>
-          ) : (
-            renderCustomConfig(false)
-          )}
-        </div>
+        /* Desktop: Dropdown — portal in sidepanel, inline in modal */
+        (() => {
+          const dropdownContent = (
+            <div
+              style={portalStyle ?? undefined}
+              className={portalStyle
+                ? "bg-[var(--color-surface-primary)] border border-[var(--color-border-default)] rounded-xl shadow-lg overflow-hidden"
+                : "absolute top-full left-0 mt-1 z-50 w-full bg-[var(--color-surface-primary)] border border-[var(--color-border-default)] rounded-xl shadow-lg overflow-hidden"}
+              onMouseDown={portalStyle ? e => e.stopPropagation() : undefined}
+            >
+              {mode === 'quick' ? (
+                <>
+                  <div className="p-1.5">
+                    {renderQuickOptions(false)}
+                    <button
+                      type="button"
+                      onClick={() => setMode('custom')}
+                      className="w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-[var(--color-surface-secondary)] text-[var(--color-text-primary)]"
+                    >
+                      <SettingsIcon className="w-4 h-4 opacity-60" />
+                      <span className="text-sm font-medium">Custom...</span>
+                    </button>
+                  </div>
+                  <div className="border-t border-[var(--color-border-subtle)] p-1.5">
+                    {renderClearOption(false)}
+                  </div>
+                </>
+              ) : (
+                renderCustomConfig(false)
+              )}
+            </div>
+          );
+          return portalStyle ? createPortal(dropdownContent, document.body) : dropdownContent;
+        })()
       ) : null}
     </div>
   );

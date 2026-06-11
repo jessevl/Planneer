@@ -18,7 +18,7 @@
  * to enable unsaved changes protection.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { flushSync } from 'react-dom';
+import { flushSync, createPortal } from 'react-dom';
 import useClickOutside from '../../hooks/useClickOutside';
 import { useIsMobile } from '@frameer/hooks/useMobileDetection';
 import dayjs from 'dayjs';
@@ -31,7 +31,7 @@ import { priorityClasses } from '../../lib/design-system';
 import { MobileSheet } from '@/components/ui';
 import { FRIENDLY_DATES, friendlyToISO, getTokenAt, dateSuggestionFor, mapPriorityToken } from '../../lib/suggestions';
 import type { View } from '../../lib/selectors';
-import { Button, Text, TextSmall, Popover, LucideIcon, InlineTagInput, Panel, ModalFooter, PropertyRow } from '../ui';
+import { Button, Text, TextSmall, Popover, LucideIcon, InlineTagInput, Panel, ModalFooter, PropertyRow, TagPickerMenu } from '../ui';
 import SubtaskList from './SubtaskList';
 import { inline } from '../../lib/layout';
 import { useTasksStore } from '@/stores/tasksStore';
@@ -47,6 +47,51 @@ import { useNavigate } from '@tanstack/react-router';
 import { useUIStore } from '@/stores/uiStore';
 
 import ItemIcon from '@/components/common/ItemIcon';
+
+/**
+ * Popover wrapper that escapes overflow-clipping containers by rendering via
+ * a fixed-position portal. Used for property-row pickers in single-column
+ * (sidepanel) layout where the scroll container would clip absolute popovers.
+ */
+const PropertyPopover: React.FC<{
+  anchorRef: React.RefObject<HTMLElement | null>;
+  open: boolean;
+  children: React.ReactNode;
+  usePortal?: boolean;
+}> = ({ anchorRef, open, children, usePortal }) => {
+  const [portalStyle, setPortalStyle] = React.useState<React.CSSProperties | null>(null);
+
+  React.useLayoutEffect(() => {
+    if (!open || !usePortal) { setPortalStyle(null); return; }
+    const el = anchorRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    setPortalStyle(
+      spaceBelow < 200
+        ? { bottom: window.innerHeight - rect.top + 4, left: rect.left, width: rect.width }
+        : { top: rect.bottom + 4, left: rect.left, width: rect.width }
+    );
+  }, [open, usePortal, anchorRef]);
+
+  if (!open) return null;
+
+  if (usePortal) {
+    if (!portalStyle) return null;
+    return createPortal(
+      <div
+        style={{ position: 'fixed', zIndex: 9999, ...portalStyle }}
+        className="rounded-xl border border-[var(--color-border-default)] bg-[var(--color-surface-primary)] shadow-lg p-2"
+        onMouseDown={e => e.stopPropagation()}
+      >
+        {children}
+      </div>,
+      document.body
+    );
+  }
+
+  return <Popover width="full">{children}</Popover>;
+};
 
 /** Helper component for rendering task page icon - Lucide icon or fallback task icon */
 const ProjectIcon: React.FC<{ icon?: string | null; color?: string | null; className?: string }> = ({ icon, color, className = "w-4 h-4" }) => {
@@ -132,6 +177,7 @@ const DESCRIPTION_MAX_LENGTH = FORM_VALIDATION.TASK_DESCRIPTION_MAX_LENGTH;
   const dueRef = useRef<HTMLDivElement | null>(null);
   const projectRef = useRef<HTMLDivElement | null>(null);
   const sectionRef = useRef<HTMLDivElement | null>(null);
+  const tagRef = useRef<HTMLDivElement | null>(null);
   // Mobile detection
   const isMobile = useIsMobile();
 
@@ -204,6 +250,7 @@ const DESCRIPTION_MAX_LENGTH = FORM_VALIDATION.TASK_DESCRIPTION_MAX_LENGTH;
   const [flashDue, setFlashDue] = useState(false);
   const [flashPrio, setFlashPrio] = useState(false);
   const [flashProject, setFlashProject] = useState(false);
+  const [flashTag, setFlashTag] = useState(false);
 
   const dueStatus = useMemo(() => {
     if (!dueDate) return 'none';
@@ -277,7 +324,7 @@ const DESCRIPTION_MAX_LENGTH = FORM_VALIDATION.TASK_DESCRIPTION_MAX_LENGTH;
     e.preventDefault();
     if (!title.trim()) return;
     
-    let t = title, pid = parentPageId, d = dueDate;
+    let t = title, pid = parentPageId, d = dueDate, tg = tag;
     const projectMatch = t.match(/#([^ ]+)/);
     if (projectMatch) {
       const found = taskPages.find(pr => pr.title.toLowerCase() === projectMatch[1].toLowerCase());
@@ -289,6 +336,16 @@ const DESCRIPTION_MAX_LENGTH = FORM_VALIDATION.TASK_DESCRIPTION_MAX_LENGTH;
       const iso = friendlyToISO(dateMatch[1]);
       d = iso || '';
       t = t.replace(/@([^ ]+)/, '').trim();
+    }
+    const tagMatches = [...t.matchAll(/\+([^ ]+)/g)];
+    if (tagMatches.length > 0) {
+      const existing = tg.split(',').map(s => s.trim()).filter(Boolean);
+      tagMatches.forEach(m => {
+        const v = m[1].toLowerCase();
+        if (!existing.includes(v)) existing.push(v);
+      });
+      tg = existing.join(', ');
+      t = t.replace(/\+([^ ]+)/g, '').trim();
     }
     
     if (mode === 'create') {
@@ -310,7 +367,7 @@ const DESCRIPTION_MAX_LENGTH = FORM_VALIDATION.TASK_DESCRIPTION_MAX_LENGTH;
         sectionId: sectionId || undefined,
         subtasks: subtasks.length > 0 ? subtasks : undefined,
         recurrence: finalRecurrence,
-        tag: tag || undefined,
+        tag: tg || undefined,
       });
       
       // Reset form
@@ -343,17 +400,17 @@ const DESCRIPTION_MAX_LENGTH = FORM_VALIDATION.TASK_DESCRIPTION_MAX_LENGTH;
         ? { ...recurrence, anchorDate: d }
         : recurrence;
         
-      const updated: Task = { 
-        ...initialTask, 
-        title: t, 
-        description, 
-        dueDate: d, 
-        priority: priority || undefined, 
-        parentPageId: pid || undefined, 
-        sectionId: sectionId || undefined, 
+      const updated: Task = {
+        ...initialTask,
+        title: t,
+        description,
+        dueDate: d,
+        priority: priority || undefined,
+        parentPageId: pid || undefined,
+        sectionId: sectionId || undefined,
         subtasks,
         recurrence: finalRecurrence,
-        tag: tag || undefined,
+        tag: tg || undefined,
       };
       onSaveTask?.(updated);
       setExpanded(false);
@@ -366,7 +423,7 @@ const DESCRIPTION_MAX_LENGTH = FORM_VALIDATION.TASK_DESCRIPTION_MAX_LENGTH;
     return getTokenAt(title, caret, taskPages);
         }, [title, caret, expanded, taskPages]);
 
-  const acceptTokenAtCaret = (token: { type: 'taskPage' | 'date' | 'prio', start: number, end: number, token: string } | null, force = false, suggestionOverride?: string) => {
+  const acceptTokenAtCaret = (token: { type: 'taskPage' | 'date' | 'prio' | 'tag', start: number, end: number, token: string } | null, force = false, suggestionOverride?: string) => {
     if (!token) return false;
     if (token.type === 'taskPage') {
       // when forced (click/tab/enter) accept partial suggestions via startsWith
@@ -416,6 +473,29 @@ const DESCRIPTION_MAX_LENGTH = FORM_VALIDATION.TASK_DESCRIPTION_MAX_LENGTH;
   setTimeout(() => setFlashPrio(false), 600);
       return true;
     }
+    if (token.type === 'tag') {
+      const tagValue = token.token.trim().toLowerCase();
+      if (!tagValue) return false;
+      const currentTagsList = tag.split(',').map(t => t.trim()).filter(Boolean);
+      if (!currentTagsList.includes(tagValue)) {
+        setTag([...currentTagsList, tagValue].join(', '));
+      }
+      const newTitle = title.slice(0, token.start) + title.slice(token.end);
+      setTitle(newTitle);
+      const pos = token.start;
+      setTimeout(() => {
+        const el = titleRef.current;
+        if (el) {
+          el.focus();
+          el.setSelectionRange(pos, pos);
+          setCaret(pos);
+        }
+      }, 0);
+      setExpanded(true);
+      setFlashTag(true);
+      setTimeout(() => setFlashTag(false), 600);
+      return true;
+    }
     if (token.type === 'date') {
       // if not forced, only accept exact friendly names or ISO strings
       if (!force) {
@@ -461,7 +541,7 @@ const DESCRIPTION_MAX_LENGTH = FORM_VALIDATION.TASK_DESCRIPTION_MAX_LENGTH;
 
   type TokenDropdownItem = {
     key: string;
-    type: 'taskPage' | 'date' | 'prio';
+    type: 'taskPage' | 'date' | 'prio' | 'tag';
     value: string;
     label: string;
     pageId?: string;
@@ -469,6 +549,7 @@ const DESCRIPTION_MAX_LENGTH = FORM_VALIDATION.TASK_DESCRIPTION_MAX_LENGTH;
     hint?: string;
     icon?: string | null;
     color?: string | null;
+    isNew?: boolean;
   };
 
   const dropdownItems = useMemo((): TokenDropdownItem[] => {
@@ -513,8 +594,27 @@ const DESCRIPTION_MAX_LENGTH = FORM_VALIDATION.TASK_DESCRIPTION_MAX_LENGTH;
       ];
     }
 
+    if (caretToken.type === 'tag') {
+      const query = caretToken.token.toLowerCase();
+      const currentTagsList = tag.split(',').map(t => t.trim()).filter(Boolean);
+      const filtered = scopedTags.filter(t =>
+        (query ? t.toLowerCase().includes(query) : true) &&
+        !currentTagsList.includes(t.toLowerCase())
+      );
+      const items: TokenDropdownItem[] = filtered.map(t => ({
+        key: t,
+        type: 'tag' as const,
+        value: t,
+        label: t,
+      }));
+      if (query && !scopedTags.some(t => t.toLowerCase() === query)) {
+        items.push({ key: `__new__${query}`, type: 'tag' as const, value: query, label: query, isNew: true });
+      }
+      return items;
+    }
+
     return [];
-  }, [expanded, caretToken, taskPages, getParentTitle]);
+  }, [expanded, caretToken, taskPages, getParentTitle, scopedTags]);
 
   // Reset dropdown index when token changes
   useEffect(() => {
@@ -545,6 +645,13 @@ const DESCRIPTION_MAX_LENGTH = FORM_VALIDATION.TASK_DESCRIPTION_MAX_LENGTH;
         setFlashPrio(true);
         setTimeout(() => setFlashPrio(false), 600);
       }
+    } else if (item.type === 'tag') {
+      const currentTagsList = tag.split(',').map(t => t.trim()).filter(Boolean);
+      if (!currentTagsList.includes(item.value)) {
+        setTag([...currentTagsList, item.value].join(', '));
+      }
+      setFlashTag(true);
+      setTimeout(() => setFlashTag(false), 600);
     }
 
     const pos = start;
@@ -581,54 +688,52 @@ const DESCRIPTION_MAX_LENGTH = FORM_VALIDATION.TASK_DESCRIPTION_MAX_LENGTH;
           onClick={() => setProjectOpen(!projectOpen)}
           active={parentPageId !== '' || projectOpen}
         />
-        {projectOpen && (
-          <Popover width="2xl">
-            <div className="p-1.5 space-y-0.5">
-              <button
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--color-surface-hover)] text-left transition-colors"
-                onClick={() => { setParentPageId(''); setSectionId(''); setProjectOpen(false); }}
-              >
-                <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-[var(--color-surface-secondary)] flex-shrink-0">
-                  <Layers className="w-4 h-4 text-[var(--color-text-tertiary)]" />
-                </div>
-                <div>
-                  <div className="text-sm font-medium text-[var(--color-text-primary)]">Inbox</div>
-                </div>
-              </button>
-              {taskPages.map(p => {
-                const parentTitle = getParentTitle(p);
-                return (
-                  <button
-                    key={p.id}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[var(--color-surface-hover)] text-left transition-colors"
-                    onClick={() => { setParentPageId(p.id); setProjectOpen(false); }}
+        <PropertyPopover anchorRef={projectRef} open={projectOpen} usePortal={layout === 'single-column'}>
+          <div className="p-1.5 space-y-0.5">
+            <button
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[var(--color-surface-hover)] text-left transition-colors"
+              onClick={() => { setParentPageId(''); setSectionId(''); setProjectOpen(false); }}
+            >
+              <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-[var(--color-surface-secondary)] flex-shrink-0">
+                <Layers className="w-4 h-4 text-[var(--color-text-tertiary)]" />
+              </div>
+              <div>
+                <div className="text-sm font-medium text-[var(--color-text-primary)]">Inbox</div>
+              </div>
+            </button>
+            {taskPages.map(p => {
+              const parentTitle = getParentTitle(p);
+              return (
+                <button
+                  key={p.id}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[var(--color-surface-hover)] text-left transition-colors"
+                  onClick={() => { setParentPageId(p.id); setProjectOpen(false); }}
+                >
+                  <div
+                    className="w-8 h-8 flex items-center justify-center rounded-lg flex-shrink-0"
+                    style={{
+                      backgroundColor: p.color ? `${p.color}15` : undefined,
+                      border: p.color ? `1px solid ${p.color}30` : undefined,
+                    }}
                   >
-                    <div 
-                      className="w-8 h-8 flex items-center justify-center rounded-lg flex-shrink-0"
-                      style={{ 
-                        backgroundColor: p.color ? `${p.color}15` : undefined,
-                        border: p.color ? `1px solid ${p.color}30` : undefined,
-                      }}
-                    >
-                      <ProjectIcon icon={p.icon} color={p.color} className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      {parentTitle && (
-                        <div className="flex items-center gap-1 text-[10px] text-[var(--color-text-secondary)] mb-0.5 uppercase tracking-wider">
-                          <span className="truncate max-w-[120px]">{parentTitle}</span>
-                          <ChevronRight className="w-3 h-3 flex-shrink-0" />
-                        </div>
-                      )}
-                      <div className="text-sm font-medium text-[var(--color-text-primary)] truncate">
-                        {p.title || 'Untitled'}
+                    <ProjectIcon icon={p.icon} color={p.color} className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    {parentTitle && (
+                      <div className="flex items-center gap-1 text-[10px] text-[var(--color-text-secondary)] mb-0.5 uppercase tracking-wider">
+                        <span className="truncate max-w-[120px]">{parentTitle}</span>
+                        <ChevronRight className="w-3 h-3 flex-shrink-0" />
                       </div>
+                    )}
+                    <div className="text-sm font-medium text-[var(--color-text-primary)] truncate">
+                      {p.title || 'Untitled'}
                     </div>
-                  </button>
-                );
-              })}
-            </div>
-          </Popover>
-        )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </PropertyPopover>
       </div>
 
       {/* Section (if available) */}
@@ -641,30 +746,28 @@ const DESCRIPTION_MAX_LENGTH = FORM_VALIDATION.TASK_DESCRIPTION_MAX_LENGTH;
             onClick={() => setSectionOpen(!sectionOpen)}
             active={!!sectionId || sectionOpen}
           />
-          {sectionOpen && (
-            <Popover width="md">
-              <div className="p-1.5 space-y-0.5">
-                {availableSections.map(s => (
-                  <button
-                    key={s.id}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-[var(--color-surface-hover)] text-sm"
-                    onClick={() => { setSectionId(s.id); setSectionOpen(false); }}
-                  >
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: s.color || '#cbd5e1' }} />
-                    <span>{s.name}</span>
-                  </button>
-                ))}
-                <div className="h-px bg-[var(--color-border-secondary)] my-1" />
+          <PropertyPopover anchorRef={sectionRef} open={sectionOpen} usePortal={layout === 'single-column'}>
+            <div className="p-1.5 space-y-0.5">
+              {availableSections.map(s => (
                 <button
-                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-sm text-red-600"
-                  onClick={() => { setSectionId(''); setSectionOpen(false); }}
+                  key={s.id}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-[var(--color-surface-hover)] text-sm font-medium"
+                  onClick={() => { setSectionId(s.id); setSectionOpen(false); }}
                 >
-                  <X className="w-4 h-4" />
-                  <span>Clear</span>
+                  <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: s.color || '#cbd5e1' }} />
+                  <span>{s.name}</span>
                 </button>
-              </div>
-            </Popover>
-          )}
+              ))}
+              <div className="h-px bg-[var(--color-border-secondary)] my-1" />
+              <button
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-sm text-red-600"
+                onClick={() => { setSectionId(''); setSectionOpen(false); }}
+              >
+                <X className="w-4 h-4" />
+                <span>Clear</span>
+              </button>
+            </div>
+          </PropertyPopover>
         </div>
       )}
 
@@ -677,11 +780,9 @@ const DESCRIPTION_MAX_LENGTH = FORM_VALIDATION.TASK_DESCRIPTION_MAX_LENGTH;
           onClick={() => setDueOpen(!dueOpen)}
           active={!!dueDate || dueOpen}
         />
-        {dueOpen && (
-          <Popover width="xl">
-            <CalendarPicker value={dueDate} onChange={d => { setDueDate(d); setDueOpen(false); }} onClear={() => { setDueDate(''); setDueOpen(false); }} />
-          </Popover>
-        )}
+        <PropertyPopover anchorRef={dueRef} open={dueOpen} usePortal={layout === 'single-column'}>
+          <CalendarPicker value={dueDate} onChange={d => { setDueDate(d); setDueOpen(false); }} onClear={() => { setDueDate(''); setRecurrence(undefined); setDueOpen(false); }} />
+        </PropertyPopover>
       </div>
 
       {/* Recurrence */}
@@ -691,6 +792,7 @@ const DESCRIPTION_MAX_LENGTH = FORM_VALIDATION.TASK_DESCRIPTION_MAX_LENGTH;
           onChange={setRecurrence}
           anchorDate={dueDate || undefined}
           disabled={!dueDate}
+          usePortal={layout === 'single-column'}
           trigger={
             <PropertyRow
               label="Repeat"
@@ -711,42 +813,41 @@ const DESCRIPTION_MAX_LENGTH = FORM_VALIDATION.TASK_DESCRIPTION_MAX_LENGTH;
           onClick={() => setPriorityOpen(!priorityOpen)}
           active={!!priority || priorityOpen}
         />
-        {priorityOpen && (
-          <Popover width="sm">
-            <div className="p-1.5 space-y-0.5">
-              {['Low', 'Medium', 'High'].map(p => (
-                <button
-                  key={p}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-[var(--color-surface-hover)] text-sm"
-                  onClick={() => { setPriority(p as any); setPriorityOpen(false); }}
-                >
-                  <Flag className={cn("w-4 h-4", priorityClasses(p as any).text)} />
-                  <span>{p}</span>
-                </button>
-              ))}
-              <div className="h-px bg-[var(--color-border-secondary)] my-1" />
+        <PropertyPopover anchorRef={priorityRef} open={priorityOpen} usePortal={layout === 'single-column'}>
+          <div className="p-1.5 space-y-0.5">
+            {['Low', 'Medium', 'High'].map(p => (
               <button
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-sm text-red-600"
-                onClick={() => { setPriority(''); setPriorityOpen(false); }}
+                key={p}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-[var(--color-surface-hover)] text-sm font-medium"
+                onClick={() => { setPriority(p as any); setPriorityOpen(false); }}
               >
-                <X className="w-4 h-4" />
-                <span>Clear</span>
+                <Flag className={cn("w-4 h-4", priorityClasses(p as any).text)} />
+                <span>{p}</span>
               </button>
-            </div>
-          </Popover>
-        )}
+            ))}
+            <div className="h-px bg-[var(--color-border-secondary)] my-1" />
+            <button
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-sm text-red-600"
+              onClick={() => { setPriority(''); setPriorityOpen(false); }}
+            >
+              <X className="w-4 h-4" />
+              <span>Clear</span>
+            </button>
+          </div>
+        </PropertyPopover>
       </div>
 
       {/* Tag */}
-      <div className="relative">
+      <div ref={tagRef} className="relative">
         <div className={cn(
           "w-full flex items-center justify-between px-3 py-2 rounded-xl transition-all group border",
-          tag 
-            ? "bg-[var(--color-accent-muted)] text-[var(--color-accent-primary)] border-[var(--color-accent-primary)]/20" 
-            : "hover:bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] border-transparent"
+          tag
+            ? "bg-[var(--color-accent-muted)] text-[var(--color-accent-fg)] border-[var(--color-accent-emphasis)]/30"
+            : "hover:bg-[var(--color-surface-hover)] text-[var(--color-text-tertiary)] border-transparent",
+          flashTag && "ring-2 ring-[var(--color-accent-emphasis)]/30 ring-offset-1"
         )}>
           <div className="flex items-center gap-2.5">
-            <div className={cn("transition-colors", tag ? "text-[var(--color-accent-primary)]" : "text-[var(--color-text-tertiary)] group-hover:text-[var(--color-text-primary)]")}>
+            <div className={cn("transition-colors", tag ? "text-[var(--color-accent-fg)]" : "text-[var(--color-text-disabled)] group-hover:text-[var(--color-text-secondary)]")}>
               <Tag className="w-4 h-4" />
             </div>
             <span className="text-sm font-medium">Tag</span>
@@ -757,7 +858,8 @@ const DESCRIPTION_MAX_LENGTH = FORM_VALIDATION.TASK_DESCRIPTION_MAX_LENGTH;
               onChange={setTag}
               existingTags={scopedTags}
               placeholder="Empty"
-              isMulti={false}
+              isMulti={true}
+              anchorRef={tagRef}
               className="!border-0 !bg-transparent !p-0 !shadow-none justify-end"
             />
             <ChevronRight className="w-3.5 h-3.5 opacity-20 group-hover:opacity-40 transition-opacity flex-shrink-0" />
@@ -819,6 +921,19 @@ const DESCRIPTION_MAX_LENGTH = FORM_VALIDATION.TASK_DESCRIPTION_MAX_LENGTH;
                         if (tok.token.length > 0 && (tok.end === val.length || val[tok.end] === ' ')) {
                           acceptTokenAtCaret(tok);
                         }
+                      } else if (tok.type === 'tag') {
+                        if (tok.token.length > 0 && val[tok.end] === ' ') {
+                          acceptTokenAtCaret(tok);
+                        } else if (tok.token.length === 0 && val[tok.end] === ' ') {
+                          // Bare '+' followed by space — cancel by removing '+' and the space
+                          const newTitle = val.slice(0, tok.start) + val.slice(tok.end + 1);
+                          setTitle(newTitle);
+                          const pos = tok.start;
+                          setTimeout(() => {
+                            const el = titleRef.current;
+                            if (el) { el.focus(); el.setSelectionRange(pos, pos); setCaret(pos); }
+                          }, 0);
+                        }
                       }
                     }
                     if (tok) setExpanded(true);
@@ -867,63 +982,87 @@ const DESCRIPTION_MAX_LENGTH = FORM_VALIDATION.TASK_DESCRIPTION_MAX_LENGTH;
                   onFocus={() => setExpanded(true)}
                   maxLength={TITLE_MAX_LENGTH}
                 />
-                {/* Token suggestion dropdown */}
-                {expanded && caretToken && dropdownItems.length > 0 && (
-                  <div className="absolute left-0 top-full mt-1 w-full max-h-52 overflow-y-auto rounded-xl border border-[var(--color-border-secondary)] bg-[var(--color-surface-primary)] shadow-lg z-50">
-                    {dropdownItems.map((item, i) => (
-                      <button
-                        key={item.key}
-                        type="button"
-                        className={cn(
-                          "w-full flex items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors",
-                          i === dropdownIndex ? "bg-[var(--color-surface-hover)]" : "hover:bg-[var(--color-surface-hover)]/50"
-                        )}
-                        onMouseDown={e => e.preventDefault()}
-                        onClick={() => handleDropdownSelect(item)}
-                        onMouseEnter={() => setDropdownIndex(i)}
-                      >
-                        {item.type === 'taskPage' && (
-                          <>
-                            <div
-                              className="w-7 h-7 flex items-center justify-center rounded-lg flex-shrink-0"
-                              style={{
-                                backgroundColor: item.color ? `${item.color}15` : undefined,
-                                border: item.color ? `1px solid ${item.color}30` : undefined,
-                              }}
-                            >
-                              <ProjectIcon icon={item.icon} color={item.color} className="w-3.5 h-3.5" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              {item.parentLabel && (
-                                <div className="flex items-center gap-0.5 text-[10px] text-[var(--color-text-secondary)] uppercase tracking-wider">
-                                  <span className="truncate max-w-[120px]">{item.parentLabel}</span>
-                                  <ChevronRight className="w-2.5 h-2.5 flex-shrink-0" />
-                                </div>
-                              )}
-                              <div className="truncate font-medium">{item.label}</div>
-                            </div>
-                          </>
-                        )}
-                        {item.type === 'date' && (
-                          <>
-                            <Calendar className="w-4 h-4 text-[var(--color-text-tertiary)] flex-shrink-0" />
-                            <span className="flex-1">{item.label}</span>
-                            {item.hint && <span className="text-xs text-[var(--color-text-tertiary)]">{item.hint}</span>}
-                          </>
-                        )}
-                        {item.type === 'prio' && (
-                          <>
-                            <Flag className={cn("w-4 h-4 flex-shrink-0",
-                              item.value === '1' ? 'text-red-500' :
-                              item.value === '2' ? 'text-orange-500' : 'text-blue-500'
-                            )} />
-                            <span className="flex-1">{item.label}</span>
-                            <span className="text-xs text-[var(--color-text-tertiary)]">!{item.value}</span>
-                          </>
-                        )}
-                      </button>
-                    ))}
-                  </div>
+                {/* Token suggestion dropdown — rendered via portal to escape overflow-clipping scroll containers */}
+                {expanded && caretToken && (dropdownItems.length > 0 || caretToken.type === 'tag') && titleRef.current && createPortal(
+                  <div
+                    style={{
+                      position: 'fixed',
+                      top: titleRef.current.getBoundingClientRect().bottom + 4,
+                      left: titleRef.current.getBoundingClientRect().left,
+                      width: titleRef.current.getBoundingClientRect().width,
+                      zIndex: 9999,
+                    }}
+                    className="max-h-52 overflow-y-auto rounded-xl border border-[var(--color-border-secondary)] bg-[var(--color-surface-primary)] shadow-lg"
+                    onMouseDown={e => e.stopPropagation()}
+                  >
+                    {caretToken.type === 'tag' ? (
+                      <TagPickerMenu
+                        suggestions={dropdownItems.filter(i => !i.isNew).map(i => i.value)}
+                        currentTags={tag.split(',').map(t => t.trim()).filter(Boolean)}
+                        highlightedIndex={dropdownIndex}
+                        canCreate={dropdownItems.some(i => i.isNew)}
+                        query={caretToken.token}
+                        existingTags={scopedTags}
+                        onSelectTag={t => handleDropdownSelect({ key: t, type: 'tag', value: t, label: t })}
+                        onCreateTag={t => handleDropdownSelect({ key: `__new__${t}`, type: 'tag', value: t, label: t, isNew: true })}
+                      />
+                    ) : (
+                      dropdownItems.map((item, i) => (
+                        <button
+                          key={item.key}
+                          type="button"
+                          className={cn(
+                            "w-full flex items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors",
+                            i === dropdownIndex ? "bg-[var(--color-surface-hover)]" : "hover:bg-[var(--color-surface-hover)]/50"
+                          )}
+                          onMouseDown={e => e.preventDefault()}
+                          onClick={() => handleDropdownSelect(item)}
+                          onMouseEnter={() => setDropdownIndex(i)}
+                        >
+                          {item.type === 'taskPage' && (
+                            <>
+                              <div
+                                className="w-7 h-7 flex items-center justify-center rounded-lg flex-shrink-0"
+                                style={{
+                                  backgroundColor: item.color ? `${item.color}15` : undefined,
+                                  border: item.color ? `1px solid ${item.color}30` : undefined,
+                                }}
+                              >
+                                <ProjectIcon icon={item.icon} color={item.color} className="w-3.5 h-3.5" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                {item.parentLabel && (
+                                  <div className="flex items-center gap-0.5 text-[10px] text-[var(--color-text-secondary)] uppercase tracking-wider">
+                                    <span className="truncate max-w-[120px]">{item.parentLabel}</span>
+                                    <ChevronRight className="w-2.5 h-2.5 flex-shrink-0" />
+                                  </div>
+                                )}
+                                <div className="truncate font-medium">{item.label}</div>
+                              </div>
+                            </>
+                          )}
+                          {item.type === 'date' && (
+                            <>
+                              <Calendar className="w-4 h-4 text-[var(--color-text-tertiary)] flex-shrink-0" />
+                              <span className="flex-1">{item.label}</span>
+                              {item.hint && <span className="text-xs text-[var(--color-text-tertiary)]">{item.hint}</span>}
+                            </>
+                          )}
+                          {item.type === 'prio' && (
+                            <>
+                              <Flag className={cn("w-4 h-4 flex-shrink-0",
+                                item.value === '1' ? 'text-red-500' :
+                                item.value === '2' ? 'text-orange-500' : 'text-blue-500'
+                              )} />
+                              <span className="flex-1">{item.label}</span>
+                              <span className="text-xs text-[var(--color-text-tertiary)]">!{item.value}</span>
+                            </>
+                          )}
+                        </button>
+                      ))
+                    )}
+                  </div>,
+                  document.body
                 )}
               </div>
             </div>
@@ -1066,7 +1205,7 @@ const DESCRIPTION_MAX_LENGTH = FORM_VALIDATION.TASK_DESCRIPTION_MAX_LENGTH;
                 />
                 {dueOpen && (
                   <MobileSheet isOpen={dueOpen} onClose={() => setDueOpen(false)} title="Select Date">
-                    <CalendarPicker value={dueDate} onChange={d => { setDueDate(d); setDueOpen(false); }} onClear={() => { setDueDate(''); setDueOpen(false); }} />
+                    <CalendarPicker value={dueDate} onChange={d => { setDueDate(d); setDueOpen(false); }} onClear={() => { setDueDate(''); setRecurrence(undefined); setDueOpen(false); }} />
                   </MobileSheet>
                 )}
               </div>
@@ -1127,12 +1266,13 @@ const DESCRIPTION_MAX_LENGTH = FORM_VALIDATION.TASK_DESCRIPTION_MAX_LENGTH;
               <div className="relative">
                 <div className={cn(
                   "w-full flex items-center justify-between px-3 py-2 rounded-xl transition-all group border",
-                  tag 
-                    ? "bg-[var(--color-accent-muted)] text-[var(--color-accent-primary)] border-[var(--color-accent-primary)]/20" 
-                    : "hover:bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] border-transparent"
+                  tag
+                    ? "bg-[var(--color-accent-muted)] text-[var(--color-accent-fg)] border-[var(--color-accent-emphasis)]/30"
+                    : "hover:bg-[var(--color-surface-hover)] text-[var(--color-text-tertiary)] border-transparent",
+                  flashTag && "ring-2 ring-[var(--color-accent-emphasis)]/30 ring-offset-1"
                 )}>
                   <div className="flex items-center gap-2.5">
-                    <div className={cn("transition-colors", tag ? "text-[var(--color-accent-primary)]" : "text-[var(--color-text-tertiary)] group-hover:text-[var(--color-text-primary)]")}>
+                    <div className={cn("transition-colors", tag ? "text-[var(--color-accent-fg)]" : "text-[var(--color-text-disabled)] group-hover:text-[var(--color-text-secondary)]")}>
                       <Tag className="w-4 h-4" />
                     </div>
                     <span className="text-sm font-medium">Tag</span>
@@ -1143,7 +1283,7 @@ const DESCRIPTION_MAX_LENGTH = FORM_VALIDATION.TASK_DESCRIPTION_MAX_LENGTH;
                       onChange={setTag}
                       existingTags={scopedTags}
                       placeholder="Empty"
-                      isMulti={false}
+                      isMulti={true}
                       className="!border-0 !bg-transparent !p-0 !shadow-none justify-end"
                     />
                     <ChevronRight className="w-3.5 h-3.5 opacity-20 group-hover:opacity-40 transition-opacity flex-shrink-0" />

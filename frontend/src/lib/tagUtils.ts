@@ -515,7 +515,7 @@ export function getUniqueTags<T extends { tag?: string }>(items: T[]): string[] 
   const tags = new Set<string>();
   for (const item of items) {
     if (item.tag) {
-      tags.add(item.tag);
+      item.tag.split(',').map(t => t.trim()).filter(Boolean).forEach(t => tags.add(t));
     }
   }
   return Array.from(tags).sort();

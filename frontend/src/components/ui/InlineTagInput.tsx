@@ -13,7 +13,7 @@
  * 
  * Optimized for inline table editing and task forms.
  */
-import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { useFloating, offset, flip, shift, autoUpdate, size } from '@floating-ui/react';
@@ -42,6 +42,9 @@ export interface InlineTagInputProps {
   className?: string;
   /** Context key for unique color assignment (e.g., column ID) */
   contextKey?: string;
+  /** External element to use as the floating anchor — overrides the internal container ref.
+   *  Pass the surrounding property-row div so the dropdown aligns to the full row width. */
+  anchorRef?: React.RefObject<HTMLElement | null>;
 }
 
 const InlineTagInput: React.FC<InlineTagInputProps> = ({
@@ -53,6 +56,7 @@ const InlineTagInput: React.FC<InlineTagInputProps> = ({
   autoFocus = false,
   className,
   contextKey,
+  anchorRef,
 }) => {
   const [inputValue, setInputValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
@@ -83,6 +87,21 @@ const InlineTagInput: React.FC<InlineTagInputProps> = ({
     whileElementsMounted: autoUpdate,
     strategy: 'fixed',
   });
+
+  // When anchorRef is provided, compute anchor-relative fixed position directly
+  // rather than using floating-ui's reference mechanism (avoids timing races).
+  const [anchorStyle, setAnchorStyle] = useState<React.CSSProperties | null>(null);
+  useLayoutEffect(() => {
+    if (!anchorRef?.current || !showDropdown) { setAnchorStyle(null); return; }
+    const rect = anchorRef.current.getBoundingClientRect();
+    setAnchorStyle({
+      position: 'fixed',
+      top: rect.bottom + 5,
+      left: rect.left,
+      minWidth: Math.max(200, rect.width),
+      maxWidth: '320px',
+    });
+  }, [showDropdown, anchorRef]);
 
   // Parse current tags from value
   const currentTags = useMemo(() => {
@@ -387,13 +406,13 @@ const InlineTagInput: React.FC<InlineTagInputProps> = ({
 
         if (showDropdown) {
           return createPortal(
-            <Popover 
+            <Popover
               ref={(node) => {
                 refs.setFloating(node);
                 floatingRef.current = node;
               }}
-              style={floatingStyles}
-              width="auto" 
+              style={anchorStyle ?? floatingStyles}
+              width="auto"
               padding="none"
               className="max-h-[200px] overflow-y-auto z-[9999]"
               onClickCapture={(e) => e.stopPropagation()}

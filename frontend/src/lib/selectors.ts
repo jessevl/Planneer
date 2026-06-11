@@ -202,7 +202,7 @@ export function groupTasksBy(
       const tagSet = new Set<string>();
       for (const task of tasks) {
         if (task.tag) {
-          tagSet.add(task.tag);
+          task.tag.split(',').map(t => t.trim()).filter(Boolean).forEach(t => tagSet.add(t));
         }
       }
       // Sort tags alphabetically
@@ -214,9 +214,10 @@ export function groupTasksBy(
       }
       // Add 'no tag' group
       groups['__no_tag__'] = { label: 'No Tag', tasks: [], color: '#9CA3AF' };
-      // Assign tasks to groups
+      // Assign tasks to groups — use first tag as the primary group key
       for (const task of tasks) {
-        const groupKey = task.tag || '__no_tag__';
+        const firstTag = task.tag ? task.tag.split(',')[0].trim() : '';
+        const groupKey = firstTag || '__no_tag__';
         if (!groups[groupKey]) {
           groups[groupKey] = { label: groupKey, tasks: [] };
         }
