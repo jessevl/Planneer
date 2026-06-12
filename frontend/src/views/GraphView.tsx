@@ -95,10 +95,8 @@ const GraphView: React.FC = () => {
   const statValueClassName = 'text-sm font-semibold text-[var(--color-text-primary)]';
 
   const compactControlButtonClassName = (active: boolean) => cn(
-    'flex h-9 w-9 items-center justify-center rounded-full transition-all',
-    active
-      ? 'bg-[var(--color-surface-secondary)] text-[var(--color-text-primary)]'
-      : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)]/60'
+    'flex h-8 w-8 items-center justify-center rounded-full glass-header-btn text-[var(--color-text-tertiary)]',
+    active && 'glass-header-btn-active'
   );
 
   const headerControls = (

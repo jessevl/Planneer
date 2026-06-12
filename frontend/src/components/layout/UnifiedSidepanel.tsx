@@ -354,7 +354,7 @@ const HeaderAction: React.FC<{
   <button
     type="button"
     onClick={onClick}
-    className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-primary)]"
+    className="flex h-8 w-8 items-center justify-center rounded-full glass-header-btn text-[var(--color-text-secondary)]"
     aria-label={label}
     title={label}
   >
@@ -368,20 +368,21 @@ const TabBar: React.FC<{
   activeTab: UnifiedSidepanelTab;
   onSelect: (tab: UnifiedSidepanelTab) => void;
 }> = ({ tabs, activeTab, onSelect }) => (
-  <div className="flex items-center rounded-full bg-[var(--color-surface-secondary)] p-1">
+  <div className="glass-panel-nav eink-shell-surface flex h-11 items-center px-1 gap-0.5">
     {tabs.map((tabId) => {
       const meta = TAB_META[tabId];
       const Icon = meta.icon;
+      const isActive = activeTab === tabId;
       return (
         <button
           key={tabId}
           type="button"
           onClick={() => onSelect(tabId)}
           className={cn(
-            'flex flex-1 items-center justify-center gap-1.5 rounded-full px-2.5 py-2 text-sm font-medium transition-all',
-            activeTab === tabId
-              ? 'bg-[var(--color-surface-primary)] text-[var(--color-text-primary)] shadow-sm'
-              : 'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]',
+            'flex flex-1 items-center justify-center gap-1.5 rounded-full px-2.5 py-1.5 text-sm font-medium glass-header-btn',
+            isActive
+              ? 'glass-header-btn-active'
+              : 'text-[var(--color-text-tertiary)]',
           )}
           title={meta.label}
         >

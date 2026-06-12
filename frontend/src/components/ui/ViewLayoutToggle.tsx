@@ -30,7 +30,7 @@ const ViewLayoutToggle: React.FC<ViewLayoutToggleProps> = ({
         className={`p-1.5 rounded-md transition-colors ${
           viewMode === 'list'
             ? 'text-[var(--color-text-primary)] bg-[var(--color-surface-base)] shadow-sm'
-            : 'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]'
+            : 'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]'
         }`}
         title="List view"
         aria-label="List view"
@@ -42,7 +42,7 @@ const ViewLayoutToggle: React.FC<ViewLayoutToggleProps> = ({
         className={`p-1.5 rounded-md transition-colors ${
           viewMode === 'kanban'
             ? 'text-[var(--color-text-primary)] bg-[var(--color-surface-base)] shadow-sm'
-            : 'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]'
+            : 'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]'
         }`}
         title="Card view"
         aria-label="Card view"
@@ -55,7 +55,7 @@ const ViewLayoutToggle: React.FC<ViewLayoutToggleProps> = ({
           className={`p-1.5 rounded-md transition-colors ${
             viewMode === 'table'
               ? 'text-[var(--color-text-primary)] bg-[var(--color-surface-base)] shadow-sm'
-              : 'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]'
+              : 'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]'
           }`}
           title="Table view"
           aria-label="Table view"

@@ -431,8 +431,10 @@ const Dropdown: React.FC<{
         onClick={(e) => { e.stopPropagation(); onToggle(); }}
         className={cn(
           'flex items-center gap-0.5 rounded-lg px-1.5 py-1 transition-colors',
-          'text-gray-600 dark:text-gray-400',
-          isOpen ? 'bg-gray-100 dark:bg-white/10' : 'hover:bg-gray-100 dark:hover:bg-white/10',
+          'text-[var(--color-text-secondary)]',
+          isOpen
+            ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]'
+            : 'hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)]',
         )}
       >
         {trigger}
@@ -805,8 +807,8 @@ const ExcalidrawToolbar: React.FC<ExcalidrawToolbarProps> = ({
   const zoomPct = Math.round((appState?.zoom?.value ?? 1) * 100);
 
   // ---- Shared classes ----
-  const toolBtn = cn('flex items-center justify-center rounded-full transition-colors', isMobile ? 'w-10 h-10' : 'w-8 h-8');
-  const subBtn = cn('flex items-center justify-center rounded-full transition-colors flex-shrink-0', isMobile ? 'w-9 h-9' : 'w-7 h-7', 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10');
+  const toolBtn = cn('flex items-center justify-center rounded-full', isMobile ? 'w-10 h-10' : 'w-8 h-8');
+  const subBtn = cn('flex items-center justify-center rounded-full flex-shrink-0 glass-header-btn text-[var(--color-text-tertiary)]', isMobile ? 'w-9 h-9' : 'w-7 h-7');
   const activeBtn = 'bg-[var(--color-accent-muted)] !text-[var(--color-accent-primary)]';
 
   // Stroke style icon helper
@@ -867,14 +869,14 @@ const ExcalidrawToolbar: React.FC<ExcalidrawToolbarProps> = ({
                 onClick={(e) => { e.stopPropagation(); setTool(t.id); }}
                 className={cn(toolBtn, 'flex-shrink-0', activeTool === t.id
                   ? 'bg-[var(--color-accent-primary)] text-white shadow-sm'
-                  : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/10')}
+                  : 'glass-header-btn text-[var(--color-text-tertiary)]')}
               >
                 {t.icon}
               </button>
             ))}
             <div className="w-px h-5 bg-gray-200 dark:bg-white/10 mx-0.5 flex-shrink-0" />
             <button type="button" title="Close whiteboard (Esc)" onClick={onClose}
-              className={cn(toolBtn, 'flex-shrink-0 text-gray-500 dark:text-gray-400 hover:bg-red-100 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400')}>
+              className={cn(toolBtn, 'flex-shrink-0 text-[var(--color-text-tertiary)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-red-600 dark:hover:text-red-400')}>
               <X className={I} />
             </button>
           </div>

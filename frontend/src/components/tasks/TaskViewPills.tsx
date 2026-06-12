@@ -68,12 +68,12 @@ const TaskViewPills: React.FC<TaskViewPillsProps> = ({
               rounded-xl text-sm font-medium 
               transition-colors border no-underline
               ${isActive
-                ? 'bg-[var(--color-interactive-bg)] text-[var(--color-interactive-text)] border-[var(--color-interactive-border)]'
-                : 'text-[var(--color-text-secondary)] border-[var(--color-border-default)] hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-primary)]'
+                ? 'bg-[var(--color-interactive-bg)] text-[var(--color-interactive-text-strong)] border-[var(--color-interactive-border)]'
+                : 'text-[var(--color-text-secondary)] border-[var(--color-border-default)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-emphasis)]'
               }
             `}
           >
-            <span className={isActive ? 'text-[var(--color-interactive-text-strong)]' : 'text-[var(--color-text-tertiary)]'}>
+            <span className={isActive ? 'text-[var(--color-interactive-text-strong)]' : 'text-[var(--color-text-secondary)]'}>
               {pill.icon}
             </span>
             <div className="flex items-center gap-1.5">
@@ -81,9 +81,9 @@ const TaskViewPills: React.FC<TaskViewPillsProps> = ({
               {count !== undefined && count > 0 && (
                 <span className={`
                   px-1.5 py-0.5 text-[10px] rounded-lg min-w-[18px] text-center font-bold
-                  ${isActive 
-                    ? 'bg-[var(--color-interactive-bg)] text-[var(--color-interactive-text)] border border-[var(--color-interactive-border)]' 
-                    : 'bg-[var(--color-surface-secondary)] text-[var(--color-text-tertiary)] border border-[var(--color-border-default)]'
+                  ${isActive
+                    ? 'bg-[var(--color-interactive-bg-strong)] text-white border border-transparent'
+                    : 'bg-[var(--color-surface-secondary)] text-[var(--color-text-secondary)] border border-[var(--color-border-default)]'
                   }
                 `}>
                   {count}

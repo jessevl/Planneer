@@ -99,8 +99,8 @@ const ViewPill: React.FC<ViewPillProps> = React.memo(({ view, isActive, isModifi
             'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium transition-all',
             'border',
             isActive
-              ? 'bg-[var(--color-interactive-bg)] border-[var(--color-interactive-border)] text-[var(--color-interactive-text)]'
-              : 'bg-[var(--color-surface-base)] border-[var(--color-border-default)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-subtle)]'
+              ? 'bg-[var(--color-interactive-bg)] border-[var(--color-interactive-border)] text-[var(--color-interactive-text-strong)]'
+              : 'bg-[var(--color-surface-base)] border-[var(--color-border-default)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-emphasis)]'
           )}
         >
           {view.icon && (
@@ -883,8 +883,8 @@ export const SavedViewsBar: React.FC<SavedViewsBarProps> = React.memo(({
           className={cn(
             'flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-sm font-medium transition-all',
             'border border-dashed border-[var(--color-border-default)]',
-            'text-[var(--color-text-secondary)]',
-            'hover:border-[var(--color-border-subtle)] hover:text-[var(--color-text-primary)]'
+            'text-[var(--color-text-tertiary)]',
+            'hover:bg-[var(--color-surface-hover)] hover:border-[var(--color-border-emphasis)] hover:text-[var(--color-text-primary)]'
           )}
           title="Save current view"
         >

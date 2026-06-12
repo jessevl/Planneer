@@ -556,8 +556,8 @@ const ViewPanel: React.FC<ViewPanelProps> = ({
   const viewBtnCls = (active: boolean) => cn(
     'p-2 rounded-full transition-all eink-sfv-view-button border border-transparent',
     active
-      ? 'bg-[var(--color-interactive-bg)] text-[var(--color-interactive-text)]'
-      : 'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)]'
+      ? 'bg-[var(--color-interactive-bg)] text-[var(--color-interactive-text-strong)]'
+      : 'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]'
   );
 
   const viewOptions: { mode: ViewMode; Icon: React.FC<{ className?: string }>; label: string }[] = contentType === 'pages'
@@ -730,13 +730,9 @@ const SortFilterViewBar: React.FC<SortFilterViewBarProps> = ({
   // - Filter ALSO shows a number badge with the active filter count
 
   const btnCls = (isOpen: boolean, isActive: boolean) => cn(
-    'relative flex items-center justify-center w-7 h-7 rounded-full transition-all border border-transparent eink-header-button eink-sfv-trigger',
+    'relative flex items-center justify-center w-8 h-8 rounded-full glass-header-btn text-[var(--color-text-tertiary)] eink-header-button eink-sfv-trigger',
     'focus:outline-none select-none',
-    isOpen
-      ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]'
-      : isActive
-        ? 'text-[var(--color-interactive-text-strong)] bg-[var(--color-interactive-bg)]/20'
-        : 'text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]',
+    (isOpen || isActive) && 'glass-header-btn-active',
   );
 
   /** Dot indicator shown on Sort and View when non-default */

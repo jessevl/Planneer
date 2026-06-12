@@ -146,8 +146,8 @@ const NavButton: React.FC<{
         rounded-full
         transition-all duration-300 transition-spring
         ${(isActive || isDragHighlight)
-          ? 'bg-[var(--color-accent-muted)] text-[var(--color-accent-primary)] scale-110' 
-          : 'text-[var(--color-text-secondary)] active:scale-90 active:bg-white/20'
+          ? 'bg-[var(--color-accent-muted)] text-[var(--color-accent-primary)] scale-110'
+          : 'text-[var(--color-text-secondary)] active:scale-90 active:bg-[var(--color-surface-active)]'
         }
         ${className}
       `}

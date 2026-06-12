@@ -186,7 +186,7 @@ const PageTitleButton: React.FC<{
     <button
       onClick={() => openPageMovePicker(page.id, page.title)}
       className={cn(
-        "flex items-center gap-1.5 px-3 py-2 md:px-2.5 md:py-1.5 font-semibold truncate max-w-[180px] text-sm rounded-full text-[var(--color-text-primary)] hover:bg-white/50 dark:hover:bg-white/10 transition-all group",
+        "flex items-center gap-1.5 px-3 py-2 md:px-2.5 md:py-1.5 font-semibold truncate max-w-[180px] text-sm rounded-full glass-header-btn text-[var(--color-text-primary)] group",
         compact && "max-w-[120px] px-2"
       )}
       title="Move to collection"
@@ -356,7 +356,7 @@ const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
                     {onRootClick ? (
                       <button
                         onClick={onRootClick}
-                        className="flex items-center gap-1.5 px-2 py-1 rounded-full text-[var(--color-text-tertiary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-secondary)]/60 transition-all flex-shrink-0"
+                        className="flex items-center gap-1.5 px-2 py-1 rounded-full glass-header-btn text-[var(--color-text-tertiary)] flex-shrink-0"
                       >
                         {rootIcon && <div className="flex-shrink-0 flex items-center">{rootIcon}</div>}
                         <span className="text-sm">{rootLabel}</span>
@@ -395,7 +395,7 @@ const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
                           <button
                             onClick={crumb.onClick}
                             className={cn(
-                              "flex items-center gap-1.5 px-2 py-1 rounded-full text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-secondary)]/60 transition-all max-w-[150px]",
+                              "flex items-center gap-1.5 px-2 py-1 rounded-full glass-header-btn text-[var(--color-text-secondary)] max-w-[150px]",
                               compact && "max-w-[80px]"
                             )}
                           >
@@ -502,17 +502,14 @@ const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
                     title={sidePanelOpen ? 'Hide sidepanel' : 'Show sidepanel'}
                     data-active={sidePanelOpen ? 'true' : 'false'}
                     className={cn(
-                      "flex items-center justify-center rounded-full transition-all eink-header-button border border-transparent",
-                      compact ? "w-8 h-8" : "w-9 h-9",
-                      sidePanelOpen
-                        ? "text-[var(--color-interactive-text-strong)] bg-[var(--color-interactive-bg)] hover:bg-[var(--color-interactive-bg-hover)] border-[var(--color-border-emphasis)]"
-                        : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)]/60"
+                      "flex items-center justify-center w-8 h-8 rounded-full glass-header-btn text-[var(--color-text-tertiary)] eink-header-button",
+                      sidePanelOpen && "glass-header-btn-active"
                     )}
                   >
                     {sidePanelOpen ? (
-                      <PanelRightClose className={compact ? "w-4 h-4" : "w-5 h-5"} strokeWidth={1.75} />
+                      <PanelRightClose className="w-4 h-4" strokeWidth={1.75} />
                     ) : (
-                      <PanelRightOpen className={compact ? "w-4 h-4" : "w-5 h-5"} strokeWidth={1.75} />
+                      <PanelRightOpen className="w-4 h-4" strokeWidth={1.75} />
                     )}
                   </button>
                 )}
@@ -528,7 +525,7 @@ const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
                   <button
                     onClick={onExpandSplitView}
                     title="Open in full view"
-                    className="flex items-center justify-center w-9 h-9 rounded-full text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+                    className="flex items-center justify-center w-8 h-8 rounded-full glass-header-btn eink-header-button"
                   >
                     <Maximize2 className="w-4 h-4" />
                   </button>
@@ -538,7 +535,7 @@ const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
             )}
           </div>
           )}
-          
+
           {/* Content below header (pills, weekly strip, etc.) */}
           {belowHeader && (
             <div className={cn(CONTENT_PADDING, "pb-3")}>
@@ -587,7 +584,7 @@ const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
                   {(rootLabel || breadcrumbs.length > 0) && (
                     <button
                       onClick={breadcrumbs.length > 0 ? breadcrumbs[breadcrumbs.length - 1].onClick : onRootClick}
-                      className="flex items-center gap-1.5 px-2 py-1 rounded-full text-[var(--color-text-secondary)] hover:bg-white/50 dark:hover:bg-white/10 transition-all flex-shrink-0"
+                      className="flex items-center gap-1.5 px-2 py-1 rounded-full glass-header-btn text-[var(--color-text-secondary)] flex-shrink-0"
                     >
                       <ChevronRightIcon className="w-4 h-4 rotate-180" />
                       <span className="text-xs">
@@ -674,16 +671,14 @@ const UnifiedHeader: React.FC<UnifiedHeaderProps> = ({
                   title={sidePanelOpen ? 'Hide sidepanel' : 'Show sidepanel'}
                   data-active={sidePanelOpen ? 'true' : 'false'}
                   className={cn(
-                    "flex items-center justify-center rounded-full transition-all w-9 h-9 eink-header-button border border-transparent",
-                    sidePanelOpen
-                      ? "text-[var(--color-interactive-text-strong)] bg-[var(--color-interactive-bg)] hover:bg-[var(--color-interactive-bg-hover)] border-[var(--color-border-emphasis)]"
-                      : "text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)]/60"
+                    "flex items-center justify-center w-8 h-8 rounded-full glass-header-btn text-[var(--color-text-tertiary)] eink-header-button",
+                    sidePanelOpen && "glass-header-btn-active"
                   )}
                 >
                   {sidePanelOpen ? (
-                    <PanelRightClose className="w-5 h-5" strokeWidth={1.75} />
+                    <PanelRightClose className="w-4 h-4" strokeWidth={1.75} />
                   ) : (
-                    <PanelRightOpen className="w-5 h-5" strokeWidth={1.75} />
+                    <PanelRightOpen className="w-4 h-4" strokeWidth={1.75} />
                   )}
                 </button>
               )}

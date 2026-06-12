@@ -340,7 +340,7 @@ const PageActionsMenu: React.FC<PageActionsMenuProps> = ({
       <>
         <button
           onClick={() => setIsOpen(true)}
-          className="flex items-center justify-center w-8 h-8 rounded-full text-[var(--color-text-secondary)] hover:bg-white/50 dark:hover:bg-white/10 transition-all"
+          className="flex items-center justify-center w-8 h-8 rounded-full glass-header-btn text-[var(--color-text-tertiary)]"
           aria-label="Page actions"
           title="Page actions"
         >
@@ -364,10 +364,8 @@ const PageActionsMenu: React.FC<PageActionsMenuProps> = ({
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          'flex items-center justify-center w-8 h-8 rounded-full transition-all',
-          isOpen
-            ? 'bg-[var(--color-surface-secondary)] text-[var(--color-text-primary)]'
-            : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-secondary)]'
+          'flex items-center justify-center w-8 h-8 rounded-full glass-header-btn text-[var(--color-text-tertiary)]',
+          isOpen && 'glass-header-btn-active'
         )}
         aria-label="Page actions"
         title="Page actions"
