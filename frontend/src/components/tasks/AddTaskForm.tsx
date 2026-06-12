@@ -199,19 +199,21 @@ const DESCRIPTION_MAX_LENGTH = FORM_VALIDATION.TASK_DESCRIPTION_MAX_LENGTH;
     }
   }, [title, description]);
 
-  // Reset form when initialTask changes (important for split view)
+  // Reset form when initialTask or creation context changes (important for split view).
+  // For create mode, fall back to selectedTaskPageId so that switching between section
+  // + buttons (which changes defaultSection) does not clear the parent page.
   useEffect(() => {
     setTitle(initialTask?.title ?? '');
     setDescription(initialTask?.description ?? '');
     setPriority((initialTask?.priority as 'Low' | 'Medium' | 'High' | undefined) ?? defaultPriority ?? '');
     setDueDate(initialTask?.dueDate ?? defaultDueDate ?? '');
-    setParentPageId(initialTask?.parentPageId ?? '');
+    setParentPageId(initialTask?.parentPageId ?? selectedTaskPageId ?? '');
     setSubtasks(initialTask?.subtasks ?? []);
     setSectionId(initialTask?.sectionId ?? defaultSection ?? '');
     setRecurrence(initialTask?.recurrence);
     setTag(initialTask?.tag ?? defaultTag ?? '');
     setExpanded(false);
-  }, [initialTask, defaultPriority, defaultDueDate, defaultSection, defaultTag]);
+  }, [initialTask, selectedTaskPageId, defaultPriority, defaultDueDate, defaultSection, defaultTag]);
 
   // derive initial snapshot for dirty checking (including subtasks, recurrence, and tag)
   const initialSnapshot = useMemo(() => ({

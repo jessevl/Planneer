@@ -71,6 +71,39 @@ export function isDefaultTaskFilterOptions(opts: TaskFilterOptions): boolean {
   return opts.priorities.length === 0 && opts.tags.length === 0 && opts.dueDateFilter === 'all';
 }
 
+/**
+ * Sanitize stored task filter options.
+ * Persisted data from before multi-tag support may have stored comma-joined
+ * strings as single entries (e.g. `tags: ["work, personal"]`); split those
+ * into individual tag values. Returns the same reference when nothing changes.
+ */
+export function sanitizeTaskFilterOptions(opts: TaskFilterOptions): TaskFilterOptions {
+  const cleanTags = opts.tags.flatMap(t => t.split(',').map(s => s.trim()).filter(Boolean));
+  return cleanTags.length === opts.tags.length && cleanTags.every((t, i) => t === opts.tags[i])
+    ? opts
+    : { ...opts, tags: cleanTags };
+}
+
+/**
+ * Convert active task filter values into per-property defaults for new tasks,
+ * so that a newly created task will satisfy the current filter and remain visible.
+ *
+ * - `tags` of any length → `defaultTags` (as array)
+ * - `priorities.length === 1` → `defaultPriority` (multiple priorities = ambiguous, skip)
+ * - `dueDateFilter === 'has_due'` → `defaultDueDate = todayISO` (only actionable case)
+ */
+export function taskFilterToDefaults(
+  opts: TaskFilterOptions,
+  todayISO: string,
+): { defaultDueDate?: string; defaultTags?: string[]; defaultPriority?: 'Low' | 'Medium' | 'High' } {
+  const sanitized = sanitizeTaskFilterOptions(opts);
+  const out: { defaultDueDate?: string; defaultTags?: string[]; defaultPriority?: 'Low' | 'Medium' | 'High' } = {};
+  if (sanitized.dueDateFilter === 'has_due') out.defaultDueDate = todayISO;
+  if (sanitized.tags.length > 0) out.defaultTags = sanitized.tags;
+  if (sanitized.priorities.length === 1) out.defaultPriority = sanitized.priorities[0];
+  return out;
+}
+
 /** Count active task filter criteria (for badge display) */
 export function countActiveTaskFilters(opts: TaskFilterOptions, showCompleted: boolean): number {
   let count = 0;

@@ -45,8 +45,9 @@ import PageHero from '../components/pages/PageHero';
 import SectionManagerModal from '../components/pages/SectionManagerModal';
 import type { ViewMode, GroupBy } from '../components/layout/ViewSwitcher';
 import type { TaskFilterOptions } from '../types/view';
-import { DEFAULT_TASK_FILTER_OPTIONS } from '../types/view';
+import { DEFAULT_TASK_FILTER_OPTIONS, sanitizeTaskFilterOptions, taskFilterToDefaults } from '../types/view';
 import { applyTaskFilterOptions, collectTaskTags } from '../lib/selectors';
+import { parseTags } from '../lib/tagUtils';
 import { dateGroupToDate, type DateGroupKey } from '../lib/dateGroups';
 import { selectSidebarCounts } from '../lib/selectors';
 import { Button, Container, FloatingPanel, LucideIcon, SmartEmptyState } from '@/components/ui';
@@ -192,7 +193,7 @@ const TasksView: React.FC<TasksViewProps> = ({
 
   // Filter options for the current view (persisted to localStorage, reactive)
   const taskFilterOptions: TaskFilterOptions = useMemo(
-    () => taskFilterOptionsMap[viewKey] ?? DEFAULT_TASK_FILTER_OPTIONS,
+    () => sanitizeTaskFilterOptions(taskFilterOptionsMap[viewKey] ?? DEFAULT_TASK_FILTER_OPTIONS),
     [viewKey, taskFilterOptionsMap]
   );
 
@@ -257,8 +258,25 @@ const TasksView: React.FC<TasksViewProps> = ({
     defaultTag?: string;
     defaultPriority?: 'Low' | 'Medium' | 'High';
   }) => {
-    createTaskInContext(defaults || {});
-  }, [createTaskInContext]);
+    // 1. View-context defaults (page ID, view-based date) — only as fallback when not already set
+    const contextPageId = isTaskPageView && selectedTaskPageId ? selectedTaskPageId : undefined;
+    const contextDate = !isTaskPageView && (taskFilter === 'today' || taskFilter === 'upcoming')
+      ? todayISO : undefined;
+
+    // 2. Active filter defaults — only fill in properties not set by caller or context
+    const fromFilter = taskFilterToDefaults(taskFilterOptions, todayISO);
+    const explicitTags = defaults?.defaultTag ? parseTags(defaults.defaultTag) : undefined;
+
+    const storeDefaults: Parameters<typeof createTaskInContext>[0] = {
+      ...defaults,
+      defaultTaskPageId: defaults?.defaultTaskPageId ?? contextPageId,
+      defaultDueDate: defaults?.defaultDueDate ?? contextDate ?? fromFilter.defaultDueDate,
+      defaultPriority: defaults?.defaultPriority ?? fromFilter.defaultPriority,
+      defaultTags: explicitTags ?? fromFilter.defaultTags,
+    };
+    delete (storeDefaults as Record<string, unknown>).defaultTag;
+    createTaskInContext(storeDefaults);
+  }, [createTaskInContext, taskFilterOptions, todayISO, isTaskPageView, selectedTaskPageId, taskFilter]);
 
   const handleFilterOptionsChange = useCallback((opts: TaskFilterOptions) => {
     setTaskFilterOptions(viewKey, opts);

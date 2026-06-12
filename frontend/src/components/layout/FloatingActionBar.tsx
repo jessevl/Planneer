@@ -45,6 +45,7 @@ import { usePagesStore, type PagesState } from '@/stores/pagesStore';
 import { useUIStore } from '@/stores/uiStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useNavigationStore, getViewKey, type TaskFilter } from '@/stores/navigationStore';
+import { DEFAULT_TASK_FILTER_OPTIONS, taskFilterToDefaults } from '@/types/view';
 import { useSelectionStore } from '@/stores/selectionStore';
 import { usePomodoroStore } from '@/stores/pomodoroStore';
 import { useCommandPaletteStore } from '@/hooks/useCommandPalette';
@@ -491,6 +492,8 @@ const FloatingActionBar: React.FC = () => {
   const closeCommandPalette = useCommandPaletteStore((s) => s.close);
   const isCommandPaletteOpen = useCommandPaletteStore((s) => s.isOpen);
   const pagesById = usePagesStore((s) => s.pagesById);
+  const taskFilterFromStore = useNavigationStore((state) => state.taskFilter);
+  const taskFilterOptionsMap = useNavigationStore((state) => state.taskFilterOptions);
   
   // Split view context (for creating children in split view panel)
   const splitViewParentId = useSplitViewStore((s) => s.parentPageId);
@@ -791,24 +794,31 @@ const FloatingActionBar: React.FC = () => {
   
   const handleCreateTask = useCallback(() => {
     setCreateMenuOpen(false);
-    
+
+    // Build filter-based defaults from the current view's active filters
+    const viewKey = currentPage?.viewMode === 'tasks'
+      ? getViewKey('taskPage', currentPage.id)
+      : getViewKey('tasks', null, taskFilterFromStore as TaskFilter);
+    const filterDefaults = taskFilterToDefaults(
+      taskFilterOptionsMap[viewKey] ?? DEFAULT_TASK_FILTER_OPTIONS,
+      getTodayISO(),
+    );
+
     // If we're viewing a task page, create task in that page
     if (currentPage?.viewMode === 'tasks') {
-      const defaults = { defaultTaskPageId: currentPage.id };
-      createTaskInContext(defaults);
+      createTaskInContext({ defaultTaskPageId: currentPage.id, ...filterDefaults });
     } else {
       // Navigate to tasks inbox and start creating
       if (!currentPath.startsWith('/tasks')) {
         navigate({ to: '/tasks/$filter', params: { filter: 'inbox' } });
         setTimeout(() => {
-          createTaskInContext();
+          createTaskInContext(Object.keys(filterDefaults).length > 0 ? filterDefaults : undefined);
         }, 100);
       } else {
-        // We are already on /tasks
-        createTaskInContext();
+        createTaskInContext(Object.keys(filterDefaults).length > 0 ? filterDefaults : undefined);
       }
     }
-  }, [createTaskInContext, currentPath, currentPage, navigate]);
+  }, [createTaskInContext, currentPath, currentPage, navigate, taskFilterFromStore, taskFilterOptionsMap]);
   
   // Navigate to pages root
   const handleNavigatePages = useCallback(() => {
@@ -824,8 +834,6 @@ const FloatingActionBar: React.FC = () => {
   }, [requestNavigation, mobileLayout, closeCommandPalette, navigate, setPageEditorFocused]);
   
   // Navigate to tasks inbox
-  const taskFilterFromStore = useNavigationStore((state) => state.taskFilter);
-
   const handleNavigateTasks = useCallback(() => {
     const canNavigate = requestNavigation({ type: 'view', target: 'tasks' });
     if (canNavigate) {
@@ -850,21 +858,28 @@ const FloatingActionBar: React.FC = () => {
       return;
     }
     
+    const filterDefaultsFor = (viewKey: string) => taskFilterToDefaults(
+      taskFilterOptionsMap[viewKey] ?? DEFAULT_TASK_FILTER_OPTIONS,
+      getTodayISO(),
+    );
+
     // 1. If on a task page, add a task to that page
     if (currentPage?.viewMode === 'tasks') {
-      const defaults = { defaultTaskPageId: currentPage.id };
-      createTaskInContext(defaults);
+      createTaskInContext({
+        defaultTaskPageId: currentPage.id,
+        ...filterDefaultsFor(getViewKey('taskPage', currentPage.id)),
+      });
       return;
     }
-    
+
     // 2. If on tasks view (inbox/today/upcoming/all), add a task
     if (currentPath.startsWith('/tasks')) {
       const filter = currentPath.replace('/tasks/', '');
-      // For today or upcoming, set today's date
-      const defaults = (filter === 'today' || filter === 'upcoming') 
-        ? { defaultDueDate: getTodayISO() } 
-        : {};
-
+      const filterDefaults = filterDefaultsFor(getViewKey('tasks', null, filter as TaskFilter));
+      // For today or upcoming, set today's date if filter didn't already provide one
+      const defaults = (filter === 'today' || filter === 'upcoming')
+        ? { defaultDueDate: getTodayISO(), ...filterDefaults }
+        : filterDefaults;
       createTaskInContext(defaults);
       return;
     }
@@ -933,7 +948,7 @@ const FloatingActionBar: React.FC = () => {
     navigate({ to: '/pages/$id', params: { id: newPage.id } });
     // Show move toast for root-level pages
     showMoveToast(newPage);
-  }, [currentPage, currentPath, createTaskInContext, createPage, selectPage, navigate, showMoveToast, shouldUseSplitView, splitViewCreateChild]);
+  }, [currentPage, currentPath, createTaskInContext, createPage, selectPage, navigate, showMoveToast, shouldUseSplitView, splitViewCreateChild, taskFilterOptionsMap]);
   
   // Get label for primary add button based on context
   const getPrimaryAddLabel = useCallback((): string | undefined => {

@@ -44,6 +44,7 @@ import {
   countActivePageFilters,
   isDefaultTaskFilterOptions,
   isDefaultPageFilterOptions,
+  sanitizeTaskFilterOptions,
 } from '@/types/view';
 import type { NotesFilterType } from '@/stores/navigationStore';
 
@@ -334,6 +335,12 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
 }) => {
   const [tagSearch, setTagSearch] = useState('');
 
+  // Sanitize stored tag filters (handles stale comma-joined entries)
+  const sanitizedTaskTags = React.useMemo(
+    () => sanitizeTaskFilterOptions(taskFilterOptions).tags,
+    [taskFilterOptions]
+  );
+
   const toggleTaskPriority = (p: 'High' | 'Medium' | 'Low') => {
     const current = taskFilterOptions.priorities;
     const next = current.includes(p) ? current.filter(x => x !== p) : [...current, p];
@@ -341,8 +348,9 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
   };
 
   const toggleTaskTag = (tag: string) => {
-    const current = taskFilterOptions.tags;
-    const next = current.includes(tag) ? current.filter(x => x !== tag) : [...current, tag];
+    const next = sanitizedTaskTags.includes(tag)
+      ? sanitizedTaskTags.filter(x => x !== tag)
+      : [...sanitizedTaskTags, tag];
     onTaskFilterOptionsChange?.({ ...taskFilterOptions, tags: next });
   };
 
@@ -408,12 +416,12 @@ const FilterPanel: React.FC<FilterPanelProps> = ({
                   onClick={() => toggleTaskTag(tag)}
                   className={cn(
                     'cursor-pointer transition-opacity',
-                    taskFilterOptions.tags.includes(tag) ? 'ring-2 ring-[var(--color-interactive-bg-strong)] ring-offset-1' : 'opacity-70 hover:opacity-100'
+                    sanitizedTaskTags.includes(tag) ? 'ring-2 ring-[var(--color-interactive-bg-strong)] ring-offset-1' : 'opacity-70 hover:opacity-100'
                   )}
                 />
               ))}
             </div>
-            {taskFilterOptions.tags.length > 0 && (
+            {sanitizedTaskTags.length > 0 && (
               <button
                 onClick={() => onTaskFilterOptionsChange?.({ ...taskFilterOptions, tags: [] })}
                 className="flex items-center gap-1 mx-3 mt-1 px-2 py-0.5 rounded text-xs text-[var(--color-text-tertiary)] hover:text-[var(--color-text-secondary)]"
@@ -700,7 +708,7 @@ const SortFilterViewBar: React.FC<SortFilterViewBarProps> = ({
 
   const filterCount = React.useMemo(() => {
     if (contentType === 'tasks') {
-      return countActiveTaskFilters(taskFilterOptions, showCompleted);
+      return countActiveTaskFilters(sanitizeTaskFilterOptions(taskFilterOptions), showCompleted);
     }
     // for pages, also count filterBy
     let count = countActivePageFilters(pageFilterOptions);

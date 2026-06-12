@@ -80,7 +80,8 @@ import { getRightInsetStyle } from '@/lib/layout';
 
 import { getToday, getTodayISO } from '../../lib/dateUtils';
 import type { TaskFilterOptions, PageFilterOptions } from '../../types/view';
-import { DEFAULT_TASK_FILTER_OPTIONS, DEFAULT_PAGE_FILTER_OPTIONS } from '../../types/view';
+import { DEFAULT_TASK_FILTER_OPTIONS, DEFAULT_PAGE_FILTER_OPTIONS, sanitizeTaskFilterOptions, taskFilterToDefaults } from '../../types/view';
+import { parseTags } from '../../lib/tagUtils';
 
 interface PageDetailViewProps {
   page: Page;
@@ -364,7 +365,7 @@ const PageDetailView: React.FC<PageDetailViewProps> = ({
           defaultDueDate: globalTaskPaneDefaults.defaultDueDate,
           defaultTaskPageId: globalTaskPaneDefaults.defaultTaskPageId,
           defaultSection: globalTaskPaneDefaults.defaultSection,
-          defaultTag: globalTaskPaneDefaults.defaultTags?.[0],
+          defaultTag: globalTaskPaneDefaults.defaultTags?.join(', '),
           defaultPriority: globalTaskPaneDefaults.defaultPriority,
         });
       }
@@ -532,22 +533,49 @@ const PageDetailView: React.FC<PageDetailViewProps> = ({
     }
   }, [openTaskInContext, showTasksSplitViewLayout, taskPaneDirty, selectedTaskId]);
 
+  // Task filter options for this page — needed by handleCreateTask for pre-population
+  const viewKey = getViewKey('taskPage', page.id);
+  const taskFilterOptionsMap = useNavigationStore(useShallow((s) => s.taskFilterOptions));
+  const setTaskFilterOptions = useNavigationStore((s) => s.setTaskFilterOptions);
+  const pageTaskFilterOptions = useMemo(
+    () => sanitizeTaskFilterOptions(taskFilterOptionsMap[viewKey] ?? DEFAULT_TASK_FILTER_OPTIONS),
+    [viewKey, taskFilterOptionsMap]
+  );
+  const todayISO = useMemo(() => getTodayISO(), []);
+
   const handleCreateTask = useCallback((defaults?: { defaultDueDate?: string; defaultTaskPageId?: string; defaultSection?: string; defaultTag?: string; defaultPriority?: 'Low' | 'Medium' | 'High' }) => {
+    // Fill any properties not set by group/view context from active filters.
+    const fromFilter = taskFilterToDefaults(pageTaskFilterOptions, todayISO);
+    const explicitTags = defaults?.defaultTag ? parseTags(defaults.defaultTag) : undefined;
+    const resolvedTags = explicitTags ?? fromFilter.defaultTags;
+
+    const mergedDefaults = {
+      defaultTaskPageId: page.id,
+      ...defaults,
+      defaultDueDate: defaults?.defaultDueDate ?? fromFilter.defaultDueDate,
+      defaultPriority: defaults?.defaultPriority ?? fromFilter.defaultPriority,
+      // Local pane state uses the comma-joined string form, UIStore uses an array.
+      ...(resolvedTags ? { defaultTag: resolvedTags.join(', ') } : {}),
+    };
+
     if (showTasksSplitViewLayout) {
-      // Check if current task is dirty before creating new
       if (taskPaneDirty && paneMode) {
-        // Store the pending action and show confirmation
-        pendingTaskActionRef.current = { type: 'create', defaults: defaults || { defaultTaskPageId: page.id } };
+        pendingTaskActionRef.current = { type: 'create', defaults: mergedDefaults };
         setShowTaskPaneDiscardModal(true);
         return;
       }
       setSelectedTaskId(null);
       setPaneMode('create');
-      setPaneDefaults(defaults || { defaultTaskPageId: page.id });
+      setPaneDefaults(mergedDefaults);
     } else {
-      createTaskInContext({ defaultTaskPageId: page.id, ...defaults });
+      const storeDefaults: Parameters<typeof createTaskInContext>[0] = {
+        ...mergedDefaults,
+        ...(resolvedTags ? { defaultTags: resolvedTags } : {}),
+      };
+      delete (storeDefaults as Record<string, unknown>).defaultTag;
+      createTaskInContext(storeDefaults);
     }
-  }, [createTaskInContext, page.id, paneMode, showTasksSplitViewLayout, taskPaneDirty]);
+  }, [createTaskInContext, page.id, paneMode, showTasksSplitViewLayout, taskPaneDirty, pageTaskFilterOptions, todayISO]);
 
   const handleClosePane = useCallback(() => {
     setSelectedTaskId(null);
@@ -570,18 +598,10 @@ const PageDetailView: React.FC<PageDetailViewProps> = ({
   // Task sort settings from navigationStore (per-page view preferences)
   const viewPreferences = useNavigationStore((state) => state.viewPreferences);
   const setViewPreference = useNavigationStore((state) => state.setViewPreference);
-  const viewKey = getViewKey('taskPage', page.id);
   const taskSortBy = viewPreferences[viewKey]?.taskSortBy || 'date';
   const taskSortDirection = viewPreferences[viewKey]?.taskSortDirection || 'desc';
   
-  // Task filter options for this page (reactive - subscribes directly to map for reactivity)
-  const taskFilterOptionsMap = useNavigationStore(useShallow((s) => s.taskFilterOptions));
-  const setTaskFilterOptions = useNavigationStore((s) => s.setTaskFilterOptions);
-  const pageTaskFilterOptions = useMemo(
-    () => taskFilterOptionsMap[viewKey] ?? DEFAULT_TASK_FILTER_OPTIONS,
-    [viewKey, taskFilterOptionsMap]
-  );
-  const todayISO = useMemo(() => getTodayISO(), []);
+  // Task filter options previously declared above (before handleCreateTask, for pre-population)
   const allPageTaskTags = useMemo(() => collectTaskTags(pageTasks), [pageTasks]);
   const handlePageTaskFilterOptionsChange = useCallback((opts: TaskFilterOptions) => {
     setTaskFilterOptions(viewKey, opts);
@@ -1889,16 +1909,8 @@ const TaskModeContent: React.FC<TaskModeContentProps> = ({
   const displayTitle = isPageActive ? draftTitle : page.title;
   const displayContent = isPageActive ? draftContent : page.content;
 
-  // Compute existing task tags for tag filter suggestions
-  const existingTaskTags = useMemo(() => {
-    const tagSet = new Set<string>();
-    allTasks.forEach(task => {
-      if (task.tag) {
-        tagSet.add(task.tag);
-      }
-    });
-    return Array.from(tagSet).sort();
-  }, [allTasks]);
+  // Compute existing task tags for tag filter suggestions — split comma-joined multi-tags
+  const existingTaskTags = useMemo(() => collectTaskTags(allTasks), [allTasks]);
   
   // Title editing state
   const [isEditingTitle, setIsEditingTitle] = useState(false);

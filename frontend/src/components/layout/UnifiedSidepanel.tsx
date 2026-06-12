@@ -313,6 +313,7 @@ const UnifiedSidepanel: React.FC<UnifiedSidepanelProps> = ({
               defaultDueDate={pane.snapshot.defaults?.defaultDueDate}
               defaultSection={pane.snapshot.defaults?.defaultSection}
               defaultPriority={pane.snapshot.defaults?.defaultPriority}
+              defaultTag={pane.snapshot.defaults?.defaultTags?.join(', ')}
               onClose={pane.reset}
               onDeleteTask={pane.reset}
               onDirtyChange={pane.setDirty}

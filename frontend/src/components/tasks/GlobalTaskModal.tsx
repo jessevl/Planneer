@@ -128,7 +128,7 @@ const GlobalTaskModal: React.FC = () => {
       currentView={currentView}
       defaultDueDate={taskCreationDefaults?.defaultDueDate}
       defaultSection={taskCreationDefaults?.defaultSection}
-      defaultTag={taskCreationDefaults?.defaultTags?.[0]}
+      defaultTag={taskCreationDefaults?.defaultTags?.join(', ')}
       defaultPriority={taskCreationDefaults?.defaultPriority}
       onClose={handleClose}
       onSaveTask={handleSaveTask}

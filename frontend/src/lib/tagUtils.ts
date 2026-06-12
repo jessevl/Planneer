@@ -463,6 +463,18 @@ export function getTagClasses(tagName: string): string {
 }
 
 /**
+ * Parse a comma-joined tag string into a clean array of individual tags.
+ * Handles whitespace and empty entries — returns [] for empty/undefined input.
+ *
+ * Use this anywhere you need to convert the stored `task.tag` / `page.tags`
+ * string into individual tag values.
+ */
+export function parseTags(value: string | null | undefined): string[] {
+  if (!value) return [];
+  return value.split(',').map(s => s.trim()).filter(Boolean);
+}
+
+/**
  * Suggested default tags for quick selection
  * Users can still create custom tags
  */
