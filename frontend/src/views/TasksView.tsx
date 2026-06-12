@@ -627,7 +627,7 @@ const TasksView: React.FC<TasksViewProps> = ({
             </Container>
 
             {taskFilter === 'upcoming' && !isTaskPageView && !isMobile && (
-              <Container className="pt-2">
+              <Container className="pt-2 hidden lg:block">
                 <div className="-mx-1 md:-mx-2 lg:-mx-3">
                   <DueTimelineStrip
                     highlightedDate={highlightedDate}

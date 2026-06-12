@@ -17,6 +17,7 @@
  * Toggle between the two via ViewLayoutToggle in ViewHeader.
  */
 import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import TaskRow from './TaskRow';
 import type { Task } from './TaskList';
 import { parseDate, getToday, dayjs } from '../../lib/dateUtils';
@@ -27,6 +28,7 @@ import { groupTasksBy, sortTasksWithinGroups, type TaskSortBy, type TaskSortDire
 import { DATE_GROUPS, getDateGroupSubtitle, type DateGroupKey } from '../../lib/dateGroups';
 import { Panel, SectionHeader } from '../ui';
 import { useIsMobile } from '@frameer/hooks/useMobileDetection';
+import { useHorizontalScrollArrows } from '@frameer/hooks/useHorizontalScrollArrows';
 import { getTagColor } from '@/lib/tagUtils';
 import { cn } from '@/lib/design-system';
 
@@ -82,9 +84,10 @@ const KanbanView: React.FC<KanbanViewProps> = ({
 }) => {
   // Mobile detection
   const isMobile = useIsMobile();
-  
-  // Scroll container ref for mobile column navigation
+
+  // Scroll container ref for mobile column navigation + desktop scroll arrows
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const { canScrollLeft, canScrollRight, handleScrollBy } = useHorizontalScrollArrows(scrollContainerRef);
   const [activeColumnIndex, setActiveColumnIndex] = useState(0);
   const [isScrolling, setIsScrolling] = useState(false);
   const scrollTimeoutRef = useRef<number | null>(null);
@@ -176,8 +179,31 @@ const KanbanView: React.FC<KanbanViewProps> = ({
         </div>
       )}
       
+      {/* Desktop: left scroll arrow */}
+      {!isMobile && !embedded && (
+        <button
+          onClick={() => handleScrollBy('left')}
+          className={cn(
+            "absolute left-2 top-1/2 -translate-y-1/2 z-20",
+            "flex items-center justify-center rounded-full",
+            "w-8 h-8 p-1.5",
+            "bg-[var(--color-surface-base)]",
+            "border border-[var(--color-border-subtle)]",
+            "text-[var(--color-text-secondary)]",
+            "hover:bg-[var(--color-surface-overlay)]",
+            "hover:text-[var(--color-text-primary)]",
+            "shadow-sm hover:shadow",
+            "transition-all duration-200",
+            canScrollLeft ? "opacity-100" : "opacity-0 pointer-events-none",
+          )}
+          aria-label="Scroll left"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+      )}
+
       {/* Kanban columns container */}
-      <div 
+      <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
         className={cn(
@@ -288,6 +314,29 @@ const KanbanView: React.FC<KanbanViewProps> = ({
             );
           })}
       </div>
+
+      {/* Desktop: right scroll arrow */}
+      {!isMobile && !embedded && (
+        <button
+          onClick={() => handleScrollBy('right')}
+          className={cn(
+            "absolute right-2 top-1/2 -translate-y-1/2 z-20",
+            "flex items-center justify-center rounded-full",
+            "w-8 h-8 p-1.5",
+            "bg-[var(--color-surface-base)]",
+            "border border-[var(--color-border-subtle)]",
+            "text-[var(--color-text-secondary)]",
+            "hover:bg-[var(--color-surface-overlay)]",
+            "hover:text-[var(--color-text-primary)]",
+            "shadow-sm hover:shadow",
+            "transition-all duration-200",
+            canScrollRight ? "opacity-100" : "opacity-0 pointer-events-none",
+          )}
+          aria-label="Scroll right"
+        >
+          <ChevronRight className="w-5 h-5" />
+        </button>
+      )}
     </div>
   );
 };
