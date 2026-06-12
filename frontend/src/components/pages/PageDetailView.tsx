@@ -1140,20 +1140,11 @@ const PageDetailView: React.FC<PageDetailViewProps> = ({
             <span className="text-sm text-[var(--color-text-secondary)] whitespace-nowrap">{isTasksMode ? 'Editing description' : 'Editing content'}</span>
           ) : undefined}
           additionalActionsRight={
-            <div className="flex items-center gap-2">
-              {editingContent ? (
-                <>
-                  {sidePanelOpen ? (
-                    <Button variant="secondary" size="sm" onClick={() => setSidePanelOpen(false)}>
-                      Close panel
-                    </Button>
-                  ) : null}
-                  <Button variant="secondary" size="sm" onClick={() => setEditingContent(false)}>
-                    Done
-                  </Button>
-                </>
-              ) : null}
-            </div>
+            editingContent ? (
+              <Button variant="secondary" size="sm" onClick={() => setEditingContent(false)}>
+                Done
+              </Button>
+            ) : undefined
           }
           />
 
