@@ -292,7 +292,7 @@ const InlineTagInput: React.FC<InlineTagInputProps> = ({
           !className && 'min-h-[32px] px-1 py-0.5 rounded w-full',
           // Use provided className for padding/sizing when not a full tag
           className && (!isMulti && currentTags.length > 0 && !isFocused ? 'p-0 rounded-[inherit] w-full h-full' : cn(className, 'rounded-[inherit]')),
-          isFocused && 'bg-[var(--color-interactive-bg)]/50',
+          !className && isFocused && 'bg-[var(--color-interactive-bg)]/50',
           // Ensure it doesn't grow too much on desktop if empty
           !isMobile && currentTags.length === 0 && "w-fit"
         )}

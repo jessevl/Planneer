@@ -98,7 +98,7 @@ interface PageEditorProps {
   coverImage?: string | null;
   coverGradient?: string | null;
   coverAttribution?: string | null;
-  onIconClick?: () => void;
+  onIconChange?: (icon: string | null, color: string | null) => void;
   viewMode?: PageViewMode;
   /** If true, focus editor content instead of title on create (for daily pages with pre-filled titles) */
   isDailyNote?: boolean;
@@ -530,7 +530,7 @@ const PageEditor: React.FC<PageEditorProps> = ({
   coverImage = null,
   coverGradient = null,
   coverAttribution = null,
-  onIconClick,
+  onIconChange,
   viewMode,
   isDailyNote = false,
   hideHero = false,
@@ -2187,7 +2187,7 @@ const PageEditor: React.FC<PageEditorProps> = ({
             hideActions={hideActions}
             icon={icon}
             color={color}
-            onIconClick={onIconClick}
+            onIconChange={onIconChange}
             viewMode={viewMode}
             isDailyNote={isDailyNote}
             onMarkHasChanges={() => {}}

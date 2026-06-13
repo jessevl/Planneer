@@ -17,8 +17,9 @@
  * - TasksView
  */
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from '@/lib/design-system';
-import { ImageIcon, X, Search, Loader2, FileText, CheckSquare, Calendar, Clock, Folder, ChevronDown, ChevronUp, Tag as TagIcon, Link2, ListChecks } from 'lucide-react';
+import { ImageIcon, X, Search, Loader2, FileText, CheckSquare, Calendar, Clock, Folder, ChevronDown, ChevronUp, Tag as TagIcon, Link2, ListChecks, Sparkles } from 'lucide-react';
 import { useNavigate } from '@tanstack/react-router';
 import { useBacklinks } from '@/hooks/useBacklinks';
 import { useUIStore } from '@/stores/uiStore';
@@ -31,7 +32,8 @@ import relativeTime from 'dayjs/plugin/relativeTime';
 import PageActionBar from './PageActionBar';
 import ItemIcon from '../common/ItemIcon';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { Modal, TagBadge, InlineTagInput, FLOATING_PANEL_SURFACE_CLASSNAME } from '@/components/ui';
+import { useIsMobile } from '@frameer/hooks/useMobileDetection';
+import { Modal, TagBadge, InlineTagInput, FLOATING_PANEL_SURFACE_CLASSNAME, MobileSheet, IconPicker, LucideIcon } from '@/components/ui';
 
 dayjs.extend(relativeTime);
 
@@ -143,6 +145,21 @@ function useImageBrightness(imageUrl: string | null): 'light' | 'dark' | 'loadin
 // PAGE HERO COMPONENT
 // ============================================================================
 
+const ICON_PRESET_COLORS = [
+  { color: '#ef4444', name: 'Red' },
+  { color: '#f97316', name: 'Orange' },
+  { color: '#eab308', name: 'Yellow' },
+  { color: '#22c55e', name: 'Green' },
+  { color: '#14b8a6', name: 'Teal' },
+  { color: '#0ea5e9', name: 'Sky' },
+  { color: '#3b82f6', name: 'Blue' },
+  { color: '#6366f1', name: 'Indigo' },
+  { color: '#8b5cf6', name: 'Violet' },
+  { color: '#a855f7', name: 'Purple' },
+  { color: '#ec4899', name: 'Pink' },
+  { color: '#64748b', name: 'Slate' },
+];
+
 interface PageHeroProps {
   pageId: string | null;
   title: string;
@@ -167,7 +184,7 @@ interface PageHeroProps {
   // Icon
   icon?: string | null;
   color?: string | null;
-  onIconClick?: () => void;
+  onIconChange?: (icon: string | null, color: string | null) => void;
   viewMode?: string;
   isDailyNote?: boolean;
   // Description (for tasks/collection pages)
@@ -211,7 +228,7 @@ export const PageHero: React.FC<PageHeroProps> = ({
   hideActions = false,
   icon,
   color,
-  onIconClick,
+  onIconChange,
   viewMode,
   isDailyNote,
   description,
@@ -228,6 +245,12 @@ export const PageHero: React.FC<PageHeroProps> = ({
   const [showPicker, setShowPicker] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
+  const [showIconPopup, setShowIconPopup] = useState(false);
+  const [showIconSubPicker, setShowIconSubPicker] = useState(false);
+  const [iconPopupPos, setIconPopupPos] = useState<{ top: number; left: number } | null>(null);
+  const iconAnchorRef = useRef<HTMLDivElement>(null);
+  const iconPopupRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
 
   // Prioritize gradient over image
   const cover = coverGradient || coverImage;
@@ -454,8 +477,114 @@ export const PageHero: React.FC<PageHeroProps> = ({
     }
   }, [pageId]);
 
+  useEffect(() => {
+    if (!showIconPopup || isMobile) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        (!iconAnchorRef.current || !iconAnchorRef.current.contains(target)) &&
+        (!iconPopupRef.current || !iconPopupRef.current.contains(target))
+      ) {
+        setShowIconPopup(false);
+        setShowIconSubPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showIconPopup, isMobile]);
+
+  const iconPickerContent = onIconChange ? (
+    <div className="px-2 py-2 w-[280px]">
+      <p className="text-xs font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider mb-2 px-1">Color</p>
+      <div className="grid grid-cols-6 gap-1.5 px-1 mb-3">
+        {ICON_PRESET_COLORS.map(({ color: c, name }) => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => onIconChange(icon ?? null, c)}
+            className={cn(
+              'w-7 h-7 rounded-lg transition-all hover:scale-110',
+              color === c && 'ring-2 ring-offset-1 ring-[var(--color-text-primary)] ring-offset-[var(--color-surface-base)]'
+            )}
+            style={{ backgroundColor: c }}
+            title={name}
+          >
+            {color === c && (
+              <svg className="w-3.5 h-3.5 m-auto text-white drop-shadow-md" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            )}
+          </button>
+        ))}
+      </div>
+      <div className="h-px bg-[var(--color-border-default)] -mx-2 mb-2" />
+      <button
+        type="button"
+        onClick={() => setShowIconSubPicker(!showIconSubPicker)}
+        className={cn(
+          'w-full flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors',
+          showIconSubPicker
+            ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]'
+            : 'text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]'
+        )}
+      >
+        <div className="flex items-center gap-2.5">
+          {icon ? (
+            <LucideIcon name={icon} className="w-4 h-4" style={{ color: color || '#6b7280' }} />
+          ) : (
+            <Sparkles className="w-4 h-4 text-[var(--color-text-tertiary)]" />
+          )}
+          <span>Icon</span>
+        </div>
+        <div className="flex items-center gap-1 text-[var(--color-text-tertiary)]">
+          <span className="text-xs">{icon || 'Auto'}</span>
+          <ChevronDown className={cn('w-3 h-3 transition-transform', showIconSubPicker && 'rotate-180')} />
+        </div>
+      </button>
+      {showIconSubPicker && (
+        <div className="py-1 px-0.5">
+          <IconPicker
+            selectedIcon={icon ?? null}
+            onChange={(iconName) => {
+              onIconChange(iconName, color ?? null);
+              if (iconName !== null) {
+                setShowIconSubPicker(false);
+                setShowIconPopup(false);
+              }
+            }}
+            allowClear
+            previewColor={color || undefined}
+            compact
+          />
+        </div>
+      )}
+    </div>
+  ) : null;
+
+  const openIconPopup = useCallback(() => {
+    if (iconAnchorRef.current) {
+      const rect = iconAnchorRef.current.getBoundingClientRect();
+      setIconPopupPos({ top: rect.bottom + 8, left: rect.left });
+    }
+    setShowIconPopup(true);
+    setShowIconSubPicker(false);
+  }, []);
+
+  const iconPopupPortal = onIconChange && showIconPopup && !isMobile && iconPopupPos
+    ? createPortal(
+        <div
+          ref={iconPopupRef}
+          style={{ position: 'fixed', top: iconPopupPos.top, left: iconPopupPos.left, zIndex: 9999 }}
+          className="rounded-xl border border-[var(--color-border-default)] bg-[var(--color-surface-primary)] shadow-lg overflow-hidden"
+        >
+          {iconPickerContent}
+        </div>,
+        document.body
+      )
+    : null;
+
   return (
-    <div 
+    <div
       className="relative w-full"
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
@@ -490,14 +619,21 @@ export const PageHero: React.FC<PageHeroProps> = ({
               isNoteLikeView ? 'md:px-6' : 'md:px-0'
             )}>
               {/* Icon */}
-              <ItemIcon
-                type={viewMode === 'tasks' ? 'tasks' : viewMode === 'collection' ? 'collection' : 'note'}
-                {...(icon ? { icon } : {})}
-                color={color}
-                size="md"
-                {...(onIconClick ? { onClick: onIconClick } : {})}
-                className="p-0.5 flex-shrink-0"
-              />
+              <div ref={iconAnchorRef} className="flex-shrink-0">
+                <ItemIcon
+                  type={viewMode === 'tasks' ? 'tasks' : viewMode === 'collection' ? 'collection' : 'note'}
+                  {...(icon ? { icon } : {})}
+                  color={color}
+                  size="md"
+                  {...(onIconChange ? { onClick: openIconPopup } : {})}
+                  className="p-0.5"
+                />
+              </div>
+              {onIconChange && isMobile && (
+                <MobileSheet isOpen={showIconPopup} onClose={() => { setShowIconPopup(false); setShowIconSubPicker(false); }} title="Icon & Color">
+                  {iconPickerContent}
+                </MobileSheet>
+              )}
 
               {/* Title */}
               <div className="flex-1 min-w-0">
@@ -679,14 +815,20 @@ export const PageHero: React.FC<PageHeroProps> = ({
                 {/* Title row with icon */}
                 <div className="flex items-center gap-3 min-w-0">
                   {/* Icon */}
-                  <ItemIcon
-                    type={viewMode === 'tasks' ? 'tasks' : viewMode === 'collection' ? 'collection' : 'note'}
-                    {...(icon ? { icon } : {})}
-                    color={color}
-                    size="xl"
-                    {...(onIconClick ? { onClick: onIconClick } : {})}
-                    className="flex-shrink-0"
-                  />
+                  <div ref={iconAnchorRef} className="flex-shrink-0">
+                    <ItemIcon
+                      type={viewMode === 'tasks' ? 'tasks' : viewMode === 'collection' ? 'collection' : 'note'}
+                      {...(icon ? { icon } : {})}
+                      color={color}
+                      size="xl"
+                      {...(onIconChange ? { onClick: openIconPopup } : {})}
+                    />
+                  </div>
+                  {onIconChange && isMobile && (
+                    <MobileSheet isOpen={showIconPopup} onClose={() => { setShowIconPopup(false); setShowIconSubPicker(false); }} title="Icon & Color">
+                      {iconPickerContent}
+                    </MobileSheet>
+                  )}
 
                   {/* Title + metadata */}
                   <div className="flex-1 min-w-0">
@@ -873,6 +1015,9 @@ export const PageHero: React.FC<PageHeroProps> = ({
           isUploading={isUploading}
         />
       )}
+
+      {/* Icon popup portal - rendered at body level to escape overflow clipping */}
+      {iconPopupPortal}
     </div>
   );
 };

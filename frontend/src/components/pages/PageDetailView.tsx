@@ -1183,7 +1183,7 @@ const PageDetailView: React.FC<PageDetailViewProps> = ({
             setChildrenExpanded={setChildrenExpanded}
             onNavigate={handlePageClick}
             onCreateChild={handleCreateChild}
-            
+            onIconChange={isReadOnlyPage ? undefined : handleIconChange}
             hasMore={childrenHasMore}
             isLoadingMore={isLoadingMoreChildren}
             onLoadMore={handleLoadMoreChildren}
@@ -1212,7 +1212,7 @@ const PageDetailView: React.FC<PageDetailViewProps> = ({
             onCreateChild={handleCreateChild}
             onDeletePage={onDeletePage}
             onMovePage={onMovePage}
-            
+            onIconChange={isReadOnlyPage ? undefined : handleIconChange}
             sortBy={collectionSortBy}
             onSortByChange={setCollectionSortBy}
             sortDirection={collectionSortDirection}
@@ -1243,7 +1243,7 @@ const PageDetailView: React.FC<PageDetailViewProps> = ({
             setChildrenExpanded={setChildrenExpanded}
             onNavigate={handlePageClick}
             onCreateChild={handleCreateChild}
-            
+            onIconChange={isReadOnlyPage ? undefined : handleIconChange}
             hasMore={childrenHasMore}
             isLoadingMore={isLoadingMoreChildren}
             onLoadMore={handleLoadMoreChildren}
@@ -1276,7 +1276,7 @@ interface PageModeContentProps {
   setChildrenExpanded: (expanded: boolean) => void;
   onNavigate: (pageId: string) => void;
   onCreateChild?: () => void;
-  onIconClick?: () => void;
+  onIconChange?: (icon: string | null, color: string | null) => void;
   /** Whether there are more children to load (pagination) */
   hasMore?: boolean;
   /** Whether currently loading more children */
@@ -1298,7 +1298,7 @@ const PageModeContent: React.FC<PageModeContentProps> = ({
   setChildrenExpanded,
   onNavigate,
   onCreateChild,
-  onIconClick,
+  onIconChange,
   hasMore = false,
   isLoadingMore = false,
   onLoadMore,
@@ -1349,7 +1349,7 @@ const PageModeContent: React.FC<PageModeContentProps> = ({
           coverImage={page.coverImage}
           coverGradient={page.coverGradient}
           coverAttribution={page.coverAttribution}
-          onIconClick={onIconClick}
+          onIconChange={onIconChange}
           readOnly={!isPageActive || page.isReadOnly === true}
           tags={page.tags}
           contentRightInsetPx={contentRightInsetPx}
@@ -1448,7 +1448,7 @@ interface CollectionModeContentProps {
   onCreateChild?: (viewMode?: PageViewMode) => void;
   onDeletePage: (id: string, cascade?: boolean) => void;
   onMovePage?: (pageId: string, newParentId: string | null) => void;
-  onIconClick?: () => void;
+  onIconChange?: (icon: string | null, color: string | null) => void;
   sortBy: 'updated' | 'created' | 'title';
   onSortByChange: (sortBy: 'updated' | 'created' | 'title') => void;
   sortDirection: 'asc' | 'desc';
@@ -1487,7 +1487,7 @@ const CollectionModeContent: React.FC<CollectionModeContentProps> = ({
   onCreateChild,
   onDeletePage,
   onMovePage,
-  onIconClick,
+  onIconChange,
   sortBy,
   onSortByChange,
   sortDirection,
@@ -1668,7 +1668,7 @@ const CollectionModeContent: React.FC<CollectionModeContentProps> = ({
         hideActions={true}
         icon={page.icon}
         color={page.color}
-        onIconClick={isReadOnly ? undefined : onIconClick}
+        onIconChange={isReadOnly ? undefined : onIconChange}
         viewMode={page.viewMode}
         isDailyNote={page.isDailyNote}
         description={previewText}
@@ -1822,7 +1822,7 @@ interface TaskModeContentProps {
   setChildrenExpanded: (expanded: boolean) => void;
   onNavigate: (pageId: string) => void;
   onCreateChild?: () => void;
-  onIconClick?: () => void;
+  onIconChange?: (icon: string | null, color: string | null) => void;
   hasMore?: boolean;
   isLoadingMore?: boolean;
   onLoadMore?: () => void;
@@ -1873,7 +1873,7 @@ const TaskModeContent: React.FC<TaskModeContentProps> = ({
   setChildrenExpanded,
   onNavigate,
   onCreateChild,
-  onIconClick,
+  onIconChange,
   hasMore = false,
   isLoadingMore = false,
   onLoadMore,
@@ -2036,7 +2036,7 @@ const TaskModeContent: React.FC<TaskModeContentProps> = ({
         hideActions={true}
         icon={page.icon}
         color={page.color}
-        onIconClick={onIconClick}
+        onIconChange={onIconChange}
         viewMode={page.viewMode}
         isDailyNote={page.isDailyNote}
         description={previewText}

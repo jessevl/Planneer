@@ -17,8 +17,8 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { MoreVertical, Sparkles, ChevronDown, ChevronRight, FolderInput, Download, Trash2 } from 'lucide-react';
-import { Popover, MobileSheet, IconPicker, LucideIcon, ToggleTile } from '@/components/ui';
+import { MoreVertical, ChevronRight, FolderInput, Download, Trash2 } from 'lucide-react';
+import { Popover, MobileSheet, ToggleTile } from '@/components/ui';
 import { cn } from '@/lib/design-system';
 import { useIsMobile } from '@frameer/hooks/useMobileDetection';
 import { usePagesStore } from '@/stores/pagesStore';
@@ -27,21 +27,6 @@ import { usePageActions } from '@/hooks/usePageActions';
 import PageModeToggle from '@/components/common/PageModeToggle';
 import type { Page, PageViewMode } from '@/types/page';
 
-// Preset colors (same as used in the former ItemPropertiesModal)
-const PRESET_COLORS = [
-  { color: '#ef4444', name: 'Red' },
-  { color: '#f97316', name: 'Orange' },
-  { color: '#eab308', name: 'Yellow' },
-  { color: '#22c55e', name: 'Green' },
-  { color: '#14b8a6', name: 'Teal' },
-  { color: '#0ea5e9', name: 'Sky' },
-  { color: '#3b82f6', name: 'Blue' },
-  { color: '#6366f1', name: 'Indigo' },
-  { color: '#8b5cf6', name: 'Violet' },
-  { color: '#a855f7', name: 'Purple' },
-  { color: '#ec4899', name: 'Pink' },
-  { color: '#64748b', name: 'Slate' },
-];
 
 interface PageActionsMenuProps {
   /** The page to show actions for */
@@ -59,12 +44,8 @@ const PageActionsMenu: React.FC<PageActionsMenuProps> = ({
 }) => {
   const isMobile = useIsMobile();
   const [isOpen, setIsOpen] = useState(false);
-  const [showColorPicker, setShowColorPicker] = useState(false);
-  const [showIconPicker, setShowIconPicker] = useState(false);
   const [showExportSub, setShowExportSub] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  const updatePage = usePagesStore((s) => s.updatePage);
 
   // Subscribe to latest page data from the store so toggle tiles update visually
   const livePage = usePagesStore((s) => s.pagesById[page.id]) ?? page;
@@ -86,8 +67,6 @@ const PageActionsMenu: React.FC<PageActionsMenuProps> = ({
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setIsOpen(false);
-        setShowColorPicker(false);
-        setShowIconPicker(false);
       }
     };
 
@@ -98,24 +77,14 @@ const PageActionsMenu: React.FC<PageActionsMenuProps> = ({
   // Reset sub-pickers when menu closes
   useEffect(() => {
     if (!isOpen) {
-      setShowColorPicker(false);
-      setShowIconPicker(false);
       setShowExportSub(false);
     }
   }, [isOpen]);
 
+  const updatePage = usePagesStore((s) => s.updatePage);
+
   const handleToggleViewMode = useCallback((mode: PageViewMode) => {
     updatePage(page.id, { viewMode: mode });
-  }, [page.id, updatePage]);
-
-  const handleSelectColor = useCallback((color: string) => {
-    updatePage(page.id, { color });
-    setShowColorPicker(false);
-  }, [page.id, updatePage]);
-
-  const handleSelectIcon = useCallback((icon: string | null) => {
-    updatePage(page.id, { icon });
-    if (icon === null) setShowIconPicker(false);
   }, [page.id, updatePage]);
 
   // Toggle handlers for sidebar children
@@ -133,7 +102,6 @@ const PageActionsMenu: React.FC<PageActionsMenuProps> = ({
   const showLayoutToggle = !page.isDailyNote;
   const isReadOnlyMirror = page.isReadOnly && Boolean(page.sourceOrigin);
   const currentViewMode = page.viewMode || 'note';
-  const selectedColorName = PRESET_COLORS.find(c => c.color === page.color)?.name || 'Custom';
 
   // Shared row style for all interactive rows (consistent typography)
   const rowClass = (active?: boolean) => cn(
@@ -142,8 +110,6 @@ const PageActionsMenu: React.FC<PageActionsMenuProps> = ({
       ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]'
       : 'text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]'
   );
-
-  const iconClass = 'w-4 h-4 text-[var(--color-text-tertiary)]';
 
   // ---- Inline property section ----
   const propertiesSection = (
@@ -154,93 +120,9 @@ const PageActionsMenu: React.FC<PageActionsMenuProps> = ({
         </div>
       )}
 
-      {/* Color row */}
-      {!isReadOnlyMirror && (
-        <button
-          type="button"
-          onClick={() => { setShowColorPicker(!showColorPicker); setShowIconPicker(false); }}
-          className={rowClass(showColorPicker)}
-        >
-          <div className="flex items-center gap-2.5">
-            <div
-              className="w-4 h-4 rounded-full border border-white/50 shadow-sm"
-              style={{ backgroundColor: page.color || '#3b82f6' }}
-            />
-            <span>Color</span>
-          </div>
-          <span className="text-[var(--color-text-tertiary)] text-xs">{selectedColorName}</span>
-        </button>
-      )}
-
-      {/* Color picker dropdown */}
-      {!isReadOnlyMirror && showColorPicker && (
-        <div className="px-1 py-2">
-          <div className="grid grid-cols-6 gap-1.5">
-            {PRESET_COLORS.map(({ color: c, name }) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => handleSelectColor(c)}
-                className={cn(
-                  'w-7 h-7 rounded-lg transition-all hover:scale-110',
-                  page.color === c && 'ring-2 ring-offset-1 ring-[var(--color-text-primary)] ring-offset-[var(--color-surface-base)]'
-                )}
-                style={{ backgroundColor: c }}
-                title={name}
-              >
-                {page.color === c && (
-                  <svg className="w-3.5 h-3.5 m-auto text-white drop-shadow-md" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                    <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Icon row */}
-      {!isReadOnlyMirror && (
-        <button
-          type="button"
-          onClick={() => { setShowIconPicker(!showIconPicker); setShowColorPicker(false); }}
-          className={rowClass(showIconPicker)}
-        >
-          <div className="flex items-center gap-2.5">
-            {page.icon ? (
-              <LucideIcon name={page.icon} className="w-4 h-4" style={{ color: page.color || '#6b7280' }} />
-            ) : (
-              <Sparkles className={iconClass} />
-            )}
-            <span>Icon</span>
-          </div>
-          <div className="flex items-center gap-1 text-[var(--color-text-tertiary)]">
-            <span className="text-xs">{page.icon || 'Auto'}</span>
-            <ChevronDown className={cn('w-3 h-3 transition-transform', showIconPicker && 'rotate-180')} />
-          </div>
-        </button>
-      )}
-
-      {/* Icon picker dropdown */}
-      {!isReadOnlyMirror && showIconPicker && (
-        <div className="py-1 px-0.5">
-          <IconPicker
-            selectedIcon={page.icon}
-            onChange={(iconName) => {
-              handleSelectIcon(iconName);
-              if (iconName !== null) setShowIconPicker(false);
-            }}
-            allowClear
-            previewColor={page.color || undefined}
-            compact
-          />
-        </div>
-      )}
-
       {/* Page mode toggle */}
       {showLayoutToggle && !isReadOnlyMirror && (
         <>
-          <div className={cn('h-px bg-[var(--color-border-default)] -mx-2', isMobile ? 'my-2' : 'my-1.5')} />
           <span className="text-[10px] font-semibold text-[var(--color-text-tertiary)] uppercase tracking-widest px-3 block mb-1">
             Page mode
           </span>
@@ -284,7 +166,7 @@ const PageActionsMenu: React.FC<PageActionsMenuProps> = ({
           className={rowClass(showExportSub)}
         >
           <div className="flex items-center gap-2.5">
-            <Download className={iconClass} />
+            <Download className="w-4 h-4 text-[var(--color-text-tertiary)]" />
             <span>Export</span>
           </div>
           <ChevronRight className={cn('w-3.5 h-3.5 text-[var(--color-text-tertiary)] transition-transform', showExportSub && 'rotate-90')} />
