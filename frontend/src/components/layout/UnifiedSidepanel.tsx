@@ -20,10 +20,10 @@ const PageRelationshipGraph = React.lazy(() => import('@/components/pages/PageRe
 import ConfirmDiscardModal from '@/components/common/ConfirmDiscardModal';
 import ItemIcon from '@/components/common/ItemIcon';
 import type { PageRelationshipGraphHandle } from '@/components/pages/PageRelationshipGraph';
+import PageMetaPanel from '@/components/pages/PageMetaPanel';
 import CompactTaskRow from '@/components/tasks/CompactTaskRow';
 import TaskDetailPane from '@/components/tasks/TaskDetailPane';
-import { IconButton, InlineTagInput } from '@/components/ui';
-import { useBacklinks } from '@/hooks/useBacklinks';
+import { IconButton } from '@/components/ui';
 import { useTaskPaneState } from '@/hooks/useTaskPaneState';
 import { buildRelationshipGraph, collectGraphTasks, createVisibleRelationshipGraph, relationshipGraphIds } from '@/lib/relationshipGraph';
 import { cn } from '@/lib/design-system';
@@ -66,21 +66,6 @@ interface UnifiedSidepanelProps {
 
 // ─── Helpers ────────────────────────────────────────────────────────────
 
-function pageIconType(page: Page): 'note' | 'collection' | 'daily' | 'tasks' {
-  if ((page as Page & { isDailyNote?: boolean }).isDailyNote) return 'daily';
-  if (page.viewMode === 'collection') return 'collection';
-  if (page.viewMode === 'tasks') return 'tasks';
-  return 'note';
-}
-
-function formatDateTime(value?: string | null): string {
-  if (!value) return 'Unknown';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? 'Unknown'
-    : date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
-}
-
 function sortTasksForOverview(tasks: Task[]): Task[] {
   return [...tasks].sort((a, b) => {
     if (!!a.dueDate !== !!b.dueDate) return a.dueDate ? -1 : 1;
@@ -121,7 +106,6 @@ const UnifiedSidepanel: React.FC<UnifiedSidepanelProps> = ({
   const taskOrder = useTasksStore((s) => s.taskOrder);
   const toggleComplete = useTasksStore((s) => s.toggleComplete);
   const sidePanelTab = useNavigationStore((s) => s.sidePanelTab);
-  const setSidePanelOpen = useNavigationStore((state) => state.setSidePanelOpen);
   const setSidePanelTab = useNavigationStore((s) => s.setSidePanelTab);
   const openSidePanel = useNavigationStore((s) => s.openSidePanel);
   const startEditingTask = useUIStore((s) => s.startEditingTask);
@@ -186,7 +170,6 @@ const UnifiedSidepanel: React.FC<UnifiedSidepanelProps> = ({
     [allTasks, hasOverviewTab],
   );
 
-  const backlinks = useBacklinks(currentPage?.id);
   const graphRef = React.useRef<PageRelationshipGraphHandle>(null);
   const selectedTask = pane.snapshot.taskId ? tasksById[pane.snapshot.taskId] ?? null : null;
 
@@ -291,16 +274,19 @@ const UnifiedSidepanel: React.FC<UnifiedSidepanelProps> = ({
           />
         )}
         {activeTab === 'metadata' && (
-          <MetadataTabContent
-            currentPage={currentPage}
-            childPages={childPages}
-            allTasks={allTasks}
-            pagesById={pagesById}
-            backlinks={backlinks}
-            onUpdatePage={updatePage}
-            onTaskClick={handleTaskClick}
-            navigate={navigate}
-          />
+          currentPage ? (
+            <PageMetaPanel
+              currentPage={currentPage}
+              childPages={childPages}
+              allTasks={allTasks}
+              pagesById={pagesById}
+              onUpdatePage={updatePage}
+              onTaskClick={handleTaskClick}
+              navigate={navigate}
+            />
+          ) : (
+            <EmptyPanelState title="Open a page to inspect its metadata." />
+          )
         )}
         {activeTab === 'task-editor' && (
           <div className="flex h-full min-h-0 w-full flex-1 overflow-hidden">
@@ -453,213 +439,6 @@ const GraphTabContent: React.FC<{
           compact
         />
       </Suspense>
-    </div>
-  );
-};
-
-/** Page metadata and backlinks tab content. */
-const MetadataTabContent: React.FC<{
-  currentPage?: Page | null;
-  childPages: Page[];
-  allTasks: Task[];
-  pagesById: Record<string, Page>;
-  backlinks: ReturnType<typeof useBacklinks>;
-  onUpdatePage: (id: string, updates: Partial<Page>) => void;
-  onTaskClick: (taskId: string) => void;
-  navigate: ReturnType<typeof useNavigate>;
-}> = ({ currentPage, childPages, allTasks, pagesById, backlinks, onUpdatePage, onTaskClick, navigate }) => {
-  if (!currentPage) {
-    return <EmptyPanelState title="Open a page to inspect its metadata." />;
-  }
-
-  const parentPage = currentPage.parentId ? pagesById[currentPage.parentId] : null;
-  const directTaskCount = allTasks.filter((t) => t.parentPageId === currentPage.id).length;
-  const tags = currentPage.tags?.split(',').map((tag) => tag.trim()).filter(Boolean) ?? [];
-  const siblingTagSuggestions = (() => {
-    const parentKey = currentPage.parentId || '__root__';
-    const tagSet = new Set<string>();
-
-    Object.values(pagesById)
-      .filter((page) => (page.parentId || '__root__') === parentKey)
-      .forEach((page) => {
-        page.tags?.split(',').map((tag) => tag.trim()).filter(Boolean).forEach((tag) => tagSet.add(tag));
-      });
-
-    return Array.from(tagSet).sort();
-  })();
-  const tagColorUniverse = Array.from(new Set([...siblingTagSuggestions, ...tags])).sort();
-  const description = currentPage.excerpt?.trim() || 'No description yet.';
-  const coverLabel = currentPage.coverImage
-    ? 'Image cover'
-    : currentPage.coverGradient
-      ? 'Gradient cover'
-      : 'No cover';
-  const formatBytes = (rawSize?: string | null) => {
-    const size = Number(rawSize ?? 0);
-    if (!Number.isFinite(size) || size <= 0) {
-      return null;
-    }
-    if (size >= 1024 * 1024) {
-      return `${(size / (1024 * 1024)).toFixed(1)} MB`;
-    }
-    if (size >= 1024) {
-      return `${Math.round(size / 1024)} KB`;
-    }
-    return `${size} B`;
-  };
-  const infoRows = [
-    {
-      label: 'Type',
-      value: currentPage.sourceOrigin
-        ? currentPage.sourceItemType === 'root'
-          ? `${currentPage.sourceOrigin} root collection`
-          : `${currentPage.sourceOrigin} ${currentPage.sourceItemType ?? currentPage.viewMode}`
-        : currentPage.viewMode,
-    },
-    { label: 'Created', value: formatDateTime(currentPage.created) },
-    { label: 'Updated', value: formatDateTime(currentPage.updated) },
-    { label: 'Children', value: String(childPages.length) },
-    { label: 'Tasks', value: String(directTaskCount) },
-    { label: 'Parent', value: parentPage?.title ?? 'Workspace root' },
-    { label: 'Cover', value: coverLabel },
-    ...(currentPage.sourceOrigin
-      ? [
-          { label: 'Mirror source', value: currentPage.sourceOrigin },
-          { label: 'Source path', value: currentPage.sourcePath || 'Unknown' },
-          { label: 'Remote created', value: formatDateTime(currentPage.sourceCreatedAt || '') },
-          { label: 'Remote updated', value: formatDateTime(currentPage.sourceModifiedAt || '') },
-          { label: 'Last synced', value: formatDateTime(currentPage.sourceLastSyncedAt || '') },
-          { label: 'Remote size', value: formatBytes(currentPage.sourceContentLength) || 'Unknown' },
-          { label: 'ETag', value: currentPage.sourceETag || 'Unavailable' },
-        ]
-      : []),
-  ].filter((row) => row.value && row.value !== '');
-
-  return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4 pt-3">
-      {/* Info card */}
-      <div className="rounded-2xl border border-[var(--color-border-subtle)] bg-[var(--color-surface-primary)] p-4">
-        <div className="mb-3 flex items-center gap-2">
-          <ItemIcon type={pageIconType(currentPage)} icon={currentPage.icon} color={currentPage.color} size="sm" />
-          <div>
-            <p className="text-sm font-semibold text-[var(--color-text-primary)]">{currentPage.title || 'Untitled'}</p>
-            <p className="text-xs text-[var(--color-text-tertiary)]">{currentPage.id}</p>
-          </div>
-        </div>
-        <div className="space-y-2">
-          {infoRows.map((row) => (
-            <div key={row.label} className="flex items-start justify-between gap-3 text-sm">
-              <span className="text-[var(--color-text-tertiary)]">{row.label}</span>
-              <span className="text-right text-[var(--color-text-primary)]">{row.value}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="rounded-2xl border border-[var(--color-border-subtle)] bg-[var(--color-surface-primary)] p-4">
-        <div className="mb-3">
-          <p className="text-sm font-semibold text-[var(--color-text-primary)]">Description</p>
-          <p className="text-xs text-[var(--color-text-tertiary)]">Auto-generated from the page content preview</p>
-        </div>
-        <p className="text-sm leading-6 text-[var(--color-text-secondary)]">{description}</p>
-      </div>
-
-      <div className="rounded-2xl border border-[var(--color-border-subtle)] bg-[var(--color-surface-primary)] p-4">
-        <div className="mb-3">
-          <p className="text-sm font-semibold text-[var(--color-text-primary)]">Tags</p>
-          <p className="text-xs text-[var(--color-text-tertiary)]">Labels attached to this page</p>
-        </div>
-
-        <InlineTagInput
-          value={currentPage.tags || ''}
-          onChange={(value) => onUpdatePage(currentPage.id, { tags: value })}
-          existingTags={tagColorUniverse}
-          isMulti
-          placeholder="Add tags..."
-          contextKey={`page-tags-${currentPage.id}`}
-          className="min-h-[36px] px-0 py-0"
-        />
-      </div>
-
-      <div className="rounded-2xl border border-[var(--color-border-subtle)] bg-[var(--color-surface-primary)] p-4">
-        <div className="mb-3">
-          <p className="text-sm font-semibold text-[var(--color-text-primary)]">Cover</p>
-          <p className="text-xs text-[var(--color-text-tertiary)]">Visual preview used in the page hero</p>
-        </div>
-
-        {currentPage.coverImage || currentPage.coverGradient ? (
-          <div className="space-y-3">
-            <div
-              className="h-28 w-full overflow-hidden rounded-2xl border border-[var(--color-border-subtle)] bg-[var(--color-surface-secondary)]"
-              style={currentPage.coverGradient ? { background: currentPage.coverGradient } : undefined}
-            >
-              {currentPage.coverImage ? (
-                <img
-                  src={currentPage.coverImage}
-                  alt={currentPage.title || 'Page cover'}
-                  className="h-full w-full object-cover"
-                />
-              ) : null}
-            </div>
-            {currentPage.coverAttribution ? (
-              <p className="text-xs text-[var(--color-text-tertiary)]">{currentPage.coverAttribution}</p>
-            ) : null}
-          </div>
-        ) : (
-          <p className="text-sm text-[var(--color-text-secondary)]">No cover configured.</p>
-        )}
-      </div>
-
-      {/* Backlinks card */}
-      <div className="rounded-2xl border border-[var(--color-border-subtle)] bg-[var(--color-surface-primary)] p-4">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold text-[var(--color-text-primary)]">Backlinks</p>
-            <p className="text-xs text-[var(--color-text-tertiary)]">Items that reference this page</p>
-          </div>
-          <span className="rounded-full bg-[var(--color-surface-tertiary)] px-2 py-1 text-xs text-[var(--color-text-secondary)]">
-            {backlinks.length}
-          </span>
-        </div>
-
-        {backlinks.length ? (
-          <div className="space-y-2">
-            {backlinks.map((bl) => (
-              <button
-                key={`${bl.sourceType}-${bl.sourceId}`}
-                type="button"
-                onClick={() => {
-                  if (bl.sourceType === 'page') {
-                    navigate({ to: '/pages/$id', params: { id: bl.sourceId } });
-                  } else {
-                    onTaskClick(bl.sourceId);
-                  }
-                }}
-                className="flex w-full items-center justify-between gap-3 rounded-xl border border-[var(--color-border-subtle)] px-3 py-2 text-left transition-colors hover:bg-[var(--color-surface-tertiary)]"
-              >
-                <div className="flex min-w-0 items-center gap-2">
-                  {bl.sourceType === 'page' ? (
-                    <ItemIcon
-                      type={bl.sourceViewMode === 'collection' ? 'collection' : bl.sourceViewMode === 'tasks' ? 'tasks' : 'note'}
-                      icon={bl.sourceIcon}
-                      color={bl.sourceColor}
-                      size="sm"
-                    />
-                  ) : (
-                    <CheckSquare className="h-4 w-4 text-[var(--color-text-tertiary)]" />
-                  )}
-                  <div className="min-w-0">
-                    <p className="truncate text-sm text-[var(--color-text-primary)]">{bl.sourceTitle}</p>
-                    <p className="text-xs text-[var(--color-text-tertiary)]">{bl.sourceType === 'page' ? 'Page' : 'Task'}</p>
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-[var(--color-text-secondary)]">No backlinks yet.</p>
-        )}
-      </div>
     </div>
   );
 };

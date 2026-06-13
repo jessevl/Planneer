@@ -89,5 +89,8 @@ export { default as SortFilterViewBar } from '../layout/SortFilterViewBar';
 export type { SortFilterViewBarProps } from '../layout/SortFilterViewBar';
 export type { ViewEditorModalProps } from './SavedViewsBar';
 
-// Page Cover - integrated into PageHero
-export { COVER_GRADIENTS } from '../pages/PageHero';
+// Page Cover - shared modal + curated gradients
+export { default as CoverPickerModal, COVER_GRADIENTS } from '../common/CoverPickerModal';
+
+// Property editing primitives
+export { default as PropertyPopover } from './PropertyPopover';

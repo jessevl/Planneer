@@ -31,7 +31,7 @@ import { priorityClasses } from '../../lib/design-system';
 import { MobileSheet } from '@/components/ui';
 import { FRIENDLY_DATES, friendlyToISO, getTokenAt, dateSuggestionFor, mapPriorityToken } from '../../lib/suggestions';
 import type { View } from '../../lib/selectors';
-import { Button, Text, TextSmall, Popover, LucideIcon, InlineTagInput, Panel, ModalFooter, PropertyRow, TagPickerMenu } from '../ui';
+import { Button, Text, TextSmall, LucideIcon, InlineTagInput, Panel, ModalFooter, PropertyRow, PropertyPopover, TagPickerMenu } from '../ui';
 import SubtaskList from './SubtaskList';
 import { inline } from '../../lib/layout';
 import { useTasksStore } from '@/stores/tasksStore';
@@ -47,51 +47,6 @@ import { useNavigate } from '@tanstack/react-router';
 import { useUIStore } from '@/stores/uiStore';
 
 import ItemIcon from '@/components/common/ItemIcon';
-
-/**
- * Popover wrapper that escapes overflow-clipping containers by rendering via
- * a fixed-position portal. Used for property-row pickers in single-column
- * (sidepanel) layout where the scroll container would clip absolute popovers.
- */
-const PropertyPopover: React.FC<{
-  anchorRef: React.RefObject<HTMLElement | null>;
-  open: boolean;
-  children: React.ReactNode;
-  usePortal?: boolean;
-}> = ({ anchorRef, open, children, usePortal }) => {
-  const [portalStyle, setPortalStyle] = React.useState<React.CSSProperties | null>(null);
-
-  React.useLayoutEffect(() => {
-    if (!open || !usePortal) { setPortalStyle(null); return; }
-    const el = anchorRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const spaceBelow = window.innerHeight - rect.bottom;
-    setPortalStyle(
-      spaceBelow < 200
-        ? { bottom: window.innerHeight - rect.top + 4, left: rect.left, width: rect.width }
-        : { top: rect.bottom + 4, left: rect.left, width: rect.width }
-    );
-  }, [open, usePortal, anchorRef]);
-
-  if (!open) return null;
-
-  if (usePortal) {
-    if (!portalStyle) return null;
-    return createPortal(
-      <div
-        style={{ position: 'fixed', zIndex: 9999, ...portalStyle }}
-        className="rounded-xl border border-[var(--color-border-default)] bg-[var(--color-surface-primary)] shadow-lg p-2"
-        onMouseDown={e => e.stopPropagation()}
-      >
-        {children}
-      </div>,
-      document.body
-    );
-  }
-
-  return <Popover width="full">{children}</Popover>;
-};
 
 /** Helper component for rendering task page icon - Lucide icon or fallback task icon */
 const ProjectIcon: React.FC<{ icon?: string | null; color?: string | null; className?: string }> = ({ icon, color, className = "w-4 h-4" }) => {

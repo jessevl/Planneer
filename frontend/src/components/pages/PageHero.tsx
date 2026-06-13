@@ -19,44 +19,27 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '@/lib/design-system';
-import { ImageIcon, X, Search, Loader2, FileText, CheckSquare, Calendar, Clock, Folder, ChevronDown, ChevronUp, Tag as TagIcon, Link2, ListChecks, Sparkles } from 'lucide-react';
+import { ImageIcon, X, Loader2, FileText, CheckSquare, Calendar, Clock, Folder, ChevronDown, ChevronUp, Tag as TagIcon, Link2, ListChecks } from 'lucide-react';
 import { useNavigate } from '@tanstack/react-router';
 import { useBacklinks } from '@/hooks/useBacklinks';
 import { useUIStore } from '@/stores/uiStore';
-import { pb } from '@/lib/pocketbase';
 import { getPageImageUrl } from '@/api/pagesApi';
-import type { Page } from '@/types/page';
 import { usePagesStore } from '@/stores/pagesStore';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import PageActionBar from './PageActionBar';
 import ItemIcon from '../common/ItemIcon';
+import IconColorPicker from '../common/IconColorPicker';
+import CoverPickerModal, { COVER_GRADIENTS } from '../common/CoverPickerModal';
+import { usePageCoverActions } from '@/hooks/usePageCoverActions';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useIsMobile } from '@frameer/hooks/useMobileDetection';
-import { Modal, TagBadge, InlineTagInput, FLOATING_PANEL_SURFACE_CLASSNAME, MobileSheet, IconPicker, LucideIcon } from '@/components/ui';
+import { TagBadge, InlineTagInput, FLOATING_PANEL_SURFACE_CLASSNAME, MobileSheet } from '@/components/ui';
 
 dayjs.extend(relativeTime);
 
-// ============================================================================
-// GRADIENT DEFINITIONS
-// ============================================================================
-
-export const COVER_GRADIENTS = [
-  { id: 'gradient-1', value: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', name: 'Ocean', isDark: true },
-  { id: 'gradient-2', value: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)', name: 'Forest', isDark: false },
-  { id: 'gradient-3', value: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', name: 'Sunset', isDark: false },
-  { id: 'gradient-4', value: 'linear-gradient(135deg, #f12711 0%, #f5af19 100%)', name: 'Fire', isDark: false },
-  { id: 'gradient-5', value: 'linear-gradient(135deg, #0093E9 0%, #80D0C7 100%)', name: 'Teal', isDark: false },
-  { id: 'gradient-6', value: 'linear-gradient(135deg, #ee9ca7 0%, #ffdde1 100%)', name: 'Rose', isDark: false },
-  { id: 'gradient-7', value: 'linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)', name: 'Midnight', isDark: true },
-  { id: 'gradient-8', value: 'linear-gradient(135deg, #FAD961 0%, #F76B1C 100%)', name: 'Warm', isDark: false },
-  { id: 'gradient-9', value: 'linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%)', name: 'Cool', isDark: false },
-  { id: 'gradient-10', value: 'linear-gradient(135deg, #2c3e50 0%, #4ca1af 100%)', name: 'Steel', isDark: true },
-];
-
-// Import Unsplash config from central config
-import { UNSPLASH_CONFIG } from '@/lib/config';
-import { useConfigStore } from '@/stores/configStore';
+// Re-export for legacy consumers (ui/index.ts).
+export { COVER_GRADIENTS };
 
 // Create a gradient lookup map for O(1) access
 const GRADIENT_MAP = new Map(COVER_GRADIENTS.map(g => [g.value, g]));
@@ -145,21 +128,6 @@ function useImageBrightness(imageUrl: string | null): 'light' | 'dark' | 'loadin
 // PAGE HERO COMPONENT
 // ============================================================================
 
-const ICON_PRESET_COLORS = [
-  { color: '#ef4444', name: 'Red' },
-  { color: '#f97316', name: 'Orange' },
-  { color: '#eab308', name: 'Yellow' },
-  { color: '#22c55e', name: 'Green' },
-  { color: '#14b8a6', name: 'Teal' },
-  { color: '#0ea5e9', name: 'Sky' },
-  { color: '#3b82f6', name: 'Blue' },
-  { color: '#6366f1', name: 'Indigo' },
-  { color: '#8b5cf6', name: 'Violet' },
-  { color: '#a855f7', name: 'Purple' },
-  { color: '#ec4899', name: 'Pink' },
-  { color: '#64748b', name: 'Slate' },
-];
-
 interface PageHeroProps {
   pageId: string | null;
   title: string;
@@ -243,14 +211,14 @@ export const PageHero: React.FC<PageHeroProps> = ({
   onToggleCompact,
 }) => {
   const [showPicker, setShowPicker] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
   const [showIconPopup, setShowIconPopup] = useState(false);
-  const [showIconSubPicker, setShowIconSubPicker] = useState(false);
   const [iconPopupPos, setIconPopupPos] = useState<{ top: number; left: number } | null>(null);
   const iconAnchorRef = useRef<HTMLDivElement>(null);
   const iconPopupRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
+  const coverActions = usePageCoverActions(pageId);
+  const isUploading = coverActions.isUploading;
 
   // Prioritize gradient over image
   const cover = coverGradient || coverImage;
@@ -357,125 +325,28 @@ export const PageHero: React.FC<PageHeroProps> = ({
     }
   }, [viewMode, isDailyNote]);
 
-  // Cover handlers
+  // Cover handlers — shared with the meta sidepanel via usePageCoverActions.
   const handleRemoveCover = useCallback(async () => {
-    if (!pageId) return;
-    
-    try {
-      // Clear both coverImage and coverGradient fields
-      const formData = new FormData();
-      formData.append('coverImage', '');
-      formData.append('coverGradient', '');
-      formData.append('coverAttribution', '');
-      await pb.collection('pages').update(pageId, formData);
-      
-      // Update store directly for immediate UI feedback
-      usePagesStore.getState().updatePage(pageId, { coverImage: null, coverGradient: null, coverAttribution: null });
-    } catch (error) {
-      console.error('Failed to remove cover:', error);
-    }
-    
+    await coverActions.removeCover();
     setShowPicker(false);
-  }, [pageId]);
+  }, [coverActions]);
 
   const handleSelectGradient = useCallback(async (gradientValue: string) => {
-    if (!pageId) return;
-    
-    try {
-      // Set coverGradient field and clear coverImage
-      const formData = new FormData();
-      formData.append('coverImage', ''); // Clear image
-      formData.append('coverGradient', gradientValue); // Set gradient
-      formData.append('coverAttribution', ''); // Clear attribution
-      await pb.collection('pages').update(pageId, formData);
-      
-      // Update store directly for immediate UI feedback
-      usePagesStore.getState().updatePage(pageId, { coverGradient: gradientValue, coverImage: null, coverAttribution: null });
-    } catch (error) {
-      console.error('Failed to set gradient cover:', error);
-    }
-    
+    await coverActions.selectGradient(gradientValue);
     setShowPicker(false);
-  }, [pageId]);
+  }, [coverActions]);
 
   const handleUploadImage = useCallback(async (file: File | Blob, filename?: string) => {
-    if (!pageId) return;
-    setIsUploading(true);
-    try {
-      const formData = new FormData();
-      const uploadFile = file instanceof Blob && !(file instanceof File) 
-        ? new File([file], filename || 'cover.jpg', { type: file.type })
-        : file;
-      formData.append('coverImage', uploadFile);
-      formData.append('coverGradient', ''); // Clear gradient
-      formData.append('coverAttribution', ''); // Clear attribution for custom uploads
-      
-      const result = await pb.collection('pages').update<Page>(pageId, formData);
-      onCoverChange?.(result.coverImage || null);
-      setShowPicker(false);
-    } catch (error) {
-      console.error('Failed to upload cover:', error);
-    } finally {
-      setIsUploading(false);
-    }
-  }, [pageId, onCoverChange]);
+    await coverActions.uploadImage(file, filename);
+    const next = usePagesStore.getState().pagesById[pageId ?? '']?.coverImage ?? null;
+    onCoverChange?.(next);
+    setShowPicker(false);
+  }, [coverActions, onCoverChange, pageId]);
 
   const handleSelectUnsplashImage = useCallback(async (imageUrl: string, attribution: string, downloadLocation?: string) => {
-    if (!pageId) return;
-    setIsUploading(true);
-    
-    try {
-      // If we have a download location, use the atomic backend endpoint
-      // This handles tracking, downloading, and saving in one step on the server
-      if (downloadLocation) {
-        const response = await fetch(`${pb.baseURL}/api/pages/${pageId}/unsplash-cover`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': pb.authStore.token,
-          },
-          body: JSON.stringify({
-            downloadUrl: downloadLocation,
-            attribution,
-          }),
-        });
-
-        if (!response.ok) {
-          let errorDetail = response.statusText;
-          try {
-            const errBody = await response.json();
-            errorDetail = errBody.message || errorDetail;
-          } catch { /* ignore parse errors */ }
-          throw new Error(`Failed to set Unsplash cover: ${errorDetail}`);
-        }
-        
-        // Parse the response to get the updated page and update store immediately
-        try {
-          const updatedPage = await response.json();
-          if (updatedPage?.coverImage) {
-            usePagesStore.getState().updatePage(pageId, { 
-              coverImage: updatedPage.coverImage, 
-              coverGradient: null, 
-              coverAttribution: attribution 
-            });
-          }
-        } catch {
-          // Response may not be JSON - SSE will handle the update
-        }
-      } else {
-        // No download location available — this shouldn't happen for Unsplash search
-        // results, but handle it gracefully
-        console.error('Cannot set cover: no download_location provided for Unsplash image');
-      }
-      
-      // SSE event will also fire, but store update gives immediate feedback
-      setShowPicker(false);
-    } catch (error) {
-      console.error('Failed to set Unsplash image:', error);
-    } finally {
-      setIsUploading(false);
-    }
-  }, [pageId]);
+    await coverActions.selectUnsplashImage(imageUrl, attribution, downloadLocation);
+    setShowPicker(false);
+  }, [coverActions]);
 
   useEffect(() => {
     if (!showIconPopup || isMobile) return;
@@ -486,7 +357,6 @@ export const PageHero: React.FC<PageHeroProps> = ({
         (!iconPopupRef.current || !iconPopupRef.current.contains(target))
       ) {
         setShowIconPopup(false);
-        setShowIconSubPicker(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -494,71 +364,12 @@ export const PageHero: React.FC<PageHeroProps> = ({
   }, [showIconPopup, isMobile]);
 
   const iconPickerContent = onIconChange ? (
-    <div className="px-2 py-2 w-[280px]">
-      <p className="text-xs font-semibold text-[var(--color-text-tertiary)] uppercase tracking-wider mb-2 px-1">Color</p>
-      <div className="grid grid-cols-6 gap-1.5 px-1 mb-3">
-        {ICON_PRESET_COLORS.map(({ color: c, name }) => (
-          <button
-            key={c}
-            type="button"
-            onClick={() => onIconChange(icon ?? null, c)}
-            className={cn(
-              'w-7 h-7 rounded-lg transition-all hover:scale-110',
-              color === c && 'ring-2 ring-offset-1 ring-[var(--color-text-primary)] ring-offset-[var(--color-surface-base)]'
-            )}
-            style={{ backgroundColor: c }}
-            title={name}
-          >
-            {color === c && (
-              <svg className="w-3.5 h-3.5 m-auto text-white drop-shadow-md" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            )}
-          </button>
-        ))}
-      </div>
-      <div className="h-px bg-[var(--color-border-default)] -mx-2 mb-2" />
-      <button
-        type="button"
-        onClick={() => setShowIconSubPicker(!showIconSubPicker)}
-        className={cn(
-          'w-full flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors',
-          showIconSubPicker
-            ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-primary)]'
-            : 'text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)]'
-        )}
-      >
-        <div className="flex items-center gap-2.5">
-          {icon ? (
-            <LucideIcon name={icon} className="w-4 h-4" style={{ color: color || '#6b7280' }} />
-          ) : (
-            <Sparkles className="w-4 h-4 text-[var(--color-text-tertiary)]" />
-          )}
-          <span>Icon</span>
-        </div>
-        <div className="flex items-center gap-1 text-[var(--color-text-tertiary)]">
-          <span className="text-xs">{icon || 'Auto'}</span>
-          <ChevronDown className={cn('w-3 h-3 transition-transform', showIconSubPicker && 'rotate-180')} />
-        </div>
-      </button>
-      {showIconSubPicker && (
-        <div className="py-1 px-0.5">
-          <IconPicker
-            selectedIcon={icon ?? null}
-            onChange={(iconName) => {
-              onIconChange(iconName, color ?? null);
-              if (iconName !== null) {
-                setShowIconSubPicker(false);
-                setShowIconPopup(false);
-              }
-            }}
-            allowClear
-            previewColor={color || undefined}
-            compact
-          />
-        </div>
-      )}
-    </div>
+    <IconColorPicker
+      icon={icon ?? null}
+      color={color ?? null}
+      onChange={onIconChange}
+      onIconSelected={() => setShowIconPopup(false)}
+    />
   ) : null;
 
   const openIconPopup = useCallback(() => {
@@ -567,7 +378,6 @@ export const PageHero: React.FC<PageHeroProps> = ({
       setIconPopupPos({ top: rect.bottom + 8, left: rect.left });
     }
     setShowIconPopup(true);
-    setShowIconSubPicker(false);
   }, []);
 
   const iconPopupPortal = onIconChange && showIconPopup && !isMobile && iconPopupPos
@@ -630,7 +440,7 @@ export const PageHero: React.FC<PageHeroProps> = ({
                 />
               </div>
               {onIconChange && isMobile && (
-                <MobileSheet isOpen={showIconPopup} onClose={() => { setShowIconPopup(false); setShowIconSubPicker(false); }} title="Icon & Color">
+                <MobileSheet isOpen={showIconPopup} onClose={() => { setShowIconPopup(false); }} title="Icon & Color">
                   {iconPickerContent}
                 </MobileSheet>
               )}
@@ -825,7 +635,7 @@ export const PageHero: React.FC<PageHeroProps> = ({
                     />
                   </div>
                   {onIconChange && isMobile && (
-                    <MobileSheet isOpen={showIconPopup} onClose={() => { setShowIconPopup(false); setShowIconSubPicker(false); }} title="Icon & Color">
+                    <MobileSheet isOpen={showIconPopup} onClose={() => { setShowIconPopup(false); }} title="Icon & Color">
                       {iconPickerContent}
                     </MobileSheet>
                   )}
@@ -1006,15 +816,15 @@ export const PageHero: React.FC<PageHeroProps> = ({
       )}
 
       {/* Cover picker modal */}
-      {showPicker && (
-        <CoverPicker
-          onSelectGradient={handleSelectGradient}
-          onSelectImage={handleSelectUnsplashImage}
-          onUploadImage={handleUploadImage}
-          onClose={() => setShowPicker(false)}
-          isUploading={isUploading}
-        />
-      )}
+      <CoverPickerModal
+        isOpen={showPicker}
+        onClose={() => setShowPicker(false)}
+        isUploading={isUploading}
+        onSelectGradient={handleSelectGradient}
+        onSelectImage={handleSelectUnsplashImage}
+        onUploadImage={handleUploadImage}
+      />
+
 
       {/* Icon popup portal - rendered at body level to escape overflow clipping */}
       {iconPopupPortal}
@@ -1067,264 +877,6 @@ const BacklinksRow: React.FC<{ pageId: string | null }> = ({ pageId }) => {
         ))}
       </div>
     </div>
-  );
-};
-
-// ============================================================================
-// COVER PICKER MODAL
-// ============================================================================
-
-interface CoverPickerProps {
-  onSelectGradient: (value: string) => void;
-  onSelectImage: (url: string, attribution: string, downloadLocation?: string) => void;
-  onUploadImage: (file: File) => void;
-  onClose: () => void;
-  isUploading: boolean;
-}
-
-const CoverPicker: React.FC<CoverPickerProps> = ({
-  onSelectGradient,
-  onSelectImage,
-  onUploadImage,
-  onClose,
-  isUploading,
-}) => {
-  const { config } = useConfigStore();
-  const [tab, setTab] = useState<'upload' | 'gradient' | 'unsplash'>('unsplash');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<Array<{ 
-    id: string; 
-    urls: { regular: string; small: string }; 
-    alt_description: string;
-    user: { name: string; links: { html: string } };
-    links: { download_location: string };
-  }>>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [searchPage, setSearchPage] = useState(1);
-  const [hasMoreResults, setHasMoreResults] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Debounced Unsplash search
-  useEffect(() => {
-    if (tab !== 'unsplash' || !searchQuery.trim() || !config.hasUnsplashConfig) {
-      if (!searchQuery.trim()) setSearchResults([]);
-      return;
-    }
-
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-
-    searchTimeoutRef.current = setTimeout(async () => {
-      setIsSearching(true);
-      try {
-        // Use backend proxy instead of direct Unsplash API call
-        const response = await fetch(
-          `${pb.baseURL}${UNSPLASH_CONFIG.apiUrl}/search?query=${encodeURIComponent(searchQuery)}&page=${searchPage}&per_page=${UNSPLASH_CONFIG.perPage}&orientation=${UNSPLASH_CONFIG.orientation}`,
-          {
-            headers: {
-              'Authorization': pb.authStore.token,
-            },
-          }
-        );
-
-        if (response.ok) {
-          const data = await response.json();
-          setSearchResults(prev => searchPage === 1 ? data.results : [...prev, ...data.results]);
-          setHasMoreResults(data.total_pages > searchPage);
-        }
-      } catch (error) {
-        console.error('Unsplash search failed:', error);
-      } finally {
-        setIsSearching(false);
-      }
-    }, 500);
-
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
-  }, [searchQuery, searchPage, tab]);
-
-  // Reset page when query changes
-  useEffect(() => {
-    setSearchPage(1);
-  }, [searchQuery]);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      onUploadImage(file);
-    }
-  };
-
-  const loadMoreResults = () => {
-    setSearchPage(prev => prev + 1);
-  };
-
-  const tabs = [
-    { id: 'unsplash', label: 'Unsplash' },
-    { id: 'upload', label: 'Upload' },
-    { id: 'gradient', label: 'Color' },
-  ] as const;
-
-  return (
-    <Modal
-      isOpen={true}
-      onClose={onClose}
-      title="Choose cover"
-      size="lg"
-    >
-      <div className="space-y-4">
-        {/* Tabs */}
-        <div className="flex gap-1">
-          {tabs.map(t => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={cn(
-                'px-3 py-1.5 text-sm rounded-md transition-colors',
-                tab === t.id
-                  ? 'bg-[var(--color-surface-secondary)] text-[var(--color-text-primary)] font-medium'
-                  : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
-              )}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Content */}
-        <div className="max-h-[400px] overflow-y-auto">
-          {tab === 'unsplash' && (
-            <div className="space-y-4">
-              {/* Search input */}
-              <div className="relative">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-tertiary)]" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search Unsplash..."
-                  className="w-full pl-9 pr-4 py-2 text-sm bg-[var(--color-surface-secondary)] border border-[var(--color-border-default)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-interactive-ring)]"
-                />
-              </div>
-
-              {/* Results grid */}
-              {isSearching && searchResults.length === 0 ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 size={24} className="animate-spin text-[var(--color-text-tertiary)]" />
-                </div>
-              ) : searchResults.length > 0 ? (
-                <div className="grid grid-cols-3 gap-2">
-                  {searchResults.map((img) => (
-                    <button
-                      key={img.id}
-                      className="aspect-[16/9] rounded-lg overflow-hidden hover:ring-2 ring-[var(--color-interactive-ring)] transition-all"
-                      onClick={() => {
-                        // Build UTM referral links per Unsplash guidelines
-                        const utmParams = 'utm_source=planneer&utm_medium=referral';
-                        const userLink = img.user.links.html.includes('?')
-                          ? `${img.user.links.html}&${utmParams}`
-                          : `${img.user.links.html}?${utmParams}`;
-                        onSelectImage(
-                          img.urls.regular, 
-                          JSON.stringify({ name: img.user.name, link: userLink }),
-                          img.links.download_location
-                        );
-                      }}
-                    >
-                      <img 
-                        src={img.urls.small} 
-                        alt={img.alt_description || ''} 
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
-                    </button>
-                  ))}
-                </div>
-              ) : searchQuery ? (
-                <p className="text-center text-[var(--color-text-secondary)] py-8 text-sm">
-                  {isSearching ? 'Searching...' : 'No results found'}
-                </p>
-              ) : (
-                <p className="text-center text-[var(--color-text-secondary)] py-8 text-sm">
-                  Search for images on Unsplash
-                </p>
-              )}
-
-              {/* Load more */}
-              {hasMoreResults && searchResults.length > 0 && (
-                <div className="flex justify-center">
-                  <button
-                    onClick={loadMoreResults}
-                    disabled={isSearching}
-                    className="px-4 py-2 text-sm text-[var(--color-interactive-text-strong)] hover:bg-[var(--color-interactive-bg)] rounded-lg transition-colors"
-                  >
-                    {isSearching ? (
-                      <Loader2 size={16} className="animate-spin" />
-                    ) : (
-                      'Load more'
-                    )}
-                  </button>
-                </div>
-              )}
-
-              <p className="text-xs text-[var(--color-text-tertiary)] text-center">
-                Images from Unsplash
-              </p>
-            </div>
-          )}
-
-          {tab === 'upload' && (
-            <div className="flex flex-col items-center justify-center py-8">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                className="hidden"
-              />
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
-                className="flex flex-col items-center gap-3 p-8 border-2 border-dashed border-[var(--color-border-default)] rounded-xl hover:border-[var(--color-interactive-border)] hover:bg-[var(--color-interactive-bg)]/50 transition-colors eink-dropzone"
-              >
-                {isUploading ? (
-                  <Loader2 size={32} className="animate-spin text-[var(--color-interactive-text-strong)]" />
-                ) : (
-                  <ImageIcon size={32} className="text-[var(--color-text-tertiary)]" />
-                )}
-                <div className="text-center">
-                  <p className="text-sm font-medium text-[var(--color-text-primary)]">
-                    {isUploading ? 'Uploading...' : 'Click to upload'}
-                  </p>
-                  <p className="text-xs text-[var(--color-text-secondary)] mt-1">
-                    PNG, JPG, GIF up to 10MB
-                  </p>
-                </div>
-              </button>
-            </div>
-          )}
-
-          {tab === 'gradient' && (
-            <div className="grid grid-cols-5 gap-2">
-              {COVER_GRADIENTS.map((g) => (
-                <button
-                  key={g.id}
-                  className="aspect-[16/9] rounded-lg hover:ring-2 ring-[var(--color-interactive-ring)] transition-all"
-                  style={{ background: g.value }}
-                  onClick={() => onSelectGradient(g.value)}
-                  title={g.name}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </Modal>
   );
 };
 
