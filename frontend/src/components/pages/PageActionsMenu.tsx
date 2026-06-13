@@ -97,6 +97,7 @@ const PageActionsMenu: React.FC<PageActionsMenuProps> = ({
   // Get individual export actions from the hook
   const exportMarkdownAction = useMemo(() => actions.exportMarkdown(), [actions]);
   const exportCSVAction = useMemo(() => actions.exportCSV(), [actions]);
+  const duplicateAction = useMemo(() => actions.duplicate(), [actions]);
   const deleteActionItem = useMemo(() => actions.delete({ divider: false }), [actions]);
 
   const showLayoutToggle = !page.isDailyNote;
@@ -158,6 +159,18 @@ const PageActionsMenu: React.FC<PageActionsMenuProps> = ({
   // ---- Action rows (consistent with rowClass) ----
   const actionsSection = (
     <div className="px-2 pb-2">
+      {/* Duplicate */}
+      <button
+        type="button"
+        onClick={() => { setIsOpen(false); duplicateAction.onClick(); }}
+        className={rowClass()}
+      >
+        <div className="flex items-center gap-2.5">
+          {duplicateAction.icon}
+          <span>Duplicate</span>
+        </div>
+      </button>
+
       {/* Export submenu */}
       <div>
         <button

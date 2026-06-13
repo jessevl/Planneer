@@ -27,7 +27,7 @@
 import React, { useMemo, useCallback } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useShallow } from 'zustand/react/shallow';
-import { FilePlus, ListPlus, Download, ExternalLink, FolderInput, ArrowRightFromLine } from 'lucide-react';
+import { FilePlus, ListPlus, Download, ExternalLink, FolderInput, ArrowRightFromLine, Copy } from 'lucide-react';
 import { usePagesStore, selectPageActions } from '@/stores/pagesStore';
 import { useSelectionStore } from '@/stores/selectionStore';
 import { useDeleteConfirmStore } from '@/stores/deleteConfirmStore';
@@ -62,6 +62,7 @@ export interface BuildPageMenuItemsConfig {
   onCreateTask?: () => void;
   onToggleShowChildren?: () => void;
   onMoveTo?: () => void;
+  onDuplicate?: () => void;
   onExportMarkdown?: () => void;
   onExportCSV?: () => void;
   onDelete?: () => void;
@@ -158,6 +159,16 @@ export function buildPageMenuItems(config: BuildPageMenuItemsConfig): ContextMen
     });
   }
 
+  // Duplicate (single select only — meta + content, no children)
+  if (!config.isMultiSelect && config.onDuplicate) {
+    items.push({
+      id: 'duplicate',
+      label: 'Duplicate',
+      icon: <Copy className={iconClass} />,
+      onClick: config.onDuplicate,
+    });
+  }
+
   // Export submenu (single select only)
   if (!config.isMultiSelect && config.onExportMarkdown) {
     const exportChildren: ContextMenuItem[] = [
@@ -235,7 +246,7 @@ export function usePageContextMenu({ page, onCreateChild, onCreateTask, childCou
   const requestDelete = useDeleteConfirmStore((s) => s.requestDelete);
   
   // Page store actions
-  const { deletePage, updatePage } = usePagesStore(useShallow(selectPageActions));
+  const { deletePage, updatePage, duplicatePage } = usePagesStore(useShallow(selectPageActions));
   
   // Tab state
   const tabsEnabled = useSettingsStore((s) => s.tabsEnabled);
@@ -286,6 +297,15 @@ export function usePageContextMenu({ page, onCreateChild, onCreateTask, childCou
         useUIStore.getState().openPageMovePicker(page.id, page.title || 'Untitled');
       },
 
+      onDuplicate: !isMultiSelect ? () => {
+        const copy = duplicatePage(page.id);
+        if (copy) {
+          toastSuccess('Page duplicated');
+        } else {
+          toastError('Could not duplicate page');
+        }
+      } : undefined,
+
       onExportMarkdown: async () => {
         try {
           await exportPageToMarkdown(page.id, page.title);
@@ -321,7 +341,7 @@ export function usePageContextMenu({ page, onCreateChild, onCreateTask, childCou
     });
   }, [
     isMultiSelect, selectionCount, childCount, tabsEnabled,
-    effectiveSelection, deletePage, updatePage, clearSelection,
+    effectiveSelection, deletePage, updatePage, duplicatePage, clearSelection,
     onCreateChild, onCreateTask, onOpenInNewTab, openTab, navigate,
     page.id, page.title, page.icon, page.color, page.viewMode, requestDelete
   ]);

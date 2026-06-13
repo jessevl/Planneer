@@ -21,7 +21,8 @@ import { useTasksStore } from '@/stores/tasksStore';
 import { useSelectionStore } from '@/stores/selectionStore';
 import { useDeleteConfirmStore } from '@/stores/deleteConfirmStore';
 import { getTodayISO, parseDate } from '@/lib/dateUtils';
-import type { ContextMenuItem } from '@/components/ui';
+import { toastSuccess, toastError, type ContextMenuItem } from '@/components/ui';
+import { Copy } from 'lucide-react';
 import type { Task } from '@/types/task';
 import {
   TrashIcon,
@@ -58,11 +59,12 @@ export function useTaskContextMenu({ task }: UseTaskContextMenuOptions) {
   const requestDelete = useDeleteConfirmStore((s) => s.requestDelete);
   
   // Task store actions
-  const { updateTask, deleteTask, toggleComplete, tasksById } = useTasksStore(
+  const { updateTask, deleteTask, toggleComplete, duplicateTask, tasksById } = useTasksStore(
     useShallow((s) => ({
       updateTask: s.updateTask,
       deleteTask: s.deleteTask,
       toggleComplete: s.toggleComplete,
+      duplicateTask: s.duplicateTask,
       tasksById: s.tasksById,
     }))
   );
@@ -141,7 +143,24 @@ export function useTaskContextMenu({ task }: UseTaskContextMenuOptions) {
         clearSelection('task');
       },
     });
-    
+
+    // Duplicate (single-select only — subtasks copy, completion resets)
+    if (!isMultiSelect) {
+      items.push({
+        id: 'duplicate',
+        label: 'Duplicate',
+        icon: <Copy className={iconClass} />,
+        onClick: async () => {
+          const newId = await duplicateTask(task.id);
+          if (newId) {
+            toastSuccess('Task duplicated');
+          } else {
+            toastError('Could not duplicate task');
+          }
+        },
+      });
+    }
+
     // Delete
     items.push({
       id: 'delete',
@@ -164,8 +183,9 @@ export function useTaskContextMenu({ task }: UseTaskContextMenuOptions) {
     return items;
   }, [
     isMultiSelect, allCompleted, anyOverdue, selectionCount,
-    effectiveSelection, toggleComplete, updateTask, deleteTask,
-    clearSelection, todayISO, tomorrowISO, requestDelete, anyNotToday
+    effectiveSelection, toggleComplete, updateTask, deleteTask, duplicateTask,
+    clearSelection, todayISO, tomorrowISO, requestDelete, anyNotToday,
+    task.id,
   ]);
   
   // Click handler with selection support

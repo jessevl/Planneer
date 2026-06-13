@@ -162,6 +162,12 @@ export interface PagesState {
   setLoading: (loading: boolean) => void;
   
   createPage: (input: CreatePageInput) => Page;
+  /**
+   * Duplicate a page in place: copies metadata + content but creates no
+   * children (subpages or tasks) and clones no per-record files (cover image,
+   * inline images, attachments). Returns the new page, or null if not found.
+   */
+  duplicatePage: (id: string) => Page | null;
   updatePage: (id: string, updates: UpdatePageInput) => void;
   updatePages: (ids: string[], updates: UpdatePageInput) => void;
   /** Lightweight timestamp update — bumps `updated` without sending content through sync */
@@ -902,6 +908,77 @@ export const usePagesStore = create<PagesState>()(
           // Fire-and-forget to offline sync engine (handles backend sync)
           offlineCreatePage(newPage).catch(console.error);
 
+          return newPage;
+        },
+
+        duplicatePage: (id) => {
+          const source = get().pagesById[id];
+          if (!source) return null;
+
+          const now = new Date().toISOString();
+          const newId = generateId();
+
+          // Place the duplicate next to the source — same parent, end of siblings.
+          const siblings = get().getChildren(source.parentId);
+          const maxOrder = siblings.reduce((max, s) => Math.max(max, s.order ?? 0), -1);
+          const order = maxOrder + 1;
+
+          // Append " (copy)" before any trailing whitespace.
+          const baseTitle = source.title?.trim() ? source.title.trim() : 'Untitled';
+          const newTitle = `${baseTitle} (copy)`;
+
+          // Copy meta + content. Skip per-record file fields (cover image,
+          // inline images, attachments) — PocketBase scopes file URLs to the
+          // owning record, so reusing the same filenames in the duplicate
+          // would 404. Cover gradients are CSS strings, so they're safe.
+          const newPage: Page = {
+            ...source,
+            id: newId,
+            title: newTitle,
+            created: now,
+            updated: now,
+            order,
+            isExpanded: false,
+            childCount: 0,
+            // Daily-note duplicates are just regular pages — there's only one
+            // page per date.
+            isDailyNote: false,
+            dailyNoteDate: null,
+            // Drop per-record file references.
+            coverImage: null,
+            coverAttribution: source.coverGradient ? source.coverAttribution : null,
+            images: [],
+            files: [],
+            // Mirrored pages: detach from source so the duplicate is owned locally.
+            isReadOnly: false,
+            sourceOrigin: null,
+            sourceItemType: null,
+            sourceExternalId: null,
+            sourcePath: null,
+            sourceLastSyncedAt: null,
+            sourceCreatedAt: null,
+            sourceModifiedAt: null,
+            sourceContentLength: null,
+            sourceETag: null,
+            sourcePageCount: null,
+            previewThumbnail: null,
+          };
+
+          set(
+            (state) => {
+              const newPagesById = { ...state.pagesById, [newId]: newPage };
+              const indexes = buildIndexes(newPagesById);
+              return {
+                pagesById: newPagesById,
+                childrenIndex: indexes.childrenIndex,
+                dailyPagesIndex: indexes.dailyPagesIndex,
+              };
+            },
+            false,
+            'duplicatePage'
+          );
+
+          offlineCreatePage(newPage).catch(console.error);
           return newPage;
         },
 
@@ -1887,6 +1964,7 @@ export const selectEditorState = (state: PagesState) => ({
 export const selectPageActions = (state: PagesState) => ({
   // New page-based names
   createPage: state.createPage,
+  duplicatePage: state.duplicatePage,
   updatePage: state.updatePage,
   deletePage: state.deletePage,
   movePage: state.movePage,

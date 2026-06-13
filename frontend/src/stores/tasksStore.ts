@@ -24,6 +24,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { devtools } from 'zustand/middleware';
 import type { Task, Subtask, RecurrencePattern, LinkedItem } from '@/types/task';
 import { offlineCreateTask, offlineUpdateTask, offlineDeleteTask } from '@/lib/syncAdapter';
+import { generateId } from '@/lib/pocketbase';
 import { syncEngine, type DataChangeEvent } from '@/lib/syncEngine/index';
 import { getNextDueDate } from '@/lib/recurrenceUtils';
 import { SUBTASKS } from '@/lib/config';
@@ -109,6 +110,12 @@ interface TasksState {
     tag?: string;
     linkedItems?: LinkedItem[];
   }) => Promise<string>;
+  /**
+   * Duplicate a task: copies meta + subtasks but resets completion state and
+   * starts a new lineage (no recurringParentId). Returns the new task id, or
+   * an empty string if the source could not be found.
+   */
+  duplicateTask: (id: string) => Promise<string>;
   updateTask: (id: string, updates: Partial<Task>) => void;
   deleteTask: (id: string) => void;
   toggleComplete: (id: string) => void;
@@ -394,6 +401,36 @@ export const useTasksStore = create<TasksState>()(
           set({ error: (e as Error).message }, false, 'addTask/error');
           return '';
         }
+      },
+
+      duplicateTask: async (id) => {
+        const source = get().tasksById[id];
+        if (!source) return '';
+
+        // Fresh subtask ids so the duplicate owns its own checklist items;
+        // start the duplicate uncompleted.
+        const subtasks = source.subtasks?.map((s) => ({
+          id: generateId(),
+          title: s.title,
+          completed: false,
+        }));
+
+        const baseTitle = source.title?.trim() ? source.title.trim() : 'Untitled task';
+        return get().addTask({
+          title: `${baseTitle} (copy)`,
+          description: source.description,
+          dueDate: source.dueDate,
+          priority: source.priority,
+          parentPageId: source.parentPageId,
+          sectionId: source.sectionId,
+          subtasks,
+          recurrence: source.recurrence,
+          // Detach from any recurrence lineage — this is a manual copy, not a generated instance.
+          recurringParentId: undefined,
+          copySubtasksOnRecur: source.copySubtasksOnRecur,
+          tag: source.tag,
+          linkedItems: source.linkedItems,
+        });
       },
 
       updateTask: (id, updates) => {
@@ -880,6 +917,7 @@ export const selectTaskState = (state: TasksState) => ({
 /** Select task actions (use with useShallow) */
 export const selectTaskActions = (state: TasksState) => ({
   addTask: state.addTask,
+  duplicateTask: state.duplicateTask,
   updateTask: state.updateTask,
   deleteTask: state.deleteTask,
   toggleComplete: state.toggleComplete,

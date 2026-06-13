@@ -19,7 +19,7 @@ import React, { useMemo, useCallback } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useShallow } from 'zustand/react/shallow';
 import {
-  Download, FolderInput, FilePlus, ListPlus, ExternalLink,
+  Copy, Download, FolderInput, FilePlus, ListPlus, ExternalLink,
 } from 'lucide-react';
 import { usePagesStore, selectPageActions } from '@/stores/pagesStore';
 import { useTasksStore } from '@/stores/tasksStore';
@@ -61,6 +61,8 @@ export interface PageActions {
   createSubpage: () => ContextMenuItem | null;
   /** Create a task in this task collection */
   createTask: () => ContextMenuItem | null;
+  /** Duplicate this page (meta + content only, no children) */
+  duplicate: () => ContextMenuItem;
   /** Toggle show/hide subpages in sidebar */
   toggleSidebarChildren: () => ContextMenuItem;
   /** Export page to Markdown */
@@ -84,7 +86,7 @@ export function usePageActions(options: UsePageActionsOptions): PageActions {
   const { page, onCreateChild, onCreateTask, onOpenInNewTab, onDelete } = options;
 
   // Store access
-  const { updatePage, deletePage } = usePagesStore(useShallow(selectPageActions));
+  const { updatePage, deletePage, duplicatePage } = usePagesStore(useShallow(selectPageActions));
   const requestDelete = useDeleteConfirmStore((s) => s.requestDelete);
   const tabsEnabled = useSettingsStore((s) => s.tabsEnabled);
   const openTab = useTabsStore((s) => s.openTab);
@@ -145,6 +147,20 @@ export function usePageActions(options: UsePageActionsOptions): PageActions {
     };
   }, [onCreateTask, page.id, page.viewMode]);
 
+
+  const duplicate = useCallback((): ContextMenuItem => ({
+    id: 'duplicate',
+    label: 'Duplicate',
+    icon: <Copy className={iconClass} />,
+    onClick: () => {
+      const copy = duplicatePage(page.id);
+      if (copy) {
+        toastSuccess('Page duplicated');
+      } else {
+        toastError('Could not duplicate page');
+      }
+    },
+  }), [duplicatePage, page.id]);
 
   const toggleSidebarChildren = useCallback((): ContextMenuItem => {
     const currentShow = page.showChildrenInSidebar ?? (page.viewMode === 'note');
@@ -215,12 +231,13 @@ export function usePageActions(options: UsePageActionsOptions): PageActions {
   const forActionMenu = useCallback((): ContextMenuItem[] => {
     const items: ContextMenuItem[] = [];
     items.push(toggleSidebarChildren());
+    items.push(duplicate());
     items.push(exportMarkdown());
     const csv = exportCSV();
     if (csv) items.push(csv);
     items.push(deleteAction({ divider: true }));
     return items;
-  }, [toggleSidebarChildren, exportMarkdown, exportCSV, deleteAction]);
+  }, [toggleSidebarChildren, duplicate, exportMarkdown, exportCSV, deleteAction]);
 
   const forContextMenu = useCallback((): ContextMenuItem[] => {
     const items: ContextMenuItem[] = [];
@@ -231,17 +248,19 @@ export function usePageActions(options: UsePageActionsOptions): PageActions {
     const task = createTaskAction();
     if (task) items.push(task);
 
+    items.push(duplicate());
     items.push(exportMarkdown());
     const csv = exportCSV();
     if (csv) items.push(csv);
     items.push(deleteAction({ divider: true }));
     return items;
-  }, [openInNewTab, createSubpage, createTaskAction, exportMarkdown, exportCSV, deleteAction]);
+  }, [openInNewTab, createSubpage, createTaskAction, duplicate, exportMarkdown, exportCSV, deleteAction]);
 
   return useMemo(() => ({
     openInNewTab,
     createSubpage,
     createTask: createTaskAction,
+    duplicate,
     toggleSidebarChildren,
     exportMarkdown,
     exportCSV,
@@ -249,7 +268,7 @@ export function usePageActions(options: UsePageActionsOptions): PageActions {
     forActionMenu,
     forContextMenu,
   }), [
-    openInNewTab, createSubpage, createTaskAction, toggleSidebarChildren,
+    openInNewTab, createSubpage, createTaskAction, duplicate, toggleSidebarChildren,
     exportMarkdown, exportCSV, deleteAction, forActionMenu, forContextMenu,
   ]);
 }

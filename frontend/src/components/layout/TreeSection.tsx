@@ -19,7 +19,8 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import TreeSidebarItem from '@/components/common/TreeSidebarItem';
 import PageTypeDropdown from '@/components/common/PageTypeDropdown';
 import { PlusIcon } from '../common/Icons';
-import { Label, type ContextMenuItem } from '@/components/ui';
+import { Label, toastSuccess, toastError, type ContextMenuItem } from '@/components/ui';
+import { usePagesStore } from '@/stores/pagesStore';
 import { useTreeDragAndDrop, isDescendantInTree } from '../../hooks/useTreeDragAndDrop';
 import { useDeleteConfirmStore } from '@/stores/deleteConfirmStore';
 import { usePageOperations } from '@/hooks/usePageOperations';
@@ -384,6 +385,15 @@ function TreeSection<T>({
 
       onMoveTo: () => {
         useUIStore.getState().openPageMovePicker(itemId, config.getTitle(treeItem));
+      },
+
+      onDuplicate: () => {
+        const copy = usePagesStore.getState().duplicatePage(itemId);
+        if (copy) {
+          toastSuccess('Page duplicated');
+        } else {
+          toastError('Could not duplicate page');
+        }
       },
 
       onDelete: onDelete ? () => {
