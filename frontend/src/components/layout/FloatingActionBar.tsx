@@ -72,6 +72,7 @@ import {
 } from '@/components/common/Icons';
 import {
   StylizedNoteIcon,
+  StylizedTaskIcon,
 } from '@/components/common/StylizedIcons';
 import {
   Bold as LucideBold,
@@ -269,9 +270,9 @@ const CreateMenuItemButton: React.FC<{
           w-10 h-10
           rounded-xl
           transition-all ease-out
-          hover:bg-[var(--color-fab-bg-hover)]/20
+          hover:bg-[var(--color-surface-hover)]
           active:scale-95
-          text-[var(--color-fab-text)]
+          text-[var(--color-text-secondary)]
           ${isVisible 
             ? 'opacity-100 translate-y-0' 
             : 'opacity-0 translate-y-4 pointer-events-none'
@@ -974,7 +975,7 @@ const FloatingActionBar: React.FC = () => {
     {
       id: 'task',
       label: 'Task',
-      icon: <CheckIcon className="w-5 h-5" />,
+      icon: <StylizedTaskIcon size="md" color={iconColor} />,
       action: handleCreateTask,
     },
   ], [iconColor, handleCreateNote, handleCreateTask]);
