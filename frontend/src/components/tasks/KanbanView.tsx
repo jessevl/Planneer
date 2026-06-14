@@ -23,7 +23,7 @@ import type { Task } from './TaskList';
 import { parseDate, getToday, dayjs } from '../../lib/dateUtils';
 import type { GroupBy } from '../layout/ViewSwitcher';
 import type { Page } from '@/types/page';
-import { useDragAndDrop } from '../../hooks/useDragAndDrop';
+import { useDragAndDrop, computeRowDropPosition, computeReorderedIds } from '../../hooks/useDragAndDrop';
 import { groupTasksBy, sortTasksWithinGroups, type TaskSortBy, type TaskSortDirection } from '../../lib/selectors';
 import { DATE_GROUPS, getDateGroupSubtitle, type DateGroupKey } from '../../lib/dateGroups';
 import { Panel, SectionHeader } from '../ui';
@@ -43,6 +43,8 @@ interface KanbanViewProps {
   onEditTask?: (id: string | null) => void;
   taskPages?: TaskCollection[];
   onTaskDrop?: (taskId: string, targetGroup: string, groupBy: GroupBy) => void;
+  /** Persist a new manual order for a set of tasks (drag-to-reorder). */
+  onTaskReorder?: (orderedTaskIds: string[]) => void;
   /** Callback to add a task directly to a specific group (date, section, tag, etc.) */
   onAddTaskToGroup?: (groupKey: string, groupBy: GroupBy) => void;
   // Sort options (within groups)
@@ -73,6 +75,7 @@ const KanbanView: React.FC<KanbanViewProps> = ({
   onEditTask,
   taskPages = [],
   onTaskDrop,
+  onTaskReorder,
   onAddTaskToGroup,
   sortBy = 'date',
   sortDirection = 'asc',
@@ -94,7 +97,17 @@ const KanbanView: React.FC<KanbanViewProps> = ({
   
   // Use centralized date utilities
   const today = todayDate ? parseDate(todayDate) : getToday();
-  const { draggedItem, dragOverGroup, handleDragStart, handleDragEnd, handleDragOver, handleDragLeave } = useDragAndDrop();
+  const {
+    draggedItem,
+    dragOverGroup,
+    dropTargetTaskId,
+    dropPosition,
+    handleDragStart,
+    handleDragEnd,
+    handleDragOver,
+    handleDragLeave,
+    handleRowDragOver,
+  } = useDragAndDrop();
 
   // Group tasks using shared utility
   const groupedTasks = useMemo(() => {
@@ -281,21 +294,45 @@ const KanbanView: React.FC<KanbanViewProps> = ({
                   onAdd={onAddTaskToGroup ? () => onAddTaskToGroup(groupKey, groupBy) : undefined}
                   className="!mb-4"
                 />
-                <ul className="space-y-2">
-                  {visibleTasks.map((task) => (
-                    <TaskRow
-                      key={task.id}
-                      task={task}
-                      dataDueDate={task.dueDate}
-                      todayISO={todayDate}
-                      onToggleComplete={onToggleComplete}
-                      onEditTask={onEditTask}
-                      taskPages={taskPages}
-                      onDragStart={handleDragStart}
-                      variant="card"
-                      showParentPage={showParentPage}
-                    />
-                  ))}
+                <ul>
+                  {visibleTasks.map((task) => {
+                    const isDropTarget = !!draggedItem && dropTargetTaskId === task.id && draggedItem !== task.id;
+                    return (
+                      <div
+                        key={task.id}
+                        className="relative py-1"
+                        onDragOver={(e) => {
+                          if (!draggedItem) return;
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = 'move';
+                          handleRowDragOver(task.id, computeRowDropPosition(e));
+                        }}
+                        onDrop={(e) => {
+                          if (!draggedItem || draggedItem === task.id || !onTaskReorder) return;
+                          e.preventDefault();
+                          onTaskReorder(computeReorderedIds(visibleTasks, draggedItem, task.id, computeRowDropPosition(e)));
+                        }}
+                      >
+                        {isDropTarget && dropPosition && (
+                          <div
+                            className={`absolute left-0 right-0 ${dropPosition === 'before' ? 'top-0' : 'bottom-0'} h-0.5 bg-[var(--color-accent-emphasis)] rounded pointer-events-none z-20`}
+                            aria-hidden="true"
+                          />
+                        )}
+                        <TaskRow
+                          task={task}
+                          dataDueDate={task.dueDate}
+                          todayISO={todayDate}
+                          onToggleComplete={onToggleComplete}
+                          onEditTask={onEditTask}
+                          taskPages={taskPages}
+                          onDragStart={handleDragStart}
+                          variant="card"
+                          showParentPage={showParentPage}
+                        />
+                      </div>
+                    );
+                  })}
                   
                   {/* Drop target for empty groups */}
                   {group.tasks.length === 0 && (

@@ -22,7 +22,7 @@ import type { View, TaskSortBy, TaskSortDirection } from '../../lib/selectors';
 import { groupTasksBy, sortTasksWithinGroups } from '../../lib/selectors';
 import type { GroupBy } from '../layout/ViewSwitcher';
 import type { Page } from '@/types/page';
-import { useDragAndDrop } from '../../hooks/useDragAndDrop';
+import { useDragAndDrop, computeRowDropPosition, computeReorderedIds } from '../../hooks/useDragAndDrop';
 import { DATE_GROUPS, getDateGroupSubtitle, type DateGroupKey } from '../../lib/dateGroups';
 import { SectionHeader, SmartEmptyState } from '@/components/ui';
 import { Plus } from 'lucide-react';
@@ -50,6 +50,11 @@ export interface TaskListProps {
   sortDirection?: TaskSortDirection;
   // Add task to specific group (for + button in section headers)
   onAddTaskToGroup?: (groupKey: string, groupBy: GroupBy) => void;
+  /**
+   * Persist a new manual order for a set of tasks (used by drag-to-reorder).
+   * Receives the post-drop ordered ID list for the affected group.
+   */
+  onTaskReorder?: (orderedTaskIds: string[]) => void;
 }
 
 const TaskList: React.FC<TaskListProps> = ({ 
@@ -65,11 +70,22 @@ const TaskList: React.FC<TaskListProps> = ({
   sortBy = 'date',
   sortDirection = 'asc',
   onAddTaskToGroup,
+  onTaskReorder,
 }) => {
   // Use centralized date utilities - derive dayjs from ISO string if provided
   const today = todayDate ? parseDate(todayDate) : getToday();
 
-  const { draggedItem, dragOverGroup, handleDragStart, handleDragEnd, handleDragOver, handleDragLeave } = useDragAndDrop();
+  const {
+    draggedItem,
+    dragOverGroup,
+    dropTargetTaskId,
+    dropPosition,
+    handleDragStart,
+    handleDragEnd,
+    handleDragOver,
+    handleDragLeave,
+    handleRowDragOver,
+  } = useDragAndDrop();
 
   // Collapsible groups state
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
@@ -151,21 +167,20 @@ const TaskList: React.FC<TaskListProps> = ({
     return [{ key: 'all', label: 'Tasks' }];
   }, [groupBy, taskPages, view, tasks, groupedTasks]);
 
-  const renderTaskItem = (task: Task) => {
-    return (
-      <TaskRow
-        key={task.id}
-        task={task}
-        dataDueDate={task.dueDate}
-        todayISO={todayDate}
-        onToggleComplete={onToggleComplete}
-        onEditTask={onEditTask}
-        taskPages={taskPages}
-        onDragStart={handleDragStart}
-        showParentPage={view !== 'taskPage' && view !== 'taskCollection'}
-      />
-    );
-  };
+  const renderTaskItem = (task: Task) => (
+    <TaskRow
+      key={task.id}
+      task={task}
+      dataDueDate={task.dueDate}
+      todayISO={todayDate}
+      onToggleComplete={onToggleComplete}
+      onEditTask={onEditTask}
+      taskPages={taskPages}
+      onDragStart={handleDragStart}
+      showParentPage={view !== 'taskPage' && view !== 'taskCollection'}
+    />
+  );
+
 
   // Keep track of the topmost visible task (for upcoming sticky week strip)
   const [userInteracted, setUserInteracted] = useState(false);
@@ -322,19 +337,47 @@ const TaskList: React.FC<TaskListProps> = ({
               />
             </div>
             {!collapsedGroups.has(g.key) && (
-            <ul className="space-y-2">{items.map(task => (
-                // attach ref to each rendered li for intersection observation
-                <div key={task.id} ref={(el) => {
-                  if (el) {
-                    // prefer the inner element that carries the data-due attribute
-                    const target = el.querySelector('[data-due]') as HTMLElement | null;
-                    if (target) rowRefs.current.set(task.id, target);
-                    else rowRefs.current.set(task.id, el);
-                  } else {
-                    rowRefs.current.delete(task.id);
-                  }
-                }}>{renderTaskItem(task)}</div>
-              ))}
+            <ul>{items.map((task) => {
+                const isDropTarget = !!draggedItem && dropTargetTaskId === task.id && draggedItem !== task.id;
+                // py-1 replaces the previous space-y-2 margin so the inter-card
+                // gap is fully hit-detectable. Indicators sit at the wrapper's
+                // top/bottom edge so "after card N" and "before card N+1" land
+                // at the same Y (the shared wrapper boundary).
+                return (
+                  <div
+                    key={task.id}
+                    ref={(el) => {
+                      if (el) {
+                        const target = el.querySelector('[data-due]') as HTMLElement | null;
+                        rowRefs.current.set(task.id, target ?? el);
+                      } else {
+                        rowRefs.current.delete(task.id);
+                      }
+                    }}
+                    className="relative py-1"
+                    onDragOver={(e) => {
+                      if (!draggedItem) return;
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                      handleRowDragOver(task.id, computeRowDropPosition(e));
+                    }}
+                    onDrop={(e) => {
+                      if (!draggedItem || draggedItem === task.id || !onTaskReorder) return;
+                      e.preventDefault();
+                      onTaskReorder(computeReorderedIds(items, draggedItem, task.id, computeRowDropPosition(e)));
+                      // Group container's onDrop fires next and calls handleDragEnd.
+                    }}
+                  >
+                    {isDropTarget && dropPosition && (
+                      <div
+                        className={`absolute left-0 right-0 ${dropPosition === 'before' ? 'top-0' : 'bottom-0'} h-0.5 bg-[var(--color-accent-emphasis)] rounded pointer-events-none z-20`}
+                        aria-hidden="true"
+                      />
+                    )}
+                    {renderTaskItem(task)}
+                  </div>
+                );
+              })}
             </ul>            )}          </div>
         );
       })}

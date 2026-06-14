@@ -120,6 +120,12 @@ interface TasksState {
   deleteTask: (id: string) => void;
   toggleComplete: (id: string) => void;
   reorderTasks: (orderedIds: string[]) => void;
+  /**
+   * Manual reorder: bulk-assign `order` to the given task ids based on their
+   * position in the array, so they sort in this order as a tiebreaker within
+   * the current grouping. Persists to backend.
+   */
+  setTasksOrder: (orderedIds: string[]) => void;
   /** Move a task to a page (task collection) or Inbox (null) */
   moveTaskToPage: (taskId: string, parentPageId: string | null, sectionId?: string | null) => void;
   
@@ -570,6 +576,31 @@ export const useTasksStore = create<TasksState>()(
 
       reorderTasks: (orderedIds) => set({ taskOrder: orderedIds }, false, 'reorderTasks'),
 
+      setTasksOrder: (orderedIds) => {
+        if (!orderedIds.length) return;
+        const ORDER_STEP = 1024;
+        set(
+          (state) => {
+            const next = { ...state.tasksById };
+            orderedIds.forEach((id, idx) => {
+              const t = next[id];
+              if (!t) return;
+              next[id] = { ...t, order: (idx + 1) * ORDER_STEP };
+            });
+            return { tasksById: next };
+          },
+          false,
+          'setTasksOrder'
+        );
+        // Persist each changed task
+        const tasksById = get().tasksById;
+        orderedIds.forEach((id) => {
+          const t = tasksById[id];
+          if (!t) return;
+          offlineUpdateTask(id, { order: t.order }).catch(console.error);
+        });
+      },
+
       moveTaskToPage: (taskId, parentPageId, sectionId) => {
         const oldParentPageId = get().tasksById[taskId]?.parentPageId;
         set(
@@ -922,6 +953,7 @@ export const selectTaskActions = (state: TasksState) => ({
   deleteTask: state.deleteTask,
   toggleComplete: state.toggleComplete,
   reorderTasks: state.reorderTasks,
+  setTasksOrder: state.setTasksOrder,
   moveTaskToPage: state.moveTaskToPage,
   clearCompletedTasks: state.clearCompletedTasks,
   // Recurrence actions

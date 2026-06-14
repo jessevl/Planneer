@@ -76,6 +76,7 @@ import { SplitViewProvider } from '@/contexts/SplitViewContext';
 import type { View } from '../../lib/selectors';
 import { applyTaskFilterOptions, collectTaskTags } from '../../lib/selectors';
 import { dateGroupToDate, type DateGroupKey } from '../../lib/dateGroups';
+import { computeTaskDropUpdates } from '../../lib/selectors';
 import { getRightInsetStyle } from '@/lib/layout';
 
 import { getToday, getTodayISO } from '../../lib/dateUtils';
@@ -160,6 +161,7 @@ const PageDetailView: React.FC<PageDetailViewProps> = ({
   const tasksById = useTasksStore((state) => state.tasksById);
   const toggleComplete = useTasksStore((state) => state.toggleComplete);
   const updateTask = useTasksStore((state) => state.updateTask);
+  const setTasksOrder = useTasksStore((state) => state.setTasksOrder);
   const { taskCollections } = useTaskCollections();
   const openSectionManager = useUIStore((state) => state.openSectionManager);
   const openTaskInContext = useUIStore((state) => state.openTaskInContext);
@@ -659,23 +661,8 @@ const PageDetailView: React.FC<PageDetailViewProps> = ({
   const handleTaskDrop = useCallback((taskId: string, targetGroup: string, currentGroupBy: GroupBy) => {
     const task = tasksById[taskId];
     if (!task) return;
-    const updates: Partial<Task> = {};
-    if (currentGroupBy === 'date') {
-      updates.dueDate = dateGroupToDate(targetGroup as DateGroupKey, getToday());
-    } else if (currentGroupBy === 'priority') {
-      // Map lowercase group keys to capitalized priority values
-      if (targetGroup === 'high') updates.priority = 'High';
-      else if (targetGroup === 'medium') updates.priority = 'Medium';
-      else if (targetGroup === 'low') updates.priority = 'Low';
-      else if (targetGroup === 'none') updates.priority = undefined;
-    } else if (currentGroupBy === 'section') {
-      updates.sectionId = targetGroup === 'unsectioned' ? undefined : targetGroup;
-    } else if (currentGroupBy === 'tag') {
-      updates.tag = targetGroup === '__no_tag__' ? undefined : targetGroup;
-    }
-    if (Object.keys(updates).length > 0) {
-      updateTask(taskId, updates);
-    }
+    const updates = computeTaskDropUpdates(task, targetGroup, currentGroupBy, getToday());
+    if (updates) updateTask(taskId, updates);
   }, [tasksById, updateTask]);
 
   // Handle adding a task to a specific kanban column (group)
@@ -834,6 +821,7 @@ const PageDetailView: React.FC<PageDetailViewProps> = ({
                 onTaskSortDirectionChange={handleTaskSortDirectionChange}
                 onToggleComplete={toggleComplete}
                 onTaskDrop={handleTaskDrop}
+                onTaskReorder={setTasksOrder}
                 onEditTask={(id) => handleTaskClick(id)}
                 onCreateTask={() => handleCreateTask({ defaultTaskPageId: page.id })}
                 onAddTaskToGroup={handleAddTaskToGroup}
@@ -1014,6 +1002,7 @@ const PageDetailView: React.FC<PageDetailViewProps> = ({
               onTaskSortDirectionChange={handleTaskSortDirectionChange}
               onToggleComplete={toggleComplete}
               onTaskDrop={handleTaskDrop}
+              onTaskReorder={setTasksOrder}
               onEditTask={handleTaskClick}
               onCreateTask={handleCreateTask}
               onAddTaskToGroup={handleAddTaskToGroup}
@@ -1174,6 +1163,7 @@ const PageDetailView: React.FC<PageDetailViewProps> = ({
             onTaskSortDirectionChange={handleTaskSortDirectionChange}
             onToggleComplete={toggleComplete}
             onTaskDrop={handleTaskDrop}
+            onTaskReorder={setTasksOrder}
             onEditTask={handleTaskClick}
             onCreateTask={handleCreateTask}
             onAddTaskToGroup={handleAddTaskToGroup}
@@ -1813,6 +1803,7 @@ interface TaskModeContentProps {
   onTaskSortDirectionChange: (direction: 'asc' | 'desc') => void;
   onToggleComplete: (id: string) => void;
   onTaskDrop?: (taskId: string, targetGroup: string, groupBy: GroupBy) => void;
+  onTaskReorder?: (orderedTaskIds: string[]) => void;
   onEditTask?: (id: string | null) => void;
   onCreateTask?: () => void;
   onAddTaskToGroup?: (groupKey: string, groupBy: GroupBy) => void;
@@ -1864,6 +1855,7 @@ const TaskModeContent: React.FC<TaskModeContentProps> = ({
   onTaskSortDirectionChange,
   onToggleComplete,
   onTaskDrop,
+  onTaskReorder,
   onEditTask,
   onCreateTask,
   onAddTaskToGroup,
@@ -2205,6 +2197,7 @@ const TaskModeContent: React.FC<TaskModeContentProps> = ({
             groupBy={groupBy}
             taskPages={taskCollections}
             onTaskDrop={onTaskDrop}
+            onTaskReorder={onTaskReorder}
             onEditTask={onEditTask}
             sortBy={taskSortBy}
             sortDirection={taskSortDirection}
@@ -2220,6 +2213,7 @@ const TaskModeContent: React.FC<TaskModeContentProps> = ({
               taskPages={taskCollections}
               groupBy={groupBy}
               onTaskDrop={onTaskDrop}
+              onTaskReorder={onTaskReorder}
               onEditTask={onEditTask}
               sortBy={taskSortBy}
               sortDirection={taskSortDirection}

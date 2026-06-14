@@ -46,7 +46,7 @@ import SectionManagerModal from '../components/pages/SectionManagerModal';
 import type { ViewMode, GroupBy } from '../components/layout/ViewSwitcher';
 import type { TaskFilterOptions } from '../types/view';
 import { DEFAULT_TASK_FILTER_OPTIONS, sanitizeTaskFilterOptions, taskFilterToDefaults } from '../types/view';
-import { applyTaskFilterOptions, collectTaskTags } from '../lib/selectors';
+import { applyTaskFilterOptions, collectTaskTags, computeTaskDropUpdates } from '../lib/selectors';
 import { parseTags } from '../lib/tagUtils';
 import { dateGroupToDate, type DateGroupKey } from '../lib/dateGroups';
 import { selectSidebarCounts } from '../lib/selectors';
@@ -94,6 +94,7 @@ const TasksView: React.FC<TasksViewProps> = ({
   const tasksById = useTasksStore((state) => state.tasksById);
   const toggleComplete = useTasksStore((state) => state.toggleComplete);
   const updateTask = useTasksStore((state) => state.updateTask);
+  const setTasksOrder = useTasksStore((state) => state.setTasksOrder);
 
   // Task collections (pages with viewMode='tasks')
   const { taskCollections: taskPages } = useTaskCollections();
@@ -365,25 +366,8 @@ const TasksView: React.FC<TasksViewProps> = ({
   const handleTaskDrop = useCallback((taskId: string, targetGroup: string, currentGroupBy: GroupBy) => {
     const task = tasksById[taskId];
     if (!task) return;
-    const updates: Partial<Task> = {};
-    if (currentGroupBy === 'date') {
-      updates.dueDate = dateGroupToDate(targetGroup as DateGroupKey, getToday());
-    } else if (currentGroupBy === 'priority') {
-      switch (targetGroup) {
-        case 'high': updates.priority = 'High'; break;
-        case 'medium': updates.priority = 'Medium'; break;
-        case 'low': updates.priority = 'Low'; break;
-        case 'none': updates.priority = undefined; break;
-      }
-    } else if (currentGroupBy === 'taskPage') {
-      updates.parentPageId = targetGroup === 'inbox' ? undefined : targetGroup;
-      updates.sectionId = undefined;
-    } else if (currentGroupBy === 'section') {
-      updates.sectionId = targetGroup === 'unassigned' ? undefined : targetGroup;
-    } else if (currentGroupBy === 'tag') {
-      updates.tag = targetGroup === '__no_tag__' ? undefined : targetGroup;
-    }
-    updateTask(taskId, updates);
+    const updates = computeTaskDropUpdates(task, targetGroup, currentGroupBy, getToday());
+    if (updates) updateTask(taskId, updates);
   }, [tasksById, updateTask]);
 
   const _handleStartCreate = useCallback((): boolean => {
@@ -676,6 +660,7 @@ const TasksView: React.FC<TasksViewProps> = ({
                     onEditTask={(id) => handleTaskClick(id)}
                     taskPages={taskPages}
                     onTaskDrop={handleTaskDrop}
+                    onTaskReorder={setTasksOrder}
                     sortBy={taskSortBy}
                     sortDirection={taskSortDirection}
                     onAddTaskToGroup={handleAddTaskToGroup}
@@ -692,6 +677,7 @@ const TasksView: React.FC<TasksViewProps> = ({
                       taskPages={taskPages}
                       groupBy={groupBy}
                       onTaskDrop={handleTaskDrop}
+                      onTaskReorder={setTasksOrder}
                       onHighlightedDateChange={undefined}
                       sortBy={taskSortBy}
                       sortDirection={taskSortDirection}

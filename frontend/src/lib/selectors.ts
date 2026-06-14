@@ -24,7 +24,7 @@ import type { Page } from '../types/page';
 import type { GroupBy } from '../types/view';
 import type { TaskFilterOptions, PageFilterOptions } from '../types/view';
 import { DEFAULT_TASK_FILTER_OPTIONS } from '../types/view';
-import { DATE_GROUPS, categorizeDateGroup } from './dateGroups';
+import { DATE_GROUPS, categorizeDateGroup, dateGroupToDate, type DateGroupKey } from './dateGroups';
 import { getTagColor } from './tagUtils';
 
 // Task collection (pages with viewMode='tasks') type alias
@@ -33,6 +33,57 @@ type TaskCollection = Page;
 // Task sort options type
 export type TaskSortBy = 'date' | 'priority' | 'title' | 'created' | 'tag';
 export type TaskSortDirection = 'asc' | 'desc';
+
+/**
+ * Compute the property updates needed to move a task to a given drop-target
+ * group. Returns `null` if the task is already in that bucket — in that case
+ * the caller should NOT update the property (otherwise e.g. a within-bucket
+ * date reorder would slam the dueDate to the bucket's anchor and re-sort).
+ */
+export function computeTaskDropUpdates(
+  task: Task,
+  targetGroup: string,
+  groupBy: GroupBy,
+  today: Dayjs,
+): Partial<Task> | null {
+  switch (groupBy) {
+    case 'date': {
+      if (categorizeDateGroup(task.dueDate, today) === targetGroup) return null;
+      return { dueDate: dateGroupToDate(targetGroup as DateGroupKey, today) };
+    }
+    case 'priority': {
+      const current = task.priority?.toLowerCase() || 'none';
+      if (current === targetGroup) return null;
+      const next: Task['priority'] =
+        targetGroup === 'high' ? 'High' :
+        targetGroup === 'medium' ? 'Medium' :
+        targetGroup === 'low' ? 'Low' : undefined;
+      return { priority: next };
+    }
+    case 'taskPage': {
+      const current = task.parentPageId || 'inbox';
+      if (current === targetGroup) return null;
+      return {
+        parentPageId: targetGroup === 'inbox' ? undefined : targetGroup,
+        sectionId: undefined,
+      };
+    }
+    case 'section': {
+      const NONE = new Set(['unsectioned', 'unassigned']);
+      const current = task.sectionId || 'unsectioned';
+      const normalizedTarget = NONE.has(targetGroup) ? 'unsectioned' : targetGroup;
+      if (current === normalizedTarget) return null;
+      return { sectionId: NONE.has(targetGroup) ? undefined : targetGroup };
+    }
+    case 'tag': {
+      const current = (task.tag ? task.tag.split(',')[0].trim() : '') || '__no_tag__';
+      if (current === targetGroup) return null;
+      return { tag: targetGroup === '__no_tag__' ? undefined : targetGroup };
+    }
+    default:
+      return null;
+  }
+}
 
 // Task filter type (matches TaskFilter in navigationStore)
 // 'task page' is legacy - use 'taskCollection' for pages with viewMode='tasks'
@@ -85,7 +136,13 @@ export function sortTasks(
         else compare = (a.tag || '').localeCompare(b.tag || '');
         break;
     }
-    return direction === 'asc' ? compare : -compare;
+    const primary = direction === 'asc' ? compare : -compare;
+    if (primary !== 0) return primary;
+    // Manual order tiebreaker — always ascending so drag-position is intuitive
+    // regardless of primary sort direction. Tasks without an order go last.
+    const ao = a.order ?? Number.MAX_SAFE_INTEGER;
+    const bo = b.order ?? Number.MAX_SAFE_INTEGER;
+    return ao - bo;
   });
   return sorted;
 }
