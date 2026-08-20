@@ -77,11 +77,16 @@ const GlobalTaskModal: React.FC = () => {
     setFormDirty(false);
   }, [isCreatingTask, stopCreatingTask, stopEditingTask, setFormDirty]);
   
-  const handleSaveTask = useCallback((task: Task) => {
+  const handleSaveTask = useCallback((task: Task, options?: { auto?: boolean }) => {
     // updateTask takes (id, updates) - pass the full task as updates
     updateTask(task.id, task);
+    if (options?.auto) {
+      // Background auto-save: persist without closing the modal.
+      setFormDirty(false);
+      return;
+    }
     handleClose();
-  }, [updateTask, handleClose]);
+  }, [updateTask, handleClose, setFormDirty]);
   
   const handleDeleteTask = useCallback(() => {
     if (editingTask?.id) {

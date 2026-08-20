@@ -60,9 +60,14 @@ const ProjectIcon: React.FC<{ icon?: string | null; color?: string | null; class
 // Task collections are now Page type with viewMode='tasks'
 type TaskCollection = Page;
 
+export type TaskSaveStatus = 'idle' | 'saving' | 'saved';
+
 interface AddTaskFormProps {
   // edit mode
-  onSaveTask?: (task: Task) => void;
+  // `options.auto` is set when this save was triggered by the debounced
+  // auto-save rather than an explicit Save click, so callers know not to
+  // close the modal/pane.
+  onSaveTask?: (task: Task, options?: { auto?: boolean }) => void;
   onCancel?: () => void;
   onDelete?: () => void;
   /** Called after successful task creation (for closing modals, etc.) */
@@ -72,6 +77,8 @@ interface AddTaskFormProps {
   mode?: 'create' | 'edit';
   // report whether the form has unsaved changes
   onDirtyChange?: (dirty: boolean) => void;
+  /** Reports the auto-save status while editing an existing task */
+  onSaveStatusChange?: (status: TaskSaveStatus) => void;
   // the current selected task page id from the sidebar (if any) so the form can default to it
   selectedTaskPageId?: string | null;
   currentView?: View;
@@ -94,7 +101,7 @@ import { FORM_VALIDATION } from '@/lib/config';
 const TITLE_MAX_LENGTH = FORM_VALIDATION.TASK_TITLE_MAX_LENGTH;
 const DESCRIPTION_MAX_LENGTH = FORM_VALIDATION.TASK_DESCRIPTION_MAX_LENGTH;
 
-  const AddTaskForm: React.FC<AddTaskFormProps> = ({ onSaveTask, onCancel, onDelete, onTaskCreated, taskPages = [], initialTask = null, mode = 'create', onDirtyChange, selectedTaskPageId = null, currentView = 'all', defaultDueDate, defaultSection, defaultTag, defaultPriority, layout = 'two-column' }) => {
+  const AddTaskForm: React.FC<AddTaskFormProps> = ({ onSaveTask, onCancel, onDelete, onTaskCreated, taskPages = [], initialTask = null, mode = 'create', onDirtyChange, onSaveStatusChange, selectedTaskPageId = null, currentView = 'all', defaultDueDate, defaultSection, defaultTag, defaultPriority, layout = 'two-column' }) => {
   // Get addTask and all tasks from store for create mode
   const addTask = useTasksStore((state) => state.addTask);
   const tasksById = useTasksStore((state) => state.tasksById);
@@ -157,7 +164,20 @@ const DESCRIPTION_MAX_LENGTH = FORM_VALIDATION.TASK_DESCRIPTION_MAX_LENGTH;
   // Reset form when initialTask or creation context changes (important for split view).
   // For create mode, fall back to selectedTaskPageId so that switching between section
   // + buttons (which changes defaultSection) does not clear the parent page.
+  //
+  // In edit mode we only want to reload fields when the user switches to a
+  // *different* task, not on every re-render of the same task. Auto-save
+  // writes the current fields back to the store, which gives this component
+  // a new `initialTask` object with the same content — resetting from it
+  // here would clobber whatever the user typed in the meantime.
+  const loadedFormKeyRef = useRef<string | null>(null);
   useEffect(() => {
+    const formKey = mode === 'edit'
+      ? `edit:${initialTask?.id ?? ''}`
+      : `create:${selectedTaskPageId ?? ''}:${defaultSection ?? ''}:${defaultTag ?? ''}:${defaultPriority ?? ''}:${defaultDueDate ?? ''}`;
+    if (loadedFormKeyRef.current === formKey) return;
+    loadedFormKeyRef.current = formKey;
+
     setTitle(initialTask?.title ?? '');
     setDescription(initialTask?.description ?? '');
     setPriority((initialTask?.priority as 'Low' | 'Medium' | 'High' | undefined) ?? defaultPriority ?? '');
@@ -168,7 +188,7 @@ const DESCRIPTION_MAX_LENGTH = FORM_VALIDATION.TASK_DESCRIPTION_MAX_LENGTH;
     setRecurrence(initialTask?.recurrence);
     setTag(initialTask?.tag ?? defaultTag ?? '');
     setExpanded(false);
-  }, [initialTask, selectedTaskPageId, defaultPriority, defaultDueDate, defaultSection, defaultTag]);
+  }, [initialTask, mode, selectedTaskPageId, defaultPriority, defaultDueDate, defaultSection, defaultTag]);
 
   // derive initial snapshot for dirty checking (including subtasks, recurrence, and tag)
   const initialSnapshot = useMemo(() => ({
@@ -234,20 +254,124 @@ const DESCRIPTION_MAX_LENGTH = FORM_VALIDATION.TASK_DESCRIPTION_MAX_LENGTH;
   // Collect tags scoped to the current parent page (or all if in inbox/all view)
   const scopedTags = useMemo(() => collectTagsScoped(allTasks, parentPageId || null), [allTasks, parentPageId]);
 
-  useEffect(() => {
-    // Only consider the form "dirty" if there is any title present now or in the initial snapshot.
+  // Whether the form differs from initialSnapshot. Only considered dirty if
+  // there is any title present now or in the initial snapshot.
+  const dirty = useMemo(() => {
     const hasAnyTitle = (title ?? '').trim().length > 0 || (initialSnapshot.title ?? '').trim().length > 0;
-    if (!hasAnyTitle) {
-      onDirtyChange?.(false);
-      return;
-    }
+    if (!hasAnyTitle) return false;
     // Check if subtasks and recurrence have changed (compare by stringifying for simplicity)
     const subtasksChanged = JSON.stringify(subtasks) !== JSON.stringify(initialSnapshot.subtasks);
     const recurrenceChanged = JSON.stringify(recurrence) !== JSON.stringify(initialSnapshot.recurrence);
     const tagChanged = tag !== initialSnapshot.tag;
-    const dirty = title !== initialSnapshot.title || description !== initialSnapshot.description || priority !== initialSnapshot.priority || dueDate !== initialSnapshot.dueDate || parentPageId !== initialSnapshot.parentPageId || sectionId !== initialSnapshot.sectionId || subtasksChanged || recurrenceChanged || tagChanged;
+    return title !== initialSnapshot.title || description !== initialSnapshot.description || priority !== initialSnapshot.priority || dueDate !== initialSnapshot.dueDate || parentPageId !== initialSnapshot.parentPageId || sectionId !== initialSnapshot.sectionId || subtasksChanged || recurrenceChanged || tagChanged;
+  }, [title, description, priority, dueDate, parentPageId, sectionId, subtasks, initialSnapshot, recurrence, tag]);
+
+  useEffect(() => {
     onDirtyChange?.(dirty);
-  }, [title, description, priority, dueDate, parentPageId, sectionId, subtasks, initialSnapshot, onDirtyChange, recurrence, tag]);
+  }, [dirty, onDirtyChange]);
+
+  // Keep an active recurrence's anchorDate in sync with the due date. Saving
+  // (auto or explicit) writes `{ ...recurrence, anchorDate: dueDate }` to the
+  // task, but without this the local `recurrence` state itself never picks up
+  // the new anchorDate — so after the save echoes back, initialSnapshot's
+  // anchorDate would permanently differ from local state's stale anchorDate,
+  // leaving the form stuck "dirty" (and auto-save stuck retrying) forever.
+  useEffect(() => {
+    if (recurrence && dueDate && recurrence.anchorDate !== dueDate) {
+      setRecurrence({ ...recurrence, anchorDate: dueDate });
+    }
+  }, [dueDate, recurrence]);
+
+  // --- Auto-save for existing tasks ---
+  // Builds the task update from current field state, matching the 'edit'
+  // branch of handleSubmit below but without the inline #/@/+ shorthand
+  // extraction — any completed shorthand token is already stripped in real
+  // time by the title's onChange handler, so re-running that regex here
+  // could prematurely swallow an in-progress, unfinished token.
+  const buildAutoSaveTask = useCallback((): Task | null => {
+    if (!initialTask || !title.trim()) return null;
+    const finalRecurrence = recurrence && dueDate ? { ...recurrence, anchorDate: dueDate } : recurrence;
+    return {
+      ...initialTask,
+      title,
+      description,
+      dueDate,
+      priority: priority || undefined,
+      parentPageId: parentPageId || undefined,
+      sectionId: sectionId || undefined,
+      subtasks,
+      recurrence: finalRecurrence,
+      tag: tag || undefined,
+    };
+  }, [initialTask, title, description, dueDate, priority, parentPageId, sectionId, subtasks, recurrence, tag]);
+
+  const onSaveTaskRef = useRef(onSaveTask);
+  useEffect(() => { onSaveTaskRef.current = onSaveTask; }, [onSaveTask]);
+
+  // Status is held locally (rather than derived straight from `dirty`) so the
+  // 'saved' flash has a guaranteed on-screen duration: the store echo that
+  // follows a save makes `dirty` false again almost immediately, which would
+  // otherwise stomp 'saved' back to 'idle' before it's even visible.
+  const [autoSaveStatus, setAutoSaveStatus] = useState<TaskSaveStatus>('idle');
+  const savedHoldTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    onSaveStatusChange?.(autoSaveStatus);
+  }, [autoSaveStatus, onSaveStatusChange]);
+
+  useEffect(() => {
+    if (mode !== 'edit' || !initialTask || !dirty) return;
+    // A new edit arrived — cancel any pending "saved -> idle" reveal so it
+    // doesn't clobber the 'saving' state we're about to set.
+    if (savedHoldTimerRef.current) {
+      clearTimeout(savedHoldTimerRef.current);
+      savedHoldTimerRef.current = null;
+    }
+    setAutoSaveStatus('saving');
+    const timer = setTimeout(() => {
+      const updated = buildAutoSaveTask();
+      if (updated) {
+        onSaveTaskRef.current?.(updated, { auto: true });
+        setAutoSaveStatus('saved');
+        savedHoldTimerRef.current = setTimeout(() => setAutoSaveStatus('idle'), 1500);
+      }
+    }, 600);
+    return () => clearTimeout(timer);
+    // Re-run whenever any saved field changes so the debounce resets on every edit.
+  }, [mode, initialTask, dirty, title, description, priority, dueDate, parentPageId, sectionId, subtasks, recurrence, tag, buildAutoSaveTask]);
+
+  // Reset auto-save status when switching to a different task.
+  useEffect(() => {
+    if (savedHoldTimerRef.current) {
+      clearTimeout(savedHoldTimerRef.current);
+      savedHoldTimerRef.current = null;
+    }
+    setAutoSaveStatus('idle');
+  }, [mode, initialTask?.id]);
+
+  // Clear the "saved" hold timer on unmount so it never fires setState after teardown.
+  useEffect(() => {
+    return () => {
+      if (savedHoldTimerRef.current) clearTimeout(savedHoldTimerRef.current);
+    };
+  }, []);
+
+  // Flush a pending auto-save immediately (e.g. right before the panel closes)
+  // so a change made just before closing is never lost to the debounce window.
+  const flushAutoSave = useCallback(() => {
+    if (mode !== 'edit' || !initialTask || !dirty) return;
+    const updated = buildAutoSaveTask();
+    if (updated) {
+      onSaveTaskRef.current?.(updated, { auto: true });
+    }
+  }, [mode, initialTask, dirty, buildAutoSaveTask]);
+
+  const flushAutoSaveRef = useRef(flushAutoSave);
+  useEffect(() => { flushAutoSaveRef.current = flushAutoSave; }, [flushAutoSave]);
+
+  useEffect(() => {
+    return () => { flushAutoSaveRef.current(); };
+  }, [initialTask?.id]);
 
   // close popovers when clicking outside — use the shared hook
   useClickOutside([

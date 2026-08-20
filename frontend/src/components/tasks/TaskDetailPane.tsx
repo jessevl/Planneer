@@ -15,7 +15,8 @@
  */
 import React, { useCallback, useState, useEffect } from 'react';
 import { X, Check, Trash2, SquareCheck } from 'lucide-react';
-import AddTaskForm from './AddTaskForm';
+import AddTaskForm, { type TaskSaveStatus } from './AddTaskForm';
+import SaveStatusDot from './SaveStatusDot';
 import ConfirmDiscardModal from '../common/ConfirmDiscardModal';
 import { Button } from '@/components/ui';
 import type { Task } from '@/types/task';
@@ -48,8 +49,9 @@ export interface TaskDetailPaneProps {
   defaultPriority?: 'Low' | 'Medium' | 'High';
   /** Called when pane should close / clear selection */
   onClose: () => void;
-  /** Called when an existing task is saved */
-  onSaveTask?: (task: Task) => void;
+  /** Called when an existing task is saved. `options.auto` is set for
+   *  debounced auto-saves, as opposed to an explicit Save click. */
+  onSaveTask?: (task: Task, options?: { auto?: boolean }) => void;
   /** Called when task is deleted */
   onDeleteTask?: () => void;
   /** Called when dirty state changes (for parent navigation guards) */
@@ -76,6 +78,7 @@ const TaskDetailPane: React.FC<TaskDetailPaneProps> = ({
 }) => {
   const [isDirty, setIsDirty] = useState(false);
   const [showConfirmDiscard, setShowConfirmDiscard] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<TaskSaveStatus>('idle');
   const deleteTask = useTasksStore((state) => state.deleteTask);
   const updateTask = useTasksStore((state) => state.updateTask);
   const setNavigationDirty = useNavigationBlockerStore(s => s.setDirty);
@@ -109,8 +112,10 @@ const TaskDetailPane: React.FC<TaskDetailPaneProps> = ({
     onClose();
   }, [onClose]);
 
-  // Handle successful task save
-  const handleSaveTask = useCallback((updatedTask: Task) => {
+  // Handle successful task save. Auto-saves (from the debounced editor)
+  // persist in the background without closing the pane; only an explicit
+  // Save click closes it.
+  const handleSaveTask = useCallback((updatedTask: Task, options?: { auto?: boolean }) => {
     // Update the task in the store
     updateTask(updatedTask.id, {
       title: updatedTask.title,
@@ -124,19 +129,22 @@ const TaskDetailPane: React.FC<TaskDetailPaneProps> = ({
       tag: updatedTask.tag,
     });
     // Also notify parent if callback provided
-    onSaveTask?.(updatedTask);
+    onSaveTask?.(updatedTask, options);
+    if (options?.auto) return;
     setIsDirty(false);
     onClose();
   }, [updateTask, onSaveTask, onClose]);
 
-  // Handle cancel - show confirm if dirty
+  // Handle cancel. Existing tasks auto-save as you type, so there is
+  // nothing to discard — just close. Only a brand-new (unsaved) task needs
+  // a discard confirmation.
   const handleCancel = useCallback(() => {
-    if (isDirty) {
+    if (isDirty && mode === 'create') {
       setShowConfirmDiscard(true);
     } else {
       onClose();
     }
-  }, [isDirty, onClose]);
+  }, [isDirty, mode, onClose]);
 
   // Handle discard confirmation
   const handleConfirmDiscard = useCallback(() => {
@@ -209,6 +217,7 @@ const TaskDetailPane: React.FC<TaskDetailPaneProps> = ({
             onDelete={handleDelete}
             onCancel={handleCancel}
             onDirtyChange={handleDirtyChange}
+            onSaveStatusChange={setSaveStatus}
           />
         </div>
       </div>
@@ -230,16 +239,19 @@ const TaskDetailPane: React.FC<TaskDetailPaneProps> = ({
             )}
           </div>
           <div className="flex items-center gap-2">
+            {/* Existing tasks auto-save as you type, so "Cancel" would be
+                misleading here — it just closes the pane. */}
             <Button variant="secondary" size="sm" onClick={handleCancel}>
-              Cancel
+              {mode === 'create' ? 'Cancel' : 'Close'}
             </Button>
-            <Button 
-              variant="primary" 
-              size="sm" 
-              type="submit" 
+            <Button
+              variant="primary"
+              size="sm"
+              type="submit"
               form="add-task-form"
+              disabled={mode === 'edit' && !isDirty}
             >
-              <Check className="w-4 h-4 mr-1.5" />
+              {mode === 'edit' ? <SaveStatusDot status={saveStatus} /> : <Check className="w-4 h-4 mr-1.5" />}
               {mode === 'create' ? 'Create' : 'Save'}
             </Button>
           </div>
