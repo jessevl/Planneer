@@ -1,0 +1,52 @@
+# Keep the Docker build context small — everything here gets excluded before
+# it's sent to the daemon, regardless of which build stage would COPY it.
+
+# VCS
+.git/
+.gitignore
+.gitmodules
+.github/
+
+# Backend
+backend/pb_data/
+backend/planneer
+backups/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/coverage/
+frontend/playwright-report/
+frontend/playwright/.cache/
+frontend/test-results/
+frontend/e2e-results/
+frontend/.tanstack/
+npm-debug.log*
+*.tsbuildinfo
+
+# Env files
+.env
+.env.*
+!.env.example
+!deploy/.env.example
+!frontend/.env.example
+
+# IDE / Editor / OS
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Docs, not needed inside the image
+docs/
+screenshots/
+*.md
+
+# Local tooling
+.docker/
+.npm-cache/
+.claude/
