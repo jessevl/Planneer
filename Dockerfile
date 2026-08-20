@@ -41,7 +41,13 @@ RUN apk add --no-cache git
 
 # Copy go mod files first for layer caching
 COPY backend/go.mod backend/go.sum ./
-RUN go mod download
+# Retry on transient proxy.golang.org network errors (e.g. HTTP/2 stream resets)
+RUN for i in 1 2 3; do \
+      go mod download && exit 0; \
+      echo "go mod download failed (attempt $i/3)"; \
+      [ "$i" = 3 ] && exit 1; \
+      sleep 5; \
+    done
 
 # Copy backend source
 COPY backend/ .
