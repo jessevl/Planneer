@@ -16,7 +16,13 @@ RUN apk add --no-cache git
 
 # Copy package files first for layer caching
 COPY frontend/package*.json frontend/.npmrc ./
-RUN npm ci --legacy-peer-deps
+# Retry on transient npm registry network errors, same as the Go module download below
+RUN for i in 1 2 3; do \
+      npm ci --legacy-peer-deps && exit 0; \
+      echo "npm ci failed (attempt $i/3)"; \
+      [ "$i" = 3 ] && exit 1; \
+      sleep 5; \
+    done
 
 # Copy frontend source
 COPY frontend/ .
