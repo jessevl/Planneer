@@ -42,7 +42,7 @@ import Tabs from '@yoopta/tabs';
 // Core active plugins (lists/tabs/todo/callout/code) use local element maps.
 // See src/plugins/yoopta/renderers/LocalPluginUI.tsx.
 import { CustomTodoListElements, LocalCalloutUI, LocalListsUI, LocalTabsUI } from '@/plugins/yoopta/renderers';
-import { EditorSlashMenu, EditorFloatingToolbar, EditorFloatingBlockActions } from '@/plugins/yoopta/editor-ui';
+import { EditorSlashMenu, EditorFloatingToolbar, EditorFloatingBlockActions, EditorMobileBlockSelection } from '@/plugins/yoopta/editor-ui';
 import MobileEditorToolbar from './MobileEditorToolbar';
 import MobileActionMenu from './MobileActionMenu';
 import { 
@@ -2344,6 +2344,9 @@ const PageEditor: React.FC<PageEditorProps> = ({
                         <SelectionBox selectionBoxElement={editorAreaRef} />
                       </>
                     )}
+                    {/* Touch has no drag-select: Yoopta's block selection is
+                        mouse-driven, so mobile gets its own entry point. */}
+                    {(isMobile || isTabletDevice) && !readOnly && <EditorMobileBlockSelection />}
                   </YooptaEditor>
                 </ForceUpdateBlockDndContext>
               </div>
