@@ -17,6 +17,43 @@ import type { Subtask } from '@/types/task';
 import { Checkbox } from '@/components/ui';
 import { PlusIcon, TrashIcon, ListChecksIcon } from '@/components/common/Icons';
 
+/** Window in which a beforeinput line break following a handled Enter is ignored. */
+const ENTER_DEDUPE_MS = 300;
+
+/**
+ * Calls `onEnter` for Android soft-keyboard Enter presses that never surface as
+ * a usable `keydown`.
+ *
+ * While an IME is composing (predictive text, autocorrect), Android delivers
+ * `keydown` as keyCode 229 / key "Unidentified", so a `key === 'Enter'` check
+ * misses it. The line break still arrives as a `beforeinput` with inputType
+ * `insertLineBreak`, which is what this listens for. Native rather than React's
+ * `onBeforeInput`, whose synthetic event does not carry `inputType`.
+ */
+const useAndroidEnterFallback = (
+  ref: React.RefObject<HTMLInputElement | null>,
+  onEnter: () => void,
+  lastEnterAtRef: React.RefObject<number>,
+  /** Whether the input is currently rendered — re-attaches when it mounts. */
+  enabled: boolean
+) => {
+  useEffect(() => {
+    const node = ref.current;
+    if (!node || !enabled) return;
+
+    const onBeforeInput = (event: InputEvent) => {
+      if (event.inputType !== 'insertLineBreak') return;
+      event.preventDefault();
+      if (Date.now() - lastEnterAtRef.current < ENTER_DEDUPE_MS) return;
+      lastEnterAtRef.current = Date.now();
+      onEnter();
+    };
+
+    node.addEventListener('beforeinput', onBeforeInput);
+    return () => node.removeEventListener('beforeinput', onBeforeInput);
+  }, [ref, onEnter, lastEnterAtRef, enabled]);
+};
+
 interface SubtaskListProps {
   /** Current subtasks array */
   subtasks: Subtask[];
@@ -33,6 +70,8 @@ const SubtaskList: React.FC<SubtaskListProps> = ({ subtasks, onChange, readOnly 
   const [isExpanded, setIsExpanded] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
+  const lastAddEnterAtRef = useRef(0);
+  const lastEditEnterAtRef = useRef(0);
 
   // Auto-expand if there are existing subtasks
   useEffect(() => {
@@ -67,11 +106,14 @@ const SubtaskList: React.FC<SubtaskListProps> = ({ subtasks, onChange, readOnly 
     (e: React.KeyboardEvent) => {
       if (e.key === 'Enter') {
         e.preventDefault();
+        lastAddEnterAtRef.current = Date.now();
         handleAddSubtask();
       }
     },
     [handleAddSubtask]
   );
+
+  useAndroidEnterFallback(inputRef, handleAddSubtask, lastAddEnterAtRef, !readOnly && (isExpanded || subtasks.length > 0));
 
   const handleToggleSubtask = useCallback(
     (subtaskId: string) => {
@@ -113,6 +155,7 @@ const SubtaskList: React.FC<SubtaskListProps> = ({ subtasks, onChange, readOnly 
     (e: React.KeyboardEvent) => {
       if (e.key === 'Enter') {
         e.preventDefault();
+        lastEditEnterAtRef.current = Date.now();
         handleSaveEdit();
       } else if (e.key === 'Escape') {
         setEditingId(null);
@@ -121,6 +164,8 @@ const SubtaskList: React.FC<SubtaskListProps> = ({ subtasks, onChange, readOnly 
     },
     [handleSaveEdit]
   );
+
+  useAndroidEnterFallback(editInputRef, handleSaveEdit, lastEditEnterAtRef, editingId !== null);
 
   const handleExpandAndFocus = useCallback(() => {
     setIsExpanded(true);
@@ -181,6 +226,10 @@ const SubtaskList: React.FC<SubtaskListProps> = ({ subtasks, onChange, readOnly 
               {editingId === subtask.id ? (
                 <input
                   ref={editInputRef}
+                  // Saving ends the edit, so "done" (which dismisses the
+                  // keyboard) rather than the focus-advancing "next" Android
+                  // picks by default inside a multi-field form.
+                  enterKeyHint="done"
                   type="text"
                   value={editingTitle}
                   onChange={(e) => setEditingTitle(e.target.value)}
@@ -223,6 +272,12 @@ const SubtaskList: React.FC<SubtaskListProps> = ({ subtasks, onChange, readOnly 
           <input
             ref={inputRef}
             type="text"
+            // The input lives inside the task <form> with further fields after
+            // it, so without this Android's IME shows a "Next" action that
+            // jumps focus to the tag field instead of firing Enter.
+            // "enter" maps to IME_ACTION_NONE: Enter reaches onKeyDown and the
+            // keyboard stays open for the next subtask.
+            enterKeyHint="enter"
             placeholder="Add subtask..."
             value={newSubtaskTitle}
             onChange={(e) => setNewSubtaskTitle(e.target.value)}
