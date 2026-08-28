@@ -70,6 +70,9 @@ export {
   type ResponsiveState,
 } from '@frameer/hooks/useMobileDetection';
 
+// On-screen keyboard positioning
+export { useKeyboardInset, type KeyboardInsetState } from './useKeyboardInset';
+
 // Mobile gestures
 export {
   useSwipeActions,

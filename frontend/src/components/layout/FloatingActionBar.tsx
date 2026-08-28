@@ -49,7 +49,8 @@ import { DEFAULT_TASK_FILTER_OPTIONS, taskFilterToDefaults } from '@/types/view'
 import { useSelectionStore } from '@/stores/selectionStore';
 import { usePomodoroStore } from '@/stores/pomodoroStore';
 import { useCommandPaletteStore } from '@/hooks/useCommandPalette';
-import { useIsMobile, useIsTabletDevice, useKeyboardVisibility } from '@frameer/hooks/useMobileDetection';
+import { useIsMobile, useIsTabletDevice } from '@frameer/hooks/useMobileDetection';
+import { useKeyboardInset } from '@/hooks/useKeyboardInset';
 import { cn } from '@/lib/design-system';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
 import { getTodayISO } from '@/lib/dateUtils';
@@ -445,7 +446,7 @@ const FloatingActionBar: React.FC = () => {
   const isMobile = useIsMobile();
   const isTabletDevice = useIsTabletDevice();
   const mobileLayout = useMobileLayout();
-  const { isKeyboardOpen, keyboardHeight } = useKeyboardVisibility();
+  const { isKeyboardOpen, bottomInset } = useKeyboardInset();
   const usesPortableEditorToolbar = isMobile || isTabletDevice;
   
   // Shared container classes for mobile FAB sections
@@ -1007,12 +1008,14 @@ const FloatingActionBar: React.FC = () => {
   // FAB always shows on mobile and desktop
   
   // Calculate bottom position based on keyboard visibility
-  // When keyboard is open, position FAB above it
+  // When keyboard is open, position FAB above it.
+  // bottomInset — not the keyboard height — is the offset a fixed element
+  // needs: the browser scrolls the visual viewport up to reveal the focused
+  // field, and offsetting by the full keyboard height on top of that scroll
+  // strands the bar in the middle of the screen. See useKeyboardInset.
   const getMobileBottomPosition = () => {
-    if (isKeyboardOpen && keyboardHeight > 0) {
-      // Position above keyboard - use visual viewport offset
-      // The keyboardHeight already accounts for the difference between window and viewport
-      return `${keyboardHeight + 8}px`;
+    if (isKeyboardOpen) {
+      return `${bottomInset + 8}px`;
     }
     // Default position at bottom - closer to the edge for easier thumb reach
     // Use max() to ensure minimum 1rem offset even without safe area insets
