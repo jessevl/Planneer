@@ -18,6 +18,7 @@
  */
 import React, { useMemo, useRef, useState, useCallback, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useVisibleCenterOffset } from '@/hooks/useVisibleCenterOffset';
 import TaskRow from './TaskRow';
 import type { Task } from './TaskList';
 import { parseDate, getToday, dayjs } from '../../lib/dateUtils';
@@ -90,7 +91,12 @@ const KanbanView: React.FC<KanbanViewProps> = ({
 
   // Scroll container ref for mobile column navigation + desktop scroll arrows
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const { canScrollLeft, canScrollRight, handleScrollBy } = useHorizontalScrollArrows(scrollContainerRef);
+  // The board is as tall as its longest column, so centring the arrows on it
+  // buries them mid-list; centre them on whatever part of it is on screen.
+  const showScrollArrows = !isMobile && !embedded;
+  const arrowTop = useVisibleCenterOffset(rootRef, showScrollArrows);
   const [activeColumnIndex, setActiveColumnIndex] = useState(0);
   const [isScrolling, setIsScrolling] = useState(false);
   const scrollTimeoutRef = useRef<number | null>(null);
@@ -173,7 +179,7 @@ const KanbanView: React.FC<KanbanViewProps> = ({
   }, []);
 
   return (
-    <div className="relative flex flex-col w-full overflow-x-clip">
+    <div ref={rootRef} className="relative flex flex-col w-full overflow-x-clip">
       {/* Mobile: Column indicator dots */}
       {isMobile && !embedded && groupOrder.length > 1 && (
         <div className="flex justify-center gap-2 pb-3 px-6">
@@ -193,11 +199,12 @@ const KanbanView: React.FC<KanbanViewProps> = ({
       )}
       
       {/* Desktop: left scroll arrow */}
-      {!isMobile && !embedded && (
+      {showScrollArrows && (
         <button
           onClick={() => handleScrollBy('left')}
+          style={{ top: arrowTop ?? '50%' }}
           className={cn(
-            "absolute left-2 top-1/2 -translate-y-1/2 z-20",
+            "absolute left-2 -translate-y-1/2 z-20",
             "flex items-center justify-center rounded-full",
             "w-8 h-8 p-1.5",
             "bg-[var(--color-surface-base)]",
@@ -353,11 +360,12 @@ const KanbanView: React.FC<KanbanViewProps> = ({
       </div>
 
       {/* Desktop: right scroll arrow */}
-      {!isMobile && !embedded && (
+      {showScrollArrows && (
         <button
           onClick={() => handleScrollBy('right')}
+          style={{ top: arrowTop ?? '50%' }}
           className={cn(
-            "absolute right-2 top-1/2 -translate-y-1/2 z-20",
+            "absolute right-2 -translate-y-1/2 z-20",
             "flex items-center justify-center rounded-full",
             "w-8 h-8 p-1.5",
             "bg-[var(--color-surface-base)]",

@@ -70,6 +70,9 @@ export {
   type ResponsiveState,
 } from '@frameer/hooks/useMobileDetection';
 
+// Overlay controls centred on the visible slice of a tall element
+export { useVisibleCenterOffset } from './useVisibleCenterOffset';
+
 // On-screen keyboard positioning
 export { useKeyboardInset, type KeyboardInsetState } from './useKeyboardInset';
 
