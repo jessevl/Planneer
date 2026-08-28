@@ -6,12 +6,18 @@
  * The stock @yoopta/lists TodoList plugin renders <ul><li>{children}</li></ul>
  * with a `checked` prop but NO visible checkbox.
  *
- * This custom render uses onMouseDown toggles to avoid requiring caret focus
- * and CSS-only styling via app tokens (no Tailwind utility generation
+ * This custom render toggles on mousedown/touchend to avoid requiring caret
+ * focus and CSS-only styling via app tokens (no Tailwind utility generation
  * dependencies).
  */
+import { useCallback, useEffect, useRef } from 'react';
 import type { PluginElementRenderProps } from '@yoopta/editor';
 import { Elements, useBlockData, useYooptaEditor, useYooptaReadOnly } from '@yoopta/editor';
+
+/** Max finger travel (px) between touchstart and touchend that still counts as a tap. */
+const TAP_SLOP_PX = 10;
+/** Window in which synthesized mouse events following a handled tap are ignored. */
+const TOUCH_MOUSE_GUARD_MS = 700;
 
 /**
  * Custom TodoList element render with a theme-aware checkbox.
@@ -49,12 +55,16 @@ export const TodoListRender = (props: PluginElementRenderProps) => {
     color: checked ? '#fff' : 'hsl(var(--input))',
     boxShadow: checked ? 'none' : 'inset 0 0 0 1px hsl(var(--input))',
     cursor: isReadOnly ? 'default' : 'pointer',
+    touchAction: 'manipulation',
+    WebkitTapHighlightColor: 'transparent',
     transition: 'background-color 150ms, border-color 150ms, transform 120ms',
   } as const;
 
-  const onToggle = (e: React.MouseEvent | React.PointerEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const lastTouchToggleAtRef = useRef(0);
+
+  const toggle = useCallback(() => {
     if (isReadOnly) return;
 
     // Use Elements.updateElement — the proper Yoopta API that goes through
@@ -64,7 +74,69 @@ export const TodoListRender = (props: PluginElementRenderProps) => {
       type: 'todo-list',
       props: { checked: !checked },
     });
+  }, [editor, blockId, checked, isReadOnly]);
+
+  const onToggle = (e: React.MouseEvent | React.PointerEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    // The touch handler below already toggled and cancelled the tap; the
+    // browser-synthesized mouse events must not toggle a second time.
+    if (Date.now() - lastTouchToggleAtRef.current < TOUCH_MOUSE_GUARD_MS) return;
+    toggle();
   };
+
+  // Touch handling lives on native listeners instead of React's onTouch* props:
+  // React registers touchstart/touchmove passively on its root container, so a
+  // preventDefault() from a synthetic touch handler is ignored.
+  //
+  // Cancelling the *touchend* suppresses the whole compatibility tap — the
+  // synthesized mouse events, the click, and Chrome's tap-to-focus. Without it
+  // Android re-opens the soft keyboard for the editable (which keeps DOM focus
+  // even after the keyboard was dismissed) and scrolls the stale caret — often
+  // in a block far from the checkbox — back into view.
+  // touchstart stays uncancelled so a scroll gesture starting on the checkbox
+  // still scrolls; the slop check below keeps that scroll from toggling.
+  useEffect(() => {
+    const node = buttonRef.current;
+    if (!node || isReadOnly) return;
+
+    const onTouchStart = (event: TouchEvent) => {
+      const touch = event.touches[0];
+      touchStartRef.current = touch ? { x: touch.clientX, y: touch.clientY } : null;
+    };
+
+    const onTouchEnd = (event: TouchEvent) => {
+      const start = touchStartRef.current;
+      touchStartRef.current = null;
+      if (!start) return;
+
+      const touch = event.changedTouches[0];
+      if (touch) {
+        const movedX = Math.abs(touch.clientX - start.x);
+        const movedY = Math.abs(touch.clientY - start.y);
+        if (movedX > TAP_SLOP_PX || movedY > TAP_SLOP_PX) return;
+      }
+
+      if (event.cancelable) event.preventDefault();
+      event.stopPropagation();
+      lastTouchToggleAtRef.current = Date.now();
+      toggle();
+    };
+
+    const onTouchCancel = () => {
+      touchStartRef.current = null;
+    };
+
+    node.addEventListener('touchstart', onTouchStart, { passive: true });
+    node.addEventListener('touchend', onTouchEnd, { passive: false });
+    node.addEventListener('touchcancel', onTouchCancel, { passive: true });
+
+    return () => {
+      node.removeEventListener('touchstart', onTouchStart);
+      node.removeEventListener('touchend', onTouchEnd);
+      node.removeEventListener('touchcancel', onTouchCancel);
+    };
+  }, [toggle, isReadOnly]);
 
   return (
     <div
@@ -82,6 +154,7 @@ export const TodoListRender = (props: PluginElementRenderProps) => {
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', paddingLeft: '0.25rem' }}>
         <button
+          ref={buttonRef}
           type="button"
           contentEditable={false}
           onMouseDown={onToggle}
