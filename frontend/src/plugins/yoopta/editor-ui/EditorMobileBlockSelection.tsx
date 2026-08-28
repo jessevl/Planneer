@@ -14,12 +14,18 @@
  * block boundary. So the native handle can never reach the next block.
  *
  * Instead, when a text selection runs up against a block boundary — the moment
- * the user was trying to keep going — a pill offers to promote it to a whole
- * block selection. From there taps extend the range and a bar copies it.
+ * the user was trying to keep going — a "Select blocks" button appears in the
+ * mobile editor toolbar, which promotes it to a whole block selection. From
+ * there taps extend the range and a bar copies it.
+ *
+ * Availability is published to the UI store and the toolbar answers with a
+ * `fab-select-blocks` event, matching how the toolbar's formatting buttons
+ * already talk to the editor.
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Paths, useYooptaEditor } from '@yoopta/editor';
-import { Copy, ListChecks, TextSelect, CheckCheck, X } from 'lucide-react';
+import { Copy, ListChecks, CheckCheck, X } from 'lucide-react';
+import { useUIStore } from '@/stores/uiStore';
 
 /** Finger travel (px) above which a touch is a scroll, not a tap. */
 const TAP_SLOP_PX = 10;
@@ -29,13 +35,8 @@ const COPIED_FEEDBACK_MS = 1600;
 const BLOCK_SELECTOR = '[data-yoopta-block-id]';
 /** Marks our own UI so block taps can ignore touches that land on it. */
 const UI_ATTR = 'data-block-selection-ui';
-
-type PillAnchor = {
-  order: number;
-  /** Viewport coordinates for the pill's centre-top. */
-  left: number;
-  top: number;
-};
+/** Sent by the mobile editor toolbar's "Select blocks" button. */
+export const SELECT_BLOCKS_EVENT = 'fab-select-blocks';
 
 const readBlockOrder = (
   editor: ReturnType<typeof useYooptaEditor>,
@@ -48,9 +49,12 @@ const readBlockOrder = (
 
 const EditorMobileBlockSelection: React.FC = () => {
   const editor = useYooptaEditor();
+  const setCanSelectBlocks = useUIStore((state) => state.setCanSelectBlocks);
   const [selectedOrders, setSelectedOrders] = useState<number[]>([]);
-  const [pill, setPill] = useState<PillAnchor | null>(null);
   const [copied, setCopied] = useState(false);
+
+  /** Block a promotable text selection sits in, or null when there is none. */
+  const promotableOrderRef = useRef<number | null>(null);
 
   /** Block the range extends from, so a tap selects anchor..tapped. */
   const anchorOrderRef = useRef<number | null>(null);
@@ -92,18 +96,27 @@ const EditorMobileBlockSelection: React.FC = () => {
     editor.setPath({ current: null });
   }, [editor]);
 
-  // ------------------------------------------------------------------- pill
+  // ------------------------------------------------- promotable text selection
 
-  const measurePill = useCallback(() => {
-    // Once blocks are selected the pill has done its job.
+  const setPromotable = useCallback(
+    (order: number | null) => {
+      if (promotableOrderRef.current === order) return;
+      promotableOrderRef.current = order;
+      setCanSelectBlocks(order !== null);
+    },
+    [setCanSelectBlocks]
+  );
+
+  const measurePromotable = useCallback(() => {
+    // Once blocks are selected the offer has done its job.
     if (hasSelectionRef.current) {
-      setPill(null);
+      setPromotable(null);
       return;
     }
 
     const selection = document.getSelection();
     if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
-      setPill(null);
+      setPromotable(null);
       return;
     }
 
@@ -113,7 +126,7 @@ const EditorMobileBlockSelection: React.FC = () => {
     const blockElement = element?.closest?.(BLOCK_SELECTOR) ?? null;
     const order = readBlockOrder(editor, blockElement);
     if (!blockElement || order === null) {
-      setPill(null);
+      setPromotable(null);
       return;
     }
 
@@ -132,14 +145,8 @@ const EditorMobileBlockSelection: React.FC = () => {
 
     const atStart = leading.toString().trim().length === 0;
     const atEnd = trailing.toString().trim().length === 0;
-    if (!atStart && !atEnd) {
-      setPill(null);
-      return;
-    }
-
-    const rect = blockElement.getBoundingClientRect();
-    setPill({ order, left: rect.left + rect.width / 2, top: rect.bottom + 8 });
-  }, [editor]);
+    setPromotable(atStart || atEnd ? order : null);
+  }, [editor, setPromotable]);
 
   useEffect(() => {
     let frame = 0;
@@ -147,7 +154,7 @@ const EditorMobileBlockSelection: React.FC = () => {
       if (frame) return;
       frame = requestAnimationFrame(() => {
         frame = 0;
-        measurePill();
+        measurePromotable();
       });
     };
 
@@ -161,15 +168,18 @@ const EditorMobileBlockSelection: React.FC = () => {
       window.removeEventListener('scroll', schedule, true);
       window.removeEventListener('resize', schedule);
     };
-  }, [measurePill]);
+  }, [measurePromotable]);
 
   useEffect(() => {
-    if (hasSelection) setPill(null);
-  }, [hasSelection]);
+    if (hasSelection) setPromotable(null);
+  }, [hasSelection, setPromotable]);
+
+  // Leaving the editor must not strand the toolbar button.
+  useEffect(() => () => setCanSelectBlocks(false), [setCanSelectBlocks]);
 
   const promoteToBlockSelection = useCallback(() => {
-    if (!pill) return;
-    const { order } = pill;
+    const order = promotableOrderRef.current;
+    if (order === null) return;
 
     // blur() resets the path, so drop the caret and keyboard before selecting.
     editor.blur();
@@ -177,8 +187,14 @@ const EditorMobileBlockSelection: React.FC = () => {
 
     anchorOrderRef.current = order;
     editor.setPath({ current: order, selected: [order] });
-    setPill(null);
-  }, [editor, pill]);
+    setPromotable(null);
+  }, [editor, setPromotable]);
+
+  useEffect(() => {
+    const onRequest = () => promoteToBlockSelection();
+    window.addEventListener(SELECT_BLOCKS_EVENT, onRequest);
+    return () => window.removeEventListener(SELECT_BLOCKS_EVENT, onRequest);
+  }, [promoteToBlockSelection]);
 
   // -------------------------------------------------------- tap to extend
 
@@ -296,24 +312,18 @@ const EditorMobileBlockSelection: React.FC = () => {
 
   return (
     <>
-      {pill && !hasSelection && (
-        <button
-          type="button"
-          {...{ [UI_ATTR]: true }}
-          onClick={promoteToBlockSelection}
-          className="fixed z-[160] flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-[var(--color-border-default)] bg-[var(--color-surface-base)]/95 px-3 py-1.5 text-xs font-medium text-[var(--color-text-primary)] shadow-lg backdrop-blur-xl"
-          style={{ left: pill.left, top: pill.top }}
-        >
-          <TextSelect size={14} />
-          Select blocks
-        </button>
-      )}
-
       {hasSelection && (
         <div
           {...{ [UI_ATTR]: true }}
           role="toolbar"
           aria-label="Block selection"
+          // This renders inside the Yoopta editor, whose root clears the block
+          // selection on any mousedown that reaches it — which would unmount
+          // this bar before a button's click could land.
+          onMouseDown={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+          }}
           className="fixed left-1/2 z-[160] flex -translate-x-1/2 items-center gap-1 rounded-full border border-[var(--color-border-default)] bg-[var(--color-surface-base)]/95 px-2 py-1.5 shadow-lg backdrop-blur-xl"
           // Sits above the editor FAB, which keeps the bottom slot.
           style={{ bottom: 'calc(max(1rem, env(safe-area-inset-bottom)) + 4.5rem)' }}

@@ -103,6 +103,15 @@ export const TodoListRender = (props: PluginElementRenderProps) => {
     const onTouchStart = (event: TouchEvent) => {
       const touch = event.touches[0];
       touchStartRef.current = touch ? { x: touch.clientX, y: touch.clientY } : null;
+
+      // Cancelling the tap is not enough on its own: Android re-shows the IME
+      // for whichever editable still holds DOM focus (dismissing the keyboard
+      // with the back gesture does not blur it), then scrolls its stale caret
+      // into view. Giving up that focus before the gesture is processed leaves
+      // Chrome with no editable to raise the keyboard for.
+      const active = document.activeElement as HTMLElement | null;
+      if (active?.isContentEditable) active.blur();
+      document.getSelection()?.removeAllRanges();
     };
 
     const onTouchEnd = (event: TouchEvent) => {

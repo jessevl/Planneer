@@ -91,6 +91,20 @@ describe('TodoListRender', () => {
     expect(updateElement).not.toHaveBeenCalled();
   });
 
+  it('gives up the editable focus so Android has nothing to raise the keyboard for', () => {
+    const editable = document.createElement('div');
+    editable.contentEditable = 'true';
+    document.body.appendChild(editable);
+    editable.focus();
+
+    renderTodo(false);
+    fireTouch(screen.getByRole('button'), 'touchstart', [touch(10, 10)]);
+
+    expect(document.activeElement).not.toBe(editable);
+    expect(document.getSelection()?.rangeCount).toBe(0);
+    editable.remove();
+  });
+
   it('does not toggle on a touchend without a preceding touchstart', () => {
     renderTodo(false);
     fireTouch(screen.getByRole('button'), 'touchend', [touch(10, 10)]);

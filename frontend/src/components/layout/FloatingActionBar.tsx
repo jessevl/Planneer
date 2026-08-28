@@ -80,6 +80,7 @@ import {
   Italic as LucideItalic,
   Underline as LucideUnderline,
   Strikethrough as LucideStrikethrough,
+  TextSelect as LucideTextSelect,
 } from 'lucide-react';
 
 // ============================================================================
@@ -486,6 +487,9 @@ const FloatingActionBar: React.FC = () => {
   const isPageEditorFocused = useUIStore((s) => s.isPageEditorFocused);
   const setPageEditorFocused = useUIStore((s) => s.setPageEditorFocused);
   const activeTextMarks = useUIStore((s) => s.activeTextMarks);
+  // Touch cannot drag-select across blocks, so the editor offers the promotion
+  // here once a text selection has run up against its block's edge.
+  const canSelectBlocks = useUIStore((s) => s.canSelectBlocks);
   const pageMoveTarget = useUIStore((s) => s.pageMoveTarget);
   const closePageMovePicker = useUIStore((s) => s.closePageMovePicker);
   const createPage = usePagesStore((s: PagesState) => s.createPage);
@@ -1053,6 +1057,15 @@ const FloatingActionBar: React.FC = () => {
         >
           <LucideStrikethrough size={16} />
         </ToolbarFormatButton>
+
+        {canSelectBlocks && (
+          <ToolbarFormatButton
+            label="Select blocks"
+            onClick={() => window.dispatchEvent(new CustomEvent('fab-select-blocks'))}
+          >
+            <LucideTextSelect size={16} />
+          </ToolbarFormatButton>
+        )}
 
         <div className="mx-1 h-5 w-px bg-[var(--color-border-secondary)]" />
 

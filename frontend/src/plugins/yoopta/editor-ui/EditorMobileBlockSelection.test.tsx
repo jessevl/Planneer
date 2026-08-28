@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, createEvent, waitFor, act } from '@testing-library/react';
 
 type Path = { current: number | null; selected?: number[] | null };
 
@@ -37,6 +37,11 @@ const editor = {
     listeners.get(event)?.delete(fn);
   },
 };
+
+const setCanSelectBlocks = vi.fn();
+vi.mock('@/stores/uiStore', () => ({
+  useUIStore: (selector: (state: unknown) => unknown) => selector({ setCanSelectBlocks }),
+}));
 
 vi.mock('@yoopta/editor', () => ({
   useYooptaEditor: () => editor,
@@ -113,42 +118,53 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('EditorMobileBlockSelection', () => {
-  const pill = () => screen.queryByRole('button', { name: /select blocks/i });
+/** The toolbar's "Select blocks" button asks the editor to promote. */
+const requestPromotion = () =>
+  act(() => {
+    window.dispatchEvent(new CustomEvent('fab-select-blocks'));
+  });
 
-  it('offers the pill once the selection reaches the block boundary', async () => {
+describe('EditorMobileBlockSelection', () => {
+  it('offers the promotion once the selection reaches the block boundary', async () => {
     render(<EditorMobileBlockSelection />);
     selectInBlock('b1', { toEnd: true });
 
-    await waitFor(() => expect(pill()).toBeInTheDocument());
+    await waitFor(() => expect(setCanSelectBlocks).toHaveBeenLastCalledWith(true));
   });
 
   it('stays out of the way for a selection in the middle of a block', async () => {
     render(<EditorMobileBlockSelection />);
     selectInBlock('b1', { toEnd: false });
 
-    await waitFor(() => expect(pill()).not.toBeInTheDocument());
+    await waitFor(() => expect(setCanSelectBlocks).not.toHaveBeenCalledWith(true));
   });
 
   it('promotes to a whole-block selection, dropping the caret first', async () => {
     render(<EditorMobileBlockSelection />);
     selectInBlock('b1', { toEnd: true });
-    await waitFor(() => expect(pill()).toBeInTheDocument());
+    await waitFor(() => expect(setCanSelectBlocks).toHaveBeenLastCalledWith(true));
 
-    fireEvent.click(pill()!);
+    requestPromotion();
 
     // blur() resets the path, so it has to run before the selection is set.
     expect(editor.blur).toHaveBeenCalled();
     expect(editor.setPath).toHaveBeenLastCalledWith({ current: 0, selected: [0] });
     expect(document.getSelection()?.rangeCount).toBe(0);
-    expect(pill()).not.toBeInTheDocument();
+    expect(setCanSelectBlocks).toHaveBeenLastCalledWith(false);
+  });
+
+  it('ignores a promotion request with no boundary selection', () => {
+    render(<EditorMobileBlockSelection />);
+    requestPromotion();
+
+    expect(editor.setPath).not.toHaveBeenCalled();
   });
 
   const promote = async () => {
     render(<EditorMobileBlockSelection />);
     selectInBlock('b1', { toEnd: true });
-    await waitFor(() => expect(pill()).toBeInTheDocument());
-    fireEvent.click(pill()!);
+    await waitFor(() => expect(setCanSelectBlocks).toHaveBeenLastCalledWith(true));
+    requestPromotion();
     await screen.findByRole('toolbar', { name: /block selection/i });
   };
 
@@ -212,6 +228,22 @@ describe('EditorMobileBlockSelection', () => {
     await waitFor(() =>
       expect(screen.queryByRole('toolbar', { name: /block selection/i })).not.toBeInTheDocument()
     );
+  });
+
+  it('keeps the selection alive when its own controls are pressed', async () => {
+    // The bar renders inside the Yoopta editor, whose root clears the block
+    // selection on any mousedown that reaches it — that unmounted the bar
+    // before Select all could run.
+    await promote();
+    const bar = screen.getByRole('toolbar', { name: /block selection/i });
+    const event = createEvent.mouseDown(bar, { bubbles: true, cancelable: true });
+    let reachedEditorRoot = false;
+    document.body.addEventListener('mousedown', () => { reachedEditorRoot = true; }, { once: true });
+
+    fireEvent(bar, event);
+
+    expect(reachedEditorRoot).toBe(false);
+    expect(screen.getByRole('toolbar', { name: /block selection/i })).toBeInTheDocument();
   });
 
   it('ignores taps that land on its own controls', async () => {

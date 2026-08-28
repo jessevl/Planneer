@@ -59,6 +59,10 @@ interface UIState {
   // Active text marks in editor (for showing active state in FAB toolbar)
   activeTextMarks: Set<string>;
   
+  // Touch only: a text selection has reached its block's edge, so it can be
+  // promoted to a whole-block selection (for the FAB toolbar's Select blocks)
+  canSelectBlocks: boolean;
+  
   // Page move picker state (for moving pages to collections)
   pageMoveTarget: PageMoveState | null;
 
@@ -118,6 +122,9 @@ interface UIState {
   // Active text marks
   setActiveTextMarks: (marks: Set<string>) => void;
   
+  // Block selection availability
+  setCanSelectBlocks: (canSelect: boolean) => void;
+  
   // Page move picker
   openPageMovePicker: (pageId: string, pageTitle: string) => void;
   closePageMovePicker: () => void;
@@ -153,6 +160,7 @@ export const useUIStore = create<UIState>()(
       managingSectionsTaskPageId: null,
       isPageEditorFocused: false,
       activeTextMarks: new Set<string>(),
+      canSelectBlocks: false,
       pageMoveTarget: null,
       taskPaneTaskId: null,
       taskPaneMode: null,
@@ -272,6 +280,10 @@ export const useUIStore = create<UIState>()(
       // Active text marks
       setActiveTextMarks: (marks) =>
         set({ activeTextMarks: marks }, false, 'setActiveTextMarks'),
+        
+      // Block selection availability
+      setCanSelectBlocks: (canSelect) =>
+        set({ canSelectBlocks: canSelect }, false, 'setCanSelectBlocks'),
         
       // Page move picker
       openPageMovePicker: (pageId, pageTitle) =>
