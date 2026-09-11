@@ -63,20 +63,24 @@ async function generateIcons() {
       .toFile(outputPath);
   }
 
-  // Generate exportable PNG versions of the additional variants
-  for (const size of variantSizes) {
+  // Plateless artwork, generated at every manifest size. These are the
+  // `purpose: "any"` icons: desktop Chrome/Edge use them for the Windows
+  // taskbar and Start shortcut, where a baked-in container would sit awkwardly
+  // inside the chrome's own framing. Android prefers the maskable set below.
+  for (const size of largeSizes) {
+    console.log(`Generating icon-no-backdrop-${size}.png...`);
     await sharp(noBackdropSvgBuffer)
       .resize(size, size)
       .png()
       .toFile(path.join(ICONS_DIR, `icon-no-backdrop-${size}.png`));
+  }
 
+  for (const size of variantSizes) {
+    console.log(`Generating icon-outline-${size}.png...`);
     await sharp(outlineSvgBuffer)
       .resize(size, size)
       .png()
       .toFile(path.join(ICONS_DIR, `icon-outline-${size}.png`));
-
-    console.log(`Generating icon-no-backdrop-${size}.png...`);
-    console.log(`Generating icon-outline-${size}.png...`);
   }
 
   // Generate maskable icons (with padding for safe zone)
