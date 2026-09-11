@@ -23,9 +23,10 @@ function createMaskableBackground(size) {
   return Buffer.from(`
     <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
       <defs>
-        <linearGradient id="bg" x1="0" y1="0" x2="0" y2="${size}" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stop-color="#fbfbfb"/>
-          <stop offset="1" stop-color="#ebeceb"/>
+        <linearGradient id="bg" x1="${size * 0.18}" y1="${size * 0.1}" x2="${size * 0.84}" y2="${size * 0.92}" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stop-color="#FFAE95"/>
+          <stop offset="0.5" stop-color="#F4785F"/>
+          <stop offset="1" stop-color="#DD5540"/>
         </linearGradient>
       </defs>
       <rect width="${size}" height="${size}" fill="url(#bg)"/>
@@ -82,12 +83,15 @@ async function generateIcons() {
   for (const size of maskableSizes) {
     const outputPath = path.join(ICONS_DIR, `icon-maskable-${size}.png`);
     console.log(`Generating maskable ${size}x${size}...`);
-    
-    // Maskable icons need 10% padding on all sides for the safe zone
+
+    // Maskable icons need 10% padding on all sides for the safe zone.
+    // Composite the no-backdrop glyph (not the squircle-backed artwork) onto
+    // the background rect below, or the icon's own rounded-square frame ends
+    // up nested a second time inside the OS's own mask.
     const innerSize = Math.round(size * 0.8);
     const padding = Math.round(size * 0.1);
-    
-    const iconBuffer = await sharp(svgBuffer)
+
+    const iconBuffer = await sharp(noBackdropSvgBuffer)
       .resize(innerSize, innerSize)
       .png()
       .toBuffer();

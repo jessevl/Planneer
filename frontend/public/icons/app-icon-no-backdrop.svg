@@ -1,69 +1,42 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none">
   <defs>
-    <linearGradient id="amber" x1="120" y1="86" x2="354" y2="388" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#F0887A"/>
-      <stop offset="0.5" stop-color="#E8705F"/>
-      <stop offset="1" stop-color="#C05040"/>
+    <linearGradient id="cardBody" x1="256" y1="74" x2="256" y2="438" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#FBEFE7"/>
     </linearGradient>
-    <linearGradient id="paper" x1="256" y1="70" x2="256" y2="420" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#ffffff"/>
-      <stop offset="1" stop-color="#f1f2f4"/>
+    <linearGradient id="sheet2" x1="256" y1="54" x2="256" y2="240" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F7A98F"/>
+      <stop offset="1" stop-color="#EE8D70"/>
     </linearGradient>
-    <linearGradient id="paperSoft" x1="256" y1="82" x2="256" y2="410" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#fdfdfd"/>
-      <stop offset="1" stop-color="#eef0f2"/>
+    <linearGradient id="sheet3" x1="256" y1="34" x2="256" y2="200" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FBC7B4"/>
+      <stop offset="1" stop-color="#F5B199"/>
     </linearGradient>
-    <linearGradient id="frontSheen" x1="170" y1="70" x2="318" y2="372" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.72"/>
-      <stop offset="0.26" stop-color="#fffaf8" stop-opacity="0.48"/>
-      <stop offset="0.56" stop-color="#ffd9cf" stop-opacity="0.16"/>
-      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    <linearGradient id="dot" x1="144" y1="132" x2="206" y2="196" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F87A58"/>
+      <stop offset="1" stop-color="#D13C24"/>
     </linearGradient>
-    <linearGradient id="frontGlass" x1="256" y1="40" x2="256" y2="374" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.24"/>
-      <stop offset="0.18" stop-color="#ffffff" stop-opacity="0.14"/>
-      <stop offset="1" stop-color="#ffffff" stop-opacity="0.04"/>
-    </linearGradient>
-    <radialGradient id="frontInnerGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(256 238) rotate(90) scale(220 172)">
-      <stop offset="0.58" stop-color="#ffffff" stop-opacity="0"/>
-      <stop offset="0.82" stop-color="#F4A093" stop-opacity="0.12"/>
-      <stop offset="1" stop-color="#E8705F" stop-opacity="0.24"/>
-    </radialGradient>
-    <clipPath id="frontPageClip">
-      <rect x="-138" y="-180" width="276" height="360" rx="33"/>
-    </clipPath>
-    <filter id="shadow" x="-32%" y="-32%" width="164%" height="184%" color-interpolation-filters="sRGB">
-      <feGaussianBlur in="SourceAlpha" stdDeviation="12"/>
-      <feOffset dy="10"/>
-      <feComponentTransfer>
-        <feFuncA type="linear" slope="0.16"/>
-      </feComponentTransfer>
-      <feMerge>
-        <feMergeNode/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-    <filter id="frontGlow" x="-45%" y="-45%" width="190%" height="210%" color-interpolation-filters="sRGB">
-      <feGaussianBlur stdDeviation="16"/>
+
+    <filter id="objShadow" x="-30%" y="-30%" width="160%" height="170%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="14" stdDeviation="13" flood-color="#7A2A18" flood-opacity="0.26"/>
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#7A2A18" flood-opacity="0.16"/>
     </filter>
   </defs>
 
-  <g transform="translate(256 258)" filter="url(#shadow)">
-    <rect x="-138" y="-180" width="276" height="360" rx="33" fill="url(#paperSoft)" fill-opacity="0.74" stroke="#d7dade" stroke-opacity="0.74" stroke-width="3" transform="translate(-54 -10) rotate(-8)"/>
-    <rect x="-138" y="-180" width="276" height="360" rx="33" fill="url(#paper)" fill-opacity="0.82" stroke="#d6dade" stroke-opacity="0.84" stroke-width="3" transform="translate(54 -10) rotate(8)"/>
-    <g transform="translate(0 18) scale(1.14)">
-      <rect x="-138" y="-180" width="276" height="360" rx="33" fill="#E8705F" fill-opacity="0.26" filter="url(#frontGlow)"/>
-      <rect x="-138" y="-180" width="276" height="360" rx="33" fill="url(#paper)" fill-opacity="0.94" stroke="url(#amber)" stroke-opacity="0.72" stroke-width="7"/>
-      <rect x="-128" y="-170" width="256" height="340" rx="28" fill="url(#frontInnerGlow)"/>
-      <rect x="-138" y="-180" width="276" height="360" rx="33" fill="url(#frontGlass)"/>
-      <g clip-path="url(#frontPageClip)">
-        <rect x="-138" y="-180" width="276" height="360" rx="33" fill="url(#frontSheen)" transform="skewX(-8) translate(-20 0)"/>
-      </g>
-      <g>
-        <circle cx="0" cy="-28" r="76" fill="url(#amber)" fill-opacity="0.98"/>
-        <path d="M-38 -28 L-11 2 L40 -51" stroke="#ffffff" stroke-width="21" stroke-linecap="round" stroke-linejoin="round"/>
-        <rect x="-58" y="82" width="116" height="18" rx="9" fill="url(#amber)" fill-opacity="0.96"/>
-      </g>
-    </g>
+  <g transform="translate(256,256) scale(1.14) translate(-256,-256)" filter="url(#objShadow)">
+    <rect x="144" y="34" width="224" height="380" rx="48" fill="url(#sheet3)"/>
+    <rect x="116" y="54" width="280" height="380" rx="56" fill="url(#sheet2)"/>
+    <rect x="88" y="74" width="336" height="364" rx="64" fill="url(#cardBody)"/>
+
+    <circle cx="175" cy="164" r="31" fill="url(#dot)"/>
+    <path d="M161 164 L171.5 174.5 L191 153" fill="none" stroke="#FFFFFF" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="238" y="151" width="146" height="26" rx="13" fill="#B9705B"/>
+
+    <circle cx="175" cy="256" r="31" fill="url(#dot)"/>
+    <path d="M161 256 L171.5 266.5 L191 245" fill="none" stroke="#FFFFFF" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="238" y="243" width="116" height="26" rx="13" fill="#B9705B"/>
+
+    <circle cx="175" cy="348" r="26" fill="none" stroke="#C2836F" stroke-width="10"/>
+    <rect x="238" y="335" width="136" height="26" rx="13" fill="#D2A695"/>
   </g>
 </svg>
