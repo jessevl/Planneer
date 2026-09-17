@@ -2,14 +2,15 @@
   <defs>
     <linearGradient id="cardBody" x1="256" y1="74" x2="256" y2="438" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#FFFFFF"/>
-      <stop offset="1" stop-color="#FBEFE7"/>
+      <stop offset="0.5" stop-color="#FFFAF6"/>
+      <stop offset="1" stop-color="#FCEDE3"/>
     </linearGradient>
-    <linearGradient id="sheet2" x1="256" y1="54" x2="256" y2="240" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#F7A98F"/>
+    <linearGradient id="sheet2" x1="256" y1="54" x2="256" y2="260" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FAB79F"/>
       <stop offset="1" stop-color="#EE8D70"/>
     </linearGradient>
-    <linearGradient id="sheet3" x1="256" y1="34" x2="256" y2="200" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#FBC7B4"/>
+    <linearGradient id="sheet3" x1="256" y1="34" x2="256" y2="230" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FDD4C4"/>
       <stop offset="1" stop-color="#F5B199"/>
     </linearGradient>
     <linearGradient id="dot" x1="144" y1="132" x2="206" y2="196" gradientUnits="userSpaceOnUse">
@@ -17,6 +18,33 @@
       <stop offset="1" stop-color="#D13C24"/>
     </linearGradient>
 
+    <!-- glass material -->
+    <radialGradient id="specular" cx="0.34" cy="-0.04" r="0.6">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.95"/>
+      <stop offset="0.55" stop-color="#FFFFFF" stop-opacity="0.26"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="sweep" x1="96" y1="82" x2="348" y2="348" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.55"/>
+      <stop offset="0.42" stop-color="#FFFFFF" stop-opacity="0.1"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="caustic" cx="0.5" cy="1.02" r="0.62">
+      <stop offset="0" stop-color="#FF6A44" stop-opacity="0.3"/>
+      <stop offset="0.6" stop-color="#FF7E5C" stop-opacity="0.09"/>
+      <stop offset="1" stop-color="#FF7E5C" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="rim" x1="256" y1="74" x2="256" y2="438" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="1"/>
+      <stop offset="0.35" stop-color="#FFFFFF" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.22"/>
+    </linearGradient>
+
+    <clipPath id="cardClip"><rect x="88" y="74" width="336" height="364" rx="64"/></clipPath>
+
+    <filter id="softBlur" x="-25%" y="-25%" width="150%" height="150%" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="5"/>
+    </filter>
     <filter id="objShadow" x="-30%" y="-30%" width="160%" height="170%" color-interpolation-filters="sRGB">
       <feDropShadow dx="0" dy="14" stdDeviation="13" flood-color="#7A2A18" flood-opacity="0.26"/>
       <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#7A2A18" flood-opacity="0.16"/>
@@ -24,9 +52,24 @@
   </defs>
 
   <g transform="translate(256,256) scale(1.14) translate(-256,-256)" filter="url(#objShadow)">
+    <!-- page 3 -->
     <rect x="144" y="34" width="224" height="380" rx="48" fill="url(#sheet3)"/>
+    <rect x="145.5" y="35.5" width="221" height="377" rx="46.5" fill="none" stroke="#FFFFFF" stroke-opacity="0.5" stroke-width="3"/>
+    <!-- page 2 -->
     <rect x="116" y="54" width="280" height="380" rx="56" fill="url(#sheet2)"/>
+    <rect x="117.5" y="55.5" width="277" height="377" rx="54.5" fill="none" stroke="#FFFFFF" stroke-opacity="0.6" stroke-width="3"/>
+
+    <!-- front page + glass -->
     <rect x="88" y="74" width="336" height="364" rx="64" fill="url(#cardBody)"/>
+    <g clip-path="url(#cardClip)">
+      <ellipse cx="256" cy="452" rx="235" ry="130" fill="url(#caustic)"/>
+      <ellipse cx="204" cy="50" rx="270" ry="160" fill="url(#specular)"/>
+      <rect x="88" y="74" width="336" height="364" fill="url(#sweep)"/>
+      <rect x="94" y="80" width="336" height="364" rx="64" fill="none" stroke="#FFFFFF" stroke-opacity="0.85" stroke-width="7" filter="url(#softBlur)"/>
+      <rect x="82" y="66" width="336" height="364" rx="64" fill="none" stroke="#C4502F" stroke-opacity="0.16" stroke-width="8" filter="url(#softBlur)"/>
+      <rect x="88" y="74" width="336" height="5" fill="#FFFFFF" fill-opacity="0.9"/>
+    </g>
+    <rect x="89.5" y="75.5" width="333" height="361" rx="62.5" fill="none" stroke="url(#rim)" stroke-width="3"/>
 
     <circle cx="175" cy="164" r="31" fill="url(#dot)"/>
     <path d="M161 164 L171.5 174.5 L191 153" fill="none" stroke="#FFFFFF" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>

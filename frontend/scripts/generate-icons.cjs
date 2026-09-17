@@ -12,6 +12,7 @@ const SOURCE_SVG = path.join(ICONS_DIR, 'app-icon.svg');
 const SMALL_SOURCE_SVG = path.join(ICONS_DIR, 'app-icon-small.svg');
 const NO_BACKDROP_SOURCE_SVG = path.join(ICONS_DIR, 'app-icon-no-backdrop.svg');
 const OUTLINE_SOURCE_SVG = path.join(ICONS_DIR, 'app-icon-outline.svg');
+const MASKABLE_SOURCE_SVG = path.join(ICONS_DIR, 'app-icon-maskable.svg');
 
 // Sizes to generate
 const smallSizes = [16, 32];
@@ -19,27 +20,13 @@ const largeSizes = [72, 96, 128, 144, 152, 167, 180, 192, 384, 512];
 const maskableSizes = [192, 512];
 const variantSizes = [192, 512];
 
-function createMaskableBackground(size) {
-  return Buffer.from(`
-    <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-      <defs>
-        <linearGradient id="bg" x1="${size * 0.18}" y1="${size * 0.1}" x2="${size * 0.84}" y2="${size * 0.92}" gradientUnits="userSpaceOnUse">
-          <stop offset="0" stop-color="#FFAE95"/>
-          <stop offset="0.5" stop-color="#F4785F"/>
-          <stop offset="1" stop-color="#DD5540"/>
-        </linearGradient>
-      </defs>
-      <rect width="${size}" height="${size}" fill="url(#bg)"/>
-    </svg>
-  `);
-}
-
 async function generateIcons() {
   console.log('Reading source SVG...');
   const svgBuffer = fs.readFileSync(SOURCE_SVG);
   const smallSvgBuffer = fs.readFileSync(SMALL_SOURCE_SVG);
   const noBackdropSvgBuffer = fs.readFileSync(NO_BACKDROP_SOURCE_SVG);
   const outlineSvgBuffer = fs.readFileSync(OUTLINE_SOURCE_SVG);
+  const maskableSvgBuffer = fs.readFileSync(MASKABLE_SOURCE_SVG);
 
   // Generate small icons from the no-backdrop artwork
   for (const size of smallSizes) {
@@ -83,29 +70,15 @@ async function generateIcons() {
       .toFile(path.join(ICONS_DIR, `icon-outline-${size}.png`));
   }
 
-  // Generate maskable icons (with padding for safe zone)
+  // Maskable icons are their own artwork: full-bleed background (the OS applies
+  // its own mask, so no rounded corners here) with the object already scaled
+  // into the safe zone. Rendered directly rather than composited, so it keeps
+  // the same glass material as the other icons.
   for (const size of maskableSizes) {
     const outputPath = path.join(ICONS_DIR, `icon-maskable-${size}.png`);
     console.log(`Generating maskable ${size}x${size}...`);
-
-    // Maskable icons need 10% padding on all sides for the safe zone.
-    // Composite the no-backdrop glyph (not the squircle-backed artwork) onto
-    // the background rect below, or the icon's own rounded-square frame ends
-    // up nested a second time inside the OS's own mask.
-    const innerSize = Math.round(size * 0.8);
-    const padding = Math.round(size * 0.1);
-
-    const iconBuffer = await sharp(noBackdropSvgBuffer)
-      .resize(innerSize, innerSize)
-      .png()
-      .toBuffer();
-    
-    await sharp(createMaskableBackground(size))
-      .composite([{
-        input: iconBuffer,
-        left: padding,
-        top: padding
-      }])
+    await sharp(maskableSvgBuffer)
+      .resize(size, size)
       .png()
       .toFile(outputPath);
   }
