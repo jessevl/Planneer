@@ -2,7 +2,8 @@ import { useMemo, useState, useCallback } from 'react';
 import type { PluginElementRenderProps } from '@yoopta/editor';
 import { Elements, useYooptaEditor } from '@yoopta/editor';
 import { UI } from '@/plugins/yoopta/editor-ui/ui-compat';
-import { Editor, Element, Transforms, Node, Text } from 'slate';
+import { Editor, Element, Transforms, Node, Path, Text } from 'slate';
+import { ReactEditor, useSlateSelector } from 'slate-react';
 import dayjs from 'dayjs';
 import { Calendar, AlertCircle } from 'lucide-react';
 import { useFloating, offset, flip, shift, autoUpdate } from '@floating-ui/react';
@@ -26,6 +27,7 @@ import type {
   ColumnType,
 } from '../types';
 import { TABLE_SLATE_TO_SELECTION_SET } from '../utils/weakMaps';
+import { formatCellNumber } from '../utils/numberFormat';
 
 const AdvancedTableDataCell = ({
   attributes,
@@ -78,6 +80,8 @@ const AdvancedTableDataCell = ({
         columnAggregations: tableElement?.props?.columnAggregations || {},
         columnTypes: tableElement?.props?.columnTypes || {},
         columnFilters: tableElement?.props?.columnFilters || {},
+        columnAlignments: tableElement?.props?.columnAlignments || {},
+        columnFormats: tableElement?.props?.columnFormats || {},
         sortInfo: tableElement?.props?.sortInfo,
         rowCount: tableElement?.children?.length || 0,
       };
@@ -94,9 +98,23 @@ const AdvancedTableDataCell = ({
     columnAggregations, 
     columnTypes, 
     columnFilters,
+    columnAlignments,
+    columnFormats,
     sortInfo,
     rowCount 
   } = tableProps || {};
+
+  // Whether the caret is in this cell. Formatted numbers show their raw value
+  // while being edited. Only re-renders when this flips, not on every move.
+  const isEditing = useSlateSelector((ed) => {
+    const anchor = ed.selection?.anchor;
+    if (!anchor) return false;
+    try {
+      return Path.isAncestor(ReactEditor.findPath(ed as ReactEditor, element), anchor.path);
+    } catch {
+      return false;
+    }
+  });
 
   const columnIndex = path?.[path.length - 1] || 0;
   const rowIndex = path?.[path.length - 2] || 0;
@@ -182,11 +200,14 @@ const AdvancedTableDataCell = ({
   const finalBgColor = resolvedCellColor?.bg || resolvedColumnColor?.bg || undefined;
   const finalTextColor = resolvedCellColor?.text || resolvedColumnColor?.text || undefined;
 
+  const alignment = columnAlignments?.[columnIndex] ?? (columnType === 'number' ? 'right' : 'left');
+
   const style: React.CSSProperties = {
     maxWidth: elementWidth,
     minWidth: elementWidth,
     backgroundColor: finalBgColor,
     color: finalTextColor,
+    textAlign: alignment,
   };
 
   const { className: extendedClassName = '', ...htmlAttrs } = HTMLAttributes || {};
@@ -327,6 +348,13 @@ const AdvancedTableDataCell = ({
   const isValidNumber = !cellText || /^-?\d*\.?\d*$/.test(cellText);
   const showNumberError = isNumberColumn && cellText && !isValidNumber;
 
+  // Formatted numbers are drawn over the raw text, which stays in place (but
+  // transparent) so clicking and selecting still land in the real text
+  const formattedNumber = isNumberColumn && cellText && isValidNumber && !isEditing
+    ? formatCellNumber(cellText, columnFormats?.[columnIndex])
+    : null;
+  const showFormatted = formattedNumber !== null && formattedNumber !== cellText;
+
   return (
     <CellTag
       scope={isDataCellAsHeader ? 'col' : undefined}
@@ -336,11 +364,16 @@ const AdvancedTableDataCell = ({
       colSpan={1}
       rowSpan={1}
       {...htmlAttrs}
-      className={`${cellClassName} ${columnType === 'number' ? 'text-right' : ''} ${showNumberError ? 'bg-red-50/50 dark:bg-red-900/10' : ''}`}
+      className={`${cellClassName} ${showNumberError ? 'bg-red-50/50 dark:bg-red-900/10' : ''}`}
       onKeyDown={onKeyDown}
     >
+      {showFormatted && (
+        <div className="yoopta-advanced-table-data-cell-display" aria-hidden contentEditable={false}>
+          {formattedNumber}
+        </div>
+      )}
       <div 
-        className="yoopta-advanced-table-data-cell-content relative" 
+        className={`yoopta-advanced-table-data-cell-content relative ${showFormatted ? 'yoopta-advanced-table-data-cell-content-hidden' : ''}`}
         {...attributes}
         contentEditable={!isDataCellAsHeader && !editor.readOnly}
         suppressContentEditableWarning

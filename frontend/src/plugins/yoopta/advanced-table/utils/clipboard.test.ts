@@ -161,3 +161,14 @@ describe('export helpers', () => {
     expect(inferColumnTypes(rows)).toEqual({ 0: 'number', 1: 'text', 2: 'text' });
   });
 });
+
+describe('tableDataToCSV', () => {
+  it('writes column names first and quotes fields that need it', async () => {
+    const { tableDataToCSV } = await import('./clipboard');
+    const csv = tableDataToCSV({
+      cells: [[{ text: 'a,b' }, { text: 'say "hi"' }], [{ text: 'two\nlines' }, { text: ' padded' }]],
+      columnNames: { 0: 'Name' },
+    });
+    expect(csv).toBe('Name,Column 2\r\n"a,b","say ""hi"""\r\n"two\nlines"," padded"');
+  });
+});

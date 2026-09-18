@@ -32,6 +32,21 @@ export type AggregationType = 'count' | 'sum' | 'average' | 'min' | 'max' | 'med
 // Column types
 export type ColumnType = 'text' | 'number' | 'date' | 'select' | 'multi-select' | 'page';
 
+// Horizontal alignment of a column's cells
+export type ColumnAlignment = 'left' | 'center' | 'right';
+
+// How a number column displays its values. Cells always store plain numbers
+// ("53166.5"); the format only changes what is shown.
+export type NumberFormat = {
+  style: 'number' | 'currency' | 'percent';
+  /** ISO 4217 code, used when style is 'currency' */
+  currency?: string;
+  /** Fixed number of decimals; undefined shows as many as the value has */
+  decimals?: number;
+  /** Thousands separators (default on) */
+  grouping?: boolean;
+};
+
 // Filter information
 export type ColumnFilter = {
   type: ColumnType;
@@ -61,6 +76,12 @@ export type AdvancedTableElementProps = {
   sortInfo?: ColumnSortInfo;
   // Whether to show the calculation row at the bottom
   showCalculationRow?: boolean;
+  // Column alignment (indexed by column position); defaults depend on type
+  columnAlignments?: Record<number, ColumnAlignment>;
+  // Display formats for number columns (indexed by column position)
+  columnFormats?: Record<number, NumberFormat>;
+  // Keep the first column in view when scrolling sideways
+  freezeFirstColumn?: boolean;
 };
 
 export type AdvancedTableElement = SlateElement<'table', AdvancedTableElementProps>;

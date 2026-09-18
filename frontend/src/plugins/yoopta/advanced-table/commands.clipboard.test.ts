@@ -198,3 +198,25 @@ describe('typed columns', () => {
     expect(texts(slate)[0]).toEqual(['Rent', '1250', '2025-01-31']);
   });
 });
+
+describe('number formats', () => {
+  it('picks a display format from the values when a column becomes a number column', () => {
+    const { editor, slate } = setup();
+    AdvancedTableCommands.pasteCells(editor, BLOCK_ID, grid([['€65,000.00'], ['€27,000.00'], ['']]), rect(0, 0));
+    AdvancedTableCommands.setColumnType(editor, BLOCK_ID, 0, 'number');
+    expect(tableOf(slate).props?.columnFormats?.[0]).toEqual({ style: 'currency', currency: 'EUR', decimals: 2 });
+    expect(texts(slate).map((row) => row[0])).toEqual(['65000', '27000', '']);
+  });
+
+  it('moves alignment and formats along with their column', () => {
+    const { editor, slate } = setup();
+    AdvancedTableCommands.setColumnAlignment(editor, BLOCK_ID, 1, 'center');
+    AdvancedTableCommands.setColumnFormat(editor, BLOCK_ID, 1, { style: 'percent' });
+    AdvancedTableCommands.insertTableColumn(editor, BLOCK_ID, { path: [0, 0, 0], insertMode: 'before', select: false });
+    expect(tableOf(slate).props?.columnAlignments).toEqual({ 2: 'center' });
+    expect(tableOf(slate).props?.columnFormats).toEqual({ 2: { style: 'percent' } });
+    AdvancedTableCommands.deleteTableColumn(editor, BLOCK_ID, { path: [0, 0, 0] });
+    expect(tableOf(slate).props?.columnAlignments).toEqual({ 1: 'center' });
+  });
+});
+

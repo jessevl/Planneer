@@ -352,3 +352,21 @@ export function tableDataToMarkdown(data: TableClipboardData): string {
   ];
   return lines.join('\n');
 }
+
+// ============================================================================
+// CSV
+// ============================================================================
+
+const quoteCSVField = (value: string) =>
+  /[",\r\n]/.test(value) || /^\s|\s$/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
+
+/**
+ * Comma-separated values with the column names as the first line, as
+ * spreadsheet apps expect when opening a .csv file.
+ */
+export function tableDataToCSV(data: TableClipboardData): string {
+  const width = Math.max(0, ...data.cells.map((row) => row.length));
+  const header = Array.from({ length: width }, (_, i) => data.columnNames?.[i] || `Column ${i + 1}`);
+  const rows = [header, ...data.cells.map((row) => Array.from({ length: width }, (_, i) => row[i]?.text ?? ''))];
+  return rows.map((row) => row.map(quoteCSVField).join(',')).join('\r\n');
+}

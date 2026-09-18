@@ -1,19 +1,26 @@
-import { useMemo, useState, useRef, useEffect } from 'react';
+import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import type { PluginElementRenderProps } from '@yoopta/editor';
 import { useBlockData, useYooptaEditor, Elements } from '@yoopta/editor';
 import { UI } from '@/plugins/yoopta/editor-ui/ui-compat';
 import { Editor, Element, Transforms } from 'slate';
-import { SearchX, Plus } from 'lucide-react';
+import { SearchX, Plus, Maximize2 } from 'lucide-react';
+import { useSlateSelector } from 'slate-react';
 import { useFloating, offset, flip, shift, autoUpdate } from '@floating-ui/react';
 
 import { AdvancedTableBlockOptions } from '../components/AdvancedTableBlockOptions';
 import { AdvancedTableColumnOptions } from '../components/AdvancedTableColumnOptions';
 import ColumnHeader from '../components/ColumnHeader';
+import TableToolbar from '../components/TableToolbar';
+import TableStatusBar from '../components/TableStatusBar';
 import { AdvancedTableCommands } from '../commands';
 import { onTableCopy, onTablePaste } from '../events/clipboard';
 import type { AdvancedTableElement, AdvancedTableCellElement, AdvancedTableRowElement } from '../types';
 import { TABLE_SLATE_TO_SELECTION_SET } from '../utils/weakMaps';
 import { getCellText } from '../utils/cellUtils';
+import { getCellRect, type CellRect } from '../utils/cellRange';
+import { tableDataToCSV, tableToClipboardData } from '../utils/clipboard';
+import { formatNumber } from '../utils/numberFormat';
 import { resolveColor } from '@/lib/editorColors';
 import { useIsDarkMode } from '@/hooks/useIsDarkMode';
 import { usePagesStore } from '@/stores/pagesStore';
@@ -40,6 +47,72 @@ const AdvancedTable = ({
   const [activeColumnIndex, setActiveColumnIndex] = useState<number | null>(null);
   const headerRefs = useRef<(HTMLTableHeaderCellElement | null)[]>([]);
   const tableRef = useRef<HTMLTableElement | null>(null);
+  const blockRef = useRef<HTMLDivElement | null>(null);
+
+  // Full view pins this block to the viewport. The block stays where it is in
+  // the editor (a Slate editor can only be rendered once), and a placeholder
+  // keeps its height so the page doesn't jump underneath.
+  const [fullView, setFullView] = useState<{ placeholderHeight: number } | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const isFullView = fullView !== null;
+
+  const openFullView = () => {
+    setFullView({ placeholderHeight: blockRef.current?.offsetHeight ?? 0 });
+  };
+  const closeFullView = useCallback(() => {
+    setFullView(null);
+    setZoom(1);
+  }, []);
+
+  // Selected cells, for the full view toolbar and status bar. Only updates
+  // when the selected range changes, not on every caret move within a cell.
+  const selectedRect = useSlateSelector(
+    (ed) => (isFullView ? getCellRect(ed) : null),
+    (a: CellRect | null, b: CellRect | null) =>
+      a === b || (!!a && !!b && a.top === b.top && a.bottom === b.bottom && a.left === b.left && a.right === b.right),
+  );
+
+  useEffect(() => {
+    if (!isFullView) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.classList.add('advanced-table-fullview-open');
+    document.body.style.overflow = 'hidden';
+
+    // Ancestors that form stacking contexts (the editor container, the app
+    // shell) would cap the block's z-index below the sidebar and floating
+    // buttons. Lift them to the full view layer while it is open.
+    const lifted: [HTMLElement, string][] = [];
+    for (let node = blockRef.current?.parentElement; node && node !== document.body; node = node.parentElement) {
+      const style = getComputedStyle(node);
+      const stacks = style.position !== 'static' && (style.zIndex !== 'auto' || style.position === 'fixed' || style.position === 'sticky');
+      if (stacks) {
+        lifted.push([node, node.style.zIndex]);
+        node.style.zIndex = '230';
+      }
+    }
+
+    // Escape leaves full view, unless a menu, picker or dialog is open (they
+    // close first) or the column name field is being edited (Escape reverts it)
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      const overlayOpen = document.querySelector(
+        '[id^="column-options-"], [id^="row-options-"], [id^="date-picker-"], [id^="table-block-options-"], [role="dialog"]'
+      );
+      if (overlayOpen || (document.activeElement as HTMLElement | null)?.closest('.yoopta-advanced-table-header-input')) return;
+      e.preventDefault();
+      e.stopPropagation();
+      closeFullView();
+    };
+    window.addEventListener('keydown', onKeyDown, true);
+
+    return () => {
+      document.body.classList.remove('advanced-table-fullview-open');
+      document.body.style.overflow = previousOverflow;
+      lifted.forEach(([node, zIndex]) => { node.style.zIndex = zIndex; });
+      window.removeEventListener('keydown', onKeyDown, true);
+    };
+  }, [isFullView, closeFullView]);
 
   const { refs, floatingStyles } = useFloating({
     placement: 'bottom-start',
@@ -230,7 +303,22 @@ const AdvancedTable = ({
     alternatingRows ? 'yoopta-advanced-table-alternating' : '',
     headerRow ? 'yoopta-advanced-table-has-header' : '',
     showCalculationRow ? 'yoopta-advanced-table-has-calculation-row' : '',
+    tableProps.freezeFirstColumn ? 'yoopta-advanced-table-freeze-first' : '',
   ].filter(Boolean).join(' ');
+
+  const exportCSV = () => {
+    const csv = tableDataToCSV(tableToClipboardData(tableElement));
+    const pagesState = usePagesStore.getState();
+    const pageTitle = pagesState.activePageId ? pagesState.pagesById[pagesState.activePageId]?.title : '';
+    const fileName = `${(pageTitle || 'Table').replace(/[\\/:*?"<>|]+/g, '').trim() || 'Table'}.csv`;
+    // BOM so Excel reads the file as UTF-8 (€, accents)
+    const url = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
 
   const columnsCount = (tableElement.children[0] as any)?.children?.length || 0;
   const rowsCount = tableElement.children?.length || 0;
@@ -262,12 +350,27 @@ const AdvancedTable = ({
   };
 
   return (
+    <div style={fullView ? { height: fullView.placeholderHeight } : undefined}>
     <div 
-      className={`yoopta-advanced-table-block ${className || ''} relative group`}
+      ref={blockRef}
+      className={`yoopta-advanced-table-block ${isFullView ? 'yoopta-advanced-table-block-fullview' : ''} ${className || ''} relative group`}
     >
       {/* Block options - absolutely positioned top-right by CSS */}
       {!isReadOnly && (
-        <div className="yoopta-advanced-table-options" contentEditable={false}>
+        <div className="yoopta-advanced-table-options flex items-center gap-0.5" contentEditable={false}>
+          <button
+            type="button"
+            aria-label="Open in full view"
+            title="Full view"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              openFullView();
+            }}
+            className="flex items-center justify-center w-7 h-7 rounded text-[var(--color-text-tertiary)] hover:bg-[var(--color-surface-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+          >
+            <Maximize2 className="w-4 h-4" />
+          </button>
           <AdvancedTableBlockOptions
             block={blockData}
             editor={editor}
@@ -278,9 +381,12 @@ const AdvancedTable = ({
 
       {/* Horizontal scroll container - table + add buttons */}
       <div
-        className="overflow-x-auto overflow-y-visible"
+        className="yoopta-advanced-table-scroll overflow-x-auto overflow-y-visible"
       >
-      <div className="relative inline-block overflow-visible pr-5 pb-5">
+      <div
+        className="yoopta-advanced-table-zoom relative inline-block overflow-visible pr-5 pb-5"
+        style={isFullView && zoom !== 1 ? { zoom } : undefined}
+      >
         <div className={`yoopta-advanced-table-wrapper ${showCalculationRow ? 'yoopta-advanced-table-wrapper-has-calculation-row' : ''}`}>
         <table
           ref={tableRef}
@@ -365,7 +471,9 @@ const AdvancedTable = ({
                         {columnAggregations?.[i]}
                       </span>
                       <span className="text-sm text-[var(--color-text-primary)]">
-                        {aggregationResults[i]}
+                        {columnAggregations?.[i] !== 'count' && aggregationResults[i] !== '' && Number.isFinite(Number(aggregationResults[i]))
+                          ? formatNumber(Number(aggregationResults[i]), tableProps.columnFormats?.[i] ?? { style: 'number', grouping: true })
+                          : aggregationResults[i]}
                       </span>
                     </div>
                   )}
@@ -422,6 +530,29 @@ const AdvancedTable = ({
         />
       )}
 
+      {isFullView && createPortal(
+        <>
+          <TableToolbar
+            editor={editor}
+            blockId={blockId}
+            table={tableElement}
+            rect={selectedRect}
+            onClose={closeFullView}
+            onExportCSV={exportCSV}
+            onOpenColumnMenu={setActiveColumnIndex}
+          />
+          <TableStatusBar
+            table={tableElement}
+            rect={selectedRect}
+            visibleRowCount={(filteredChildren as unknown[]).length}
+            zoom={zoom}
+            onZoomChange={setZoom}
+          />
+        </>,
+        document.body,
+      )}
+
+    </div>
     </div>
   );
 };

@@ -9,13 +9,31 @@ const CURRENCY_CODES = 'EUR|USD|GBP|JPY|CHF|CAD|AUD|NZD|SEK|NOK|DKK|PLN|CZK|HUF|
 const CURRENCY_CODE_AT_START = new RegExp(`^(?:${CURRENCY_CODES})(?=[-+\\d.,])`, 'i');
 const CURRENCY_CODE_AT_END = new RegExp(`(?<=[\\d.,])(?:${CURRENCY_CODES})$`, 'i');
 
+/** What a piece of number text looked like, besides its value */
+export type NumberAnalysis = {
+  value: number;
+  /** ISO code of a currency symbol or code in the text */
+  currency?: string;
+  /** Written as a percentage; value is already divided by 100 */
+  percent: boolean;
+  /** Digits after the decimal separator as written */
+  fractionDigits: number;
+  /** Written with thousands separators */
+  grouped: boolean;
+};
+
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  '€': 'EUR', '$': 'USD', '£': 'GBP', '¥': 'JPY', '₹': 'INR', '₽': 'RUB', '₩': 'KRW', '₺': 'TRY', '₪': 'ILS',
+};
+
 /**
  * Parse a number the way people write it: with currency symbols or codes,
  * thousands separators in either English (53,166.00) or European
- * (53.166,00 / 53 166,00) style, a leading or trailing minus, or accounting
- * parentheses for negatives. Returns null when the text isn't a number.
+ * (53.166,00 / 53 166,00) style, a leading or trailing minus, accounting
+ * parentheses for negatives, or a percent sign. Returns null when the text
+ * isn't a number.
  */
-export function parseNumber(input: string): number | null {
+export function analyzeNumber(input: string): NumberAnalysis | null {
   let text = input.trim();
   if (!text) return null;
 
@@ -25,9 +43,21 @@ export function parseNumber(input: string): number | null {
     text = text.slice(1, -1).trim();
   }
 
+  let percent = false;
+  if (/^%|%$/.test(text)) {
+    percent = true;
+    text = text.replace(/^%|%$/g, '');
+  }
+
+  let currency: string | undefined;
+  const symbol = text.match(/[€$£¥₹₽₩₺₪]/);
+  if (symbol) currency = CURRENCY_SYMBOLS[symbol[0]];
+
   // Drop currency symbols, ISO codes and spacing used as thousands separators
+  text = text.replace(/[\s\u00a0\u202f']/g, '');
+  const code = text.match(CURRENCY_CODE_AT_START) ?? text.match(CURRENCY_CODE_AT_END);
+  if (code) currency = code[0].toUpperCase();
   text = text
-    .replace(/[\s\u00a0\u202f']/g, '')
     .replace(CURRENCY_CODE_AT_START, '')
     .replace(CURRENCY_CODE_AT_END, '')
     .replace(/[€$£¥₹₽₩₺₪¢]/g, '');
@@ -57,6 +87,7 @@ export function parseNumber(input: string): number | null {
   }
 
   const thousandsSeparator = decimalSeparator === ',' ? '.' : decimalSeparator === '.' ? ',' : null;
+  const grouped = thousandsSeparator ? text.includes(thousandsSeparator) : /[.,]/.test(text);
   let normalized = text;
   if (thousandsSeparator) normalized = normalized.split(thousandsSeparator).join('');
   if (!decimalSeparator) normalized = normalized.replace(/[.,]/g, '');
@@ -64,9 +95,16 @@ export function parseNumber(input: string): number | null {
 
   if (!/^\d*\.?\d+$|^\d+\.$/.test(normalized)) return null;
 
-  const value = Number(normalized);
+  let value = Number(normalized);
   if (!Number.isFinite(value)) return null;
-  return negative ? -value : value;
+  if (percent) value /= 100;
+
+  const fractionDigits = normalized.includes('.') ? normalized.length - normalized.indexOf('.') - 1 : 0;
+  return { value: negative ? -value : value, currency, percent, fractionDigits, grouped };
+}
+
+export function parseNumber(input: string): number | null {
+  return analyzeNumber(input)?.value ?? null;
 }
 
 const MONTHS: Record<string, number> = {

@@ -10,12 +10,16 @@
   --yoopta-table-header-height: 36px;
 }
 
+/* Sits just above the table's top-right corner so it never covers the last
+   column's header controls on wide tables */
 .yoopta-advanced-table-block .yoopta-advanced-table-options {
-  @apply absolute right-0;
+  @apply absolute right-0 rounded-md;
   opacity: 0;
   transition: opacity 0.15s ease-in-out;
-  top: 12px;
+  top: -2px;
+  transform: translateY(-100%);
   z-index: 10;
+  background-color: var(--color-surface-base);
 }
 
 .yoopta-advanced-table-block:hover .yoopta-advanced-table-options {
@@ -28,7 +32,9 @@
   display: inline-block;
   border-radius: 12px;
   border: 1px solid var(--color-border-default);
-  overflow: hidden;
+  /* clip (not hidden) rounds the corners without becoming a scroll container,
+     which would stop the sticky header and frozen first column from sticking */
+  overflow: clip;
   background-color: var(--color-surface-primary);
 }
 
@@ -491,3 +497,87 @@
   }
 }
 
+
+/* ============ Formatted number display ============ */
+/* The formatted value sits over the raw text, which stays clickable underneath */
+.yoopta-advanced-table-data-cell-display {
+  @apply absolute inset-0 overflow-hidden whitespace-nowrap text-ellipsis p-[7px_9px] text-[14px] leading-[20px] pointer-events-none select-none;
+  font-variant-numeric: tabular-nums;
+}
+
+.yoopta-advanced-table-data-cell-content-hidden {
+  color: transparent;
+}
+
+/* ============ Frozen first column ============ */
+.yoopta-advanced-table-freeze-first tbody tr > td:first-child,
+.yoopta-advanced-table-freeze-first .yoopta-advanced-table-calculation-row > td:first-child,
+.yoopta-advanced-table-freeze-first thead th:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+}
+
+.yoopta-advanced-table-freeze-first tbody tr > td:first-child {
+  box-shadow: 1px 0 0 var(--color-border-default);
+}
+
+/* ============ Full view ============ */
+.yoopta-advanced-table-block.yoopta-advanced-table-block-fullview {
+  position: fixed;
+  inset: 0;
+  /* Above the sidebar drawer (220), below modals and sheets (260) and popovers */
+  z-index: 230;
+  display: flex;
+  flex-direction: column;
+  padding: 104px 24px 64px;
+  background-color: var(--color-surface-base);
+}
+
+.yoopta-advanced-table-block-fullview .yoopta-advanced-table-options {
+  display: none;
+}
+
+.yoopta-advanced-table-block-fullview .yoopta-advanced-table-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+/* Centre narrow tables; wide ones scroll from the left edge */
+.yoopta-advanced-table-block-fullview .yoopta-advanced-table-zoom {
+  display: block;
+  width: max-content;
+  margin: 0 auto;
+}
+
+/* Keep the column names in view while scrolling down */
+.yoopta-advanced-table-block-fullview .yoopta-advanced-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+
+.yoopta-advanced-table-block-fullview .yoopta-advanced-table-freeze-first thead th:first-child {
+  z-index: 4;
+}
+
+@media (max-width: 768px) {
+  .yoopta-advanced-table-block.yoopta-advanced-table-block-fullview {
+    padding: 112px 8px 72px;
+  }
+}
+
+/* Editor UI that would float over the full view */
+body.advanced-table-fullview-open .yoopta-ui-slash-command-content,
+body.advanced-table-fullview-open .yoopta-ui-floating-block-actions,
+body.advanced-table-fullview-open .yoopta-ui-block-options,
+body.advanced-table-fullview-open .yoopta-ui-action-menu-list,
+body.advanced-table-fullview-open .yoopta-ui-action-menu-list-overlay,
+body.advanced-table-fullview-open .yoopta-ui-slash-command-root,
+body.advanced-table-fullview-open [id^="yoopta-ui-block-options-portal-"],
+body.advanced-table-fullview-open [id^="yoopta-ui-action-menu-list-portal-"] {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}

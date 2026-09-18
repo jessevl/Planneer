@@ -10,6 +10,8 @@ import type {
   BackgroundColor,
   SortDirection,
   ColumnType,
+  ColumnAlignment,
+  NumberFormat,
   ColumnFilter,
   AggregationType,
 } from './types';
@@ -17,6 +19,7 @@ import { getCellText } from './utils/cellUtils';
 import type { CellRect } from './utils/cellRange';
 import { inferColumnTypes, type ClipboardCell, type ClipboardGrid } from './utils/clipboard';
 import { normalizeCellValue } from './utils/parseValues';
+import { detectNumberFormat } from './utils/numberFormat';
 
 // ============================================================================
 // HELPER TYPES AND UTILITIES
@@ -275,6 +278,9 @@ export type AdvancedTableCommands = {
   pasteCells: (editor: YooEditor, blockId: string, grid: ClipboardGrid, target: CellRect) => void;
   clearCells: (editor: YooEditor, blockId: string, target: CellRect) => void;
   buildTableFromClipboard: (editor: YooEditor, grid: ClipboardGrid) => AdvancedTableElement;
+  setColumnAlignment: (editor: YooEditor, blockId: string, columnIndex: number, alignment: ColumnAlignment | null) => void;
+  setColumnFormat: (editor: YooEditor, blockId: string, columnIndex: number, format: NumberFormat | null) => void;
+  toggleFreezeFirstColumn: (editor: YooEditor, blockId: string) => void;
 };
 
 export const AdvancedTableCommands: AdvancedTableCommands = {
@@ -406,6 +412,8 @@ export const AdvancedTableCommands: AdvancedTableCommands = {
       props.columnFilters = moveColumnProps(props.columnFilters, fromIdx, toIdx);
       props.columnAggregations = moveColumnProps(props.columnAggregations, fromIdx, toIdx);
       props.columnBackgroundColors = moveColumnProps(props.columnBackgroundColors, fromIdx, toIdx);
+      props.columnAlignments = moveColumnProps(props.columnAlignments, fromIdx, toIdx);
+      props.columnFormats = moveColumnProps(props.columnFormats, fromIdx, toIdx);
 
       if (props.sortInfo) {
         let newSortIdx = props.sortInfo.columnIndex;
@@ -452,6 +460,8 @@ export const AdvancedTableCommands: AdvancedTableCommands = {
       props.columnFilters = shiftColumnProps(props.columnFilters, insertIndex, 'insert');
       props.columnAggregations = shiftColumnProps(props.columnAggregations, insertIndex, 'insert');
       props.columnBackgroundColors = shiftColumnProps(props.columnBackgroundColors, insertIndex, 'insert');
+      props.columnAlignments = shiftColumnProps(props.columnAlignments, insertIndex, 'insert');
+      props.columnFormats = shiftColumnProps(props.columnFormats, insertIndex, 'insert');
 
       if (props.sortInfo && props.sortInfo.columnIndex >= insertIndex) {
         props.sortInfo = { ...props.sortInfo, columnIndex: props.sortInfo.columnIndex + 1 };
@@ -506,6 +516,8 @@ export const AdvancedTableCommands: AdvancedTableCommands = {
       props.columnFilters = shiftColumnProps(props.columnFilters, columnIndex, 'delete');
       props.columnAggregations = shiftColumnProps(props.columnAggregations, columnIndex, 'delete');
       props.columnBackgroundColors = shiftColumnProps(props.columnBackgroundColors, columnIndex, 'delete');
+      props.columnAlignments = shiftColumnProps(props.columnAlignments, columnIndex, 'delete');
+      props.columnFormats = shiftColumnProps(props.columnFormats, columnIndex, 'delete');
 
       if (props.sortInfo?.columnIndex === columnIndex) {
         props.sortInfo = undefined;
@@ -790,6 +802,17 @@ export const AdvancedTableCommands: AdvancedTableCommands = {
     if (oldType !== type) {
       const clear = type === 'page' || oldType === 'page';
 
+      // Keep showing values the way they were written, e.g. "€53,166.00"
+      // becomes 53166 displayed as a euro amount
+      const columnFormats = { ...(table.props?.columnFormats || {}) };
+      if (type === 'number' && !columnFormats[columnIndex]) {
+        const texts = table.children
+          .filter((row, rowIndex) => isTableRow(row) && !(rowIndex === 0 && table.props?.headerRow))
+          .map((row) => Node.string((row as AdvancedTableRowElement).children[columnIndex] as any));
+        const detected = detectNumberFormat(texts);
+        if (detected) columnFormats[columnIndex] = detected;
+      }
+
       Editor.withoutNormalizing(slate, () => {
         table.children.forEach((row, rowIndex) => {
           if (rowIndex === 0 && table.props?.headerRow) return;
@@ -803,7 +826,7 @@ export const AdvancedTableCommands: AdvancedTableCommands = {
           if (next !== text) replaceCellText(slate, [...tablePath, rowIndex, columnIndex], next);
         });
 
-        setTableProps(slate, tablePath, { ...table.props, columnTypes });
+        setTableProps(slate, tablePath, { ...table.props, columnTypes, columnFormats });
       });
       return;
     }
@@ -1024,5 +1047,46 @@ export const AdvancedTableCommands: AdvancedTableCommands = {
     });
 
     return table;
+  },
+
+  setColumnAlignment: (editor, blockId, columnIndex, alignment) => {
+    const slate = getSlate(editor, blockId);
+    if (!slate) return;
+
+    const tableEntry = getTableEntry(slate);
+    if (!tableEntry) return;
+    const [table, tablePath] = tableEntry;
+
+    const columnAlignments = { ...(table.props?.columnAlignments || {}) };
+    if (alignment) columnAlignments[columnIndex] = alignment;
+    else delete columnAlignments[columnIndex];
+
+    setTableProps(slate, tablePath, { ...table.props, columnAlignments });
+  },
+
+  setColumnFormat: (editor, blockId, columnIndex, format) => {
+    const slate = getSlate(editor, blockId);
+    if (!slate) return;
+
+    const tableEntry = getTableEntry(slate);
+    if (!tableEntry) return;
+    const [table, tablePath] = tableEntry;
+
+    const columnFormats = { ...(table.props?.columnFormats || {}) };
+    if (format) columnFormats[columnIndex] = format;
+    else delete columnFormats[columnIndex];
+
+    setTableProps(slate, tablePath, { ...table.props, columnFormats });
+  },
+
+  toggleFreezeFirstColumn: (editor, blockId) => {
+    const slate = getSlate(editor, blockId);
+    if (!slate) return;
+
+    const tableEntry = getTableEntry(slate);
+    if (!tableEntry) return;
+    const [table, tablePath] = tableEntry;
+
+    setTableProps(slate, tablePath, { ...table.props, freezeFirstColumn: !table.props?.freezeFirstColumn });
   },
 };
