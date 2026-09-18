@@ -10,6 +10,7 @@ import { AdvancedTableBlockOptions } from '../components/AdvancedTableBlockOptio
 import { AdvancedTableColumnOptions } from '../components/AdvancedTableColumnOptions';
 import ColumnHeader from '../components/ColumnHeader';
 import { AdvancedTableCommands } from '../commands';
+import { onTableCopy, onTablePaste } from '../events/clipboard';
 import type { AdvancedTableElement, AdvancedTableCellElement, AdvancedTableRowElement } from '../types';
 import { TABLE_SLATE_TO_SELECTION_SET } from '../utils/weakMaps';
 import { getCellText } from '../utils/cellUtils';
@@ -285,6 +286,9 @@ const AdvancedTable = ({
           ref={tableRef}
           {...htmlAttrs}
           className={tableClasses}
+          onCopyCapture={(e) => onTableCopy(editor, blockId, e, 'copy')}
+          onCutCapture={(e) => onTableCopy(editor, blockId, e, 'cut')}
+          onPasteCapture={(e) => onTablePaste(editor, blockId, e)}
         >
         <thead>
           <tr className="yoopta-advanced-table-metadata-row">
@@ -292,7 +296,7 @@ const AdvancedTable = ({
               const type = columnTypes?.[i] || 'text';
               const isFiltered = !!columnFilters?.[i];
               const isSorted = sortInfo?.columnIndex === i;
-              const columnName = columnNames[i] || `Column ${i + 1}`;
+              const columnName = columnNames[i] || '';
               const columnWidth = (tableElement.children[0] as any)?.children[i]?.props?.width || 200;
 
               const onResize = (newWidth: number) => {
@@ -308,6 +312,7 @@ const AdvancedTable = ({
                   columnIndex={i}
                   columnType={type}
                   columnName={columnName}
+                  placeholder={`Column ${i + 1}`}
                   isFiltered={isFiltered}
                   currentFilter={columnFilters?.[i] || null}
                   isSorted={isSorted}
@@ -315,6 +320,7 @@ const AdvancedTable = ({
                   width={columnWidth}
                   isReadOnly={isReadOnly}
                   onOpenOptions={() => setActiveColumnIndex(i)}
+                  onRename={(name) => AdvancedTableCommands.setColumnName(editor, blockId, i, name)}
                   onResize={onResize}
                 />
               );

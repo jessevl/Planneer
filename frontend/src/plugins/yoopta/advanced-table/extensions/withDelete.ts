@@ -1,8 +1,22 @@
 import type { SlateEditor } from '@yoopta/editor';
 import { Editor, Element, Point, Range, Transforms } from 'slate';
 
+import { clearCellRange } from '../commands';
+import { getCellRect, isMultiCellRect } from '../utils/cellRange';
+
 export function withDelete(slate: SlateEditor): SlateEditor {
-  const { deleteBackward } = slate;
+  const { deleteBackward, deleteFragment } = slate;
+
+  // Deleting a selection that spans cells empties those cells instead of
+  // merging them into one, which would break the table's rows and columns
+  slate.deleteFragment = (options) => {
+    const rect = getCellRect(slate);
+    if (isMultiCellRect(rect)) {
+      clearCellRange(slate, rect);
+      return;
+    }
+    deleteFragment(options);
+  };
 
   slate.deleteBackward = (unit) => {
     const { selection } = slate;

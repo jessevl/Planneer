@@ -1,17 +1,21 @@
 import type { SlateEditor, SlateElement } from '@yoopta/editor';
-import { Editor, Element, Operation, Path, Range } from 'slate';
+import { Operation, Range } from 'slate';
 
-import type { AdvancedTableCellElement } from '../types';
+import { getCellRect, getCellsInRect, isMultiCellRect } from '../utils/cellRange';
 import type { SlateNodeEntry } from '../utils/weakMaps';
 import { EDITOR_TO_SELECTION, TABLE_SLATE_TO_SELECTION_SET } from '../utils/weakMaps';
 
 export function withSelection(slate: SlateEditor): SlateEditor {
   const { apply } = slate;
 
+  const clear = () => {
+    TABLE_SLATE_TO_SELECTION_SET.delete(slate);
+    EDITOR_TO_SELECTION.delete(slate);
+  };
+
   slate.apply = (op) => {
     if (!Operation.isSelectionOperation(op) || !op.newProperties) {
-      TABLE_SLATE_TO_SELECTION_SET.delete(slate);
-      EDITOR_TO_SELECTION.delete(slate);
+      clear();
       return apply(op);
     }
 
@@ -20,53 +24,21 @@ export function withSelection(slate: SlateEditor): SlateEditor {
       ...op.newProperties,
     };
 
-    if (!Range.isRange(selection)) {
-      TABLE_SLATE_TO_SELECTION_SET.delete(slate);
-      EDITOR_TO_SELECTION.delete(slate);
-      return apply(op);
-    }
-
-    const [fromEntry] = Editor.nodes(slate, {
-      match: (n) => Element.isElement(n) && (n as unknown as { type: string }).type === 'table-data-cell',
-      at: Range.start(selection),
-    });
-
-    const [toEntry] = Editor.nodes(slate, {
-      match: (n) => Element.isElement(n) && (n as unknown as { type: string }).type === 'table-data-cell',
-      at: Range.end(selection),
-    });
-
-    if (!fromEntry || !toEntry) {
-      TABLE_SLATE_TO_SELECTION_SET.delete(slate);
-      EDITOR_TO_SELECTION.delete(slate);
-      return apply(op);
-    }
-
-    const [, fromPath] = fromEntry;
-    const [, toPath] = toEntry;
-
-    if (Path.equals(fromPath, toPath)) {
-      TABLE_SLATE_TO_SELECTION_SET.delete(slate);
-      EDITOR_TO_SELECTION.delete(slate);
+    // Selecting across cells selects the whole rectangle between them,
+    // matching what copy, cut and delete act on
+    const rect = Range.isRange(selection) ? getCellRect(slate, selection) : null;
+    if (!isMultiCellRect(rect)) {
+      clear();
       return apply(op);
     }
 
     const selectedSet = new WeakSet<SlateElement>();
-
-    const range = Editor.range(slate, fromPath, toPath);
-    const nodesInRange = Array.from(
-      Editor.nodes(slate, {
-        at: range,
-        match: (n) => Element.isElement(n) && (n as unknown as { type: string }).type === 'table-data-cell',
-      })
-    );
-
     const selected: SlateNodeEntry[] = [];
 
-    for (const [element, path] of nodesInRange) {
-      if (Element.isElement(element) && (element as unknown as { type: string }).type === 'table-data-cell') {
-        selectedSet.add(element as unknown as SlateElement);
-        selected.push([element as unknown as AdvancedTableCellElement, path]);
+    for (const row of getCellsInRect(slate, rect)) {
+      for (const entry of row) {
+        selectedSet.add(entry[0] as unknown as SlateElement);
+        selected.push(entry);
       }
     }
 

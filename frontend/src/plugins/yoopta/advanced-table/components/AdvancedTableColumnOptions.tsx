@@ -224,8 +224,10 @@ const AdvancedTableColumnOptions = ({ editor, blockId, columnIndex, onClose, ...
   };
 
   const handleTypeSelect = (type: ColumnType) => {
-    if (currentColumnType !== type) {
-      // Check if column has content
+    // Values are converted to the new type, except page links, which are
+    // cleared when switching to or from a page column. Only that loses data.
+    const clearsContent = currentColumnType !== type && (type === 'page' || currentColumnType === 'page');
+    if (clearsContent) {
       const rows = tableElement?.children || [];
       const hasContent = rows.some((row: any) => {
         const cell = row.children[columnIndex];
@@ -236,7 +238,9 @@ const AdvancedTableColumnOptions = ({ editor, blockId, columnIndex, onClose, ...
       if (hasContent) {
         requestConfirm({
           title: 'Change Column Type?',
-          message: 'Changing the column type will clear all existing content in this column.',
+          message: type === 'page'
+            ? 'Page columns hold links to pages, so the existing content in this column will be cleared.'
+            : 'The page links in this column will be cleared.',
           detail: 'This action cannot be undone.',
           confirmLabel: 'Change Type',
           variant: 'warning',
@@ -666,7 +670,7 @@ const AdvancedTableColumnOptions = ({ editor, blockId, columnIndex, onClose, ...
             onChange={(e) => setTagFilterSearch(e.target.value)}
           />
           {existingColumnTags.length > 0 && (
-            <div className="flex flex-wrap gap-1 max-h-48 overflow-y-auto p-1">
+            <div className="flex flex-wrap content-start gap-1.5 max-h-56 overflow-y-auto p-1">
               {existingColumnTags
                 .filter(tag => !tagFilterSearch || tag.toLowerCase().includes(tagFilterSearch.toLowerCase()))
                 .map((tag) => {
@@ -943,7 +947,8 @@ const AdvancedTableColumnOptions = ({ editor, blockId, columnIndex, onClose, ...
             style={{ ...filterStyles, zIndex: 10001 }}
             width="auto"
             padding="sm"
-            className="min-w-[220px]"
+            // Fixed width so a long list of tags wraps instead of stretching the menu
+            className="w-[300px] max-w-[calc(100vw-32px)]"
           >
             {filterPickerContent}
           </Popover>

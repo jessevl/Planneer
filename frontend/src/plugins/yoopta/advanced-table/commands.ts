@@ -1,6 +1,6 @@
 import type { SlateElement, YooEditor, YooptaPathIndex } from '@yoopta/editor';
 import { Blocks, generateId } from '@yoopta/editor';
-import { Editor, Element, Path, Transforms, type BaseEditor, type Location } from 'slate';
+import { Editor, Element, Node, Path, Transforms, type BaseEditor, type Location } from 'slate';
 
 import type {
   InsertAdvancedTableOptions,
@@ -14,6 +14,9 @@ import type {
   AggregationType,
 } from './types';
 import { getCellText } from './utils/cellUtils';
+import type { CellRect } from './utils/cellRange';
+import { inferColumnTypes, type ClipboardCell, type ClipboardGrid } from './utils/clipboard';
+import { normalizeCellValue } from './utils/parseValues';
 
 // ============================================================================
 // HELPER TYPES AND UTILITIES
@@ -197,6 +200,37 @@ const createEmptyRow = (numCells: number, cellWidth = 200): AdvancedTableRowElem
 });
 
 /**
+ * Replace everything in a cell with a single plain text node.
+ */
+const replaceCellText = (slate: BaseEditor, cellPath: Path, text: string) => {
+  const cell = Node.get(slate, cellPath) as Element;
+  for (let i = cell.children.length - 1; i >= 0; i--) {
+    Transforms.removeNodes(slate, { at: [...cellPath, i] });
+  }
+  Transforms.insertNodes(slate, { text } as any, { at: [...cellPath, 0] });
+};
+
+/**
+ * Empty every cell in a rectangle and put the caret in its top-left cell.
+ */
+export const clearCellRange = (slate: BaseEditor, target: CellRect) => {
+  Editor.withoutNormalizing(slate, () => {
+    for (let r = target.top; r <= target.bottom; r++) {
+      for (let c = target.left; c <= target.right; c++) {
+        const cellPath = [...target.tablePath, r, c];
+        if (Node.has(slate, cellPath)) replaceCellText(slate, cellPath, '');
+      }
+    }
+  });
+
+  try {
+    Transforms.select(slate, Editor.start(slate, [...target.tablePath, target.top, target.left]));
+  } catch {
+    // no-op
+  }
+};
+
+/**
  * Update table props at the given path.
  */
 const setTableProps = (
@@ -238,6 +272,9 @@ export type AdvancedTableCommands = {
   setColumnAggregation: (editor: YooEditor, blockId: string, columnIndex: number, aggregation: AggregationType | null) => void;
   setColumnName: (editor: YooEditor, blockId: string, columnIndex: number, name: string) => void;
   toggleCalculationRow: (editor: YooEditor, blockId: string) => void;
+  pasteCells: (editor: YooEditor, blockId: string, grid: ClipboardGrid, target: CellRect) => void;
+  clearCells: (editor: YooEditor, blockId: string, target: CellRect) => void;
+  buildTableFromClipboard: (editor: YooEditor, grid: ClipboardGrid) => AdvancedTableElement;
 };
 
 export const AdvancedTableCommands: AdvancedTableCommands = {
@@ -747,18 +784,28 @@ export const AdvancedTableCommands: AdvancedTableCommands = {
     const oldType = columnTypes[columnIndex];
     columnTypes[columnIndex] = type;
 
-    // Clear cell content if type changed
+    // Convert existing values to the new type. Values that can't be converted
+    // are kept as they are. Page links are ids, so they only make sense in a
+    // page column and are cleared when switching to or from one.
     if (oldType !== type) {
-      table.children.forEach((row, rowIndex) => {
-        if (rowIndex === 0 && table.props?.headerRow) return;
-        if (!isTableRow(row)) return;
-        
-        Transforms.setNodes(
-          slate,
-          { children: [{ text: '' }] } as any,
-          { at: [...tablePath, rowIndex, columnIndex] }
-        );
+      const clear = type === 'page' || oldType === 'page';
+
+      Editor.withoutNormalizing(slate, () => {
+        table.children.forEach((row, rowIndex) => {
+          if (rowIndex === 0 && table.props?.headerRow) return;
+          if (!isTableRow(row)) return;
+
+          const cell = row.children[columnIndex];
+          if (!isTableCell(cell)) return;
+
+          const text = Node.string(cell);
+          const next = clear ? '' : normalizeCellValue(text, type);
+          if (next !== text) replaceCellText(slate, [...tablePath, rowIndex, columnIndex], next);
+        });
+
+        setTableProps(slate, tablePath, { ...table.props, columnTypes });
       });
+      return;
     }
 
     setTableProps(slate, tablePath, { ...table.props, columnTypes });
@@ -821,5 +868,161 @@ export const AdvancedTableCommands: AdvancedTableCommands = {
       ...table.props,
       showCalculationRow: !table.props?.showCalculationRow,
     });
+  },
+
+  /**
+   * Paste a grid of cells with its top-left at the target's top-left, adding
+   * rows and columns when it runs past the edge. When the target is a larger
+   * selection that the grid fits into a whole number of times (e.g. one value
+   * into ten cells), the grid is repeated to fill it, like a spreadsheet does.
+   */
+  pasteCells: (editor, blockId, grid, target) => {
+    const slate = getSlate(editor, blockId);
+    if (!slate) return;
+
+    const tableEntry = getTableEntry(slate);
+    if (!tableEntry) return;
+    const [table, tablePath] = tableEntry;
+
+    const source = grid.cells;
+    const sourceRows = source.length;
+    const sourceCols = Math.max(0, ...source.map((row) => row.length));
+    if (sourceRows === 0 || sourceCols === 0) return;
+
+    const targetRows = target.bottom - target.top + 1;
+    const targetCols = target.right - target.left + 1;
+    const tile = targetRows % sourceRows === 0 && targetCols % sourceCols === 0;
+    const outRows = tile ? targetRows : sourceRows;
+    const outCols = tile ? targetCols : sourceCols;
+
+    const rows = table.children as unknown as AdvancedTableRowElement[];
+    const rowCount = rows.length;
+    const firstRowCells = (rows[0]?.children ?? []) as unknown as AdvancedTableCellElement[];
+    const colCount = firstRowCells.length;
+    const extraCols = Math.max(0, target.left + outCols - colCount);
+    const extraRows = Math.max(0, target.top + outRows - rowCount);
+    const newColumnWidth = firstRowCells[colCount - 1]?.props?.width || 200;
+
+    // Source column that lands in a given table column
+    const sourceColumnFor = (tableCol: number) => (tableCol - target.left) % sourceCols;
+
+    // Column types after any new columns are added, so pasted values can be
+    // converted (e.g. "€53,166.00" into a number column becomes 53166)
+    const columnTypes: Record<number, ColumnType | undefined> = { ...(table.props?.columnTypes || {}) };
+    for (let k = 0; k < extraCols; k++) {
+      const col = colCount + k;
+      columnTypes[col] = (grid.fromPlanneer && grid.columnTypes?.[sourceColumnFor(col)]) || 'text';
+    }
+
+    Editor.withoutNormalizing(slate, () => {
+      if (extraCols > 0) {
+        rows.forEach((_, rowIndex) => {
+          for (let k = 0; k < extraCols; k++) {
+            Transforms.insertNodes(slate, createEmptyCell(newColumnWidth) as any, {
+              at: [...tablePath, rowIndex, colCount + k],
+            });
+          }
+        });
+
+        const columnNames = { ...(table.props?.columnNames || {}) };
+        for (let k = 0; k < extraCols; k++) {
+          const col = colCount + k;
+          const name = grid.fromPlanneer ? grid.columnNames?.[sourceColumnFor(col)] : undefined;
+          if (name) columnNames[col] = name;
+        }
+        setTableProps(slate, tablePath, {
+          ...table.props,
+          columnTypes: columnTypes as Record<number, ColumnType>,
+          columnNames,
+        });
+      }
+
+      if (extraRows > 0) {
+        const widths = [
+          ...firstRowCells.map((cell) => cell.props?.width || 200),
+          ...Array.from({ length: extraCols }, () => newColumnWidth),
+        ];
+        for (let k = 0; k < extraRows; k++) {
+          const row = createEmptyRow(0);
+          row.children = widths.map((width) => createEmptyCell(width)) as any;
+          Transforms.insertNodes(slate, row as any, { at: [...tablePath, rowCount + k] });
+        }
+      }
+
+      for (let r = 0; r < outRows; r++) {
+        for (let c = 0; c < outCols; c++) {
+          const cell: ClipboardCell = source[r % sourceRows][c % sourceCols] ?? { text: '' };
+          const col = target.left + c;
+          const cellPath = [...tablePath, target.top + r, col];
+          replaceCellText(slate, cellPath, normalizeCellValue(cell.text, columnTypes[col]));
+
+          // Only our own tables carry colors; external data keeps the target's formatting
+          if (grid.fromPlanneer) {
+            const [node] = Editor.node(slate, cellPath);
+            const props = (node as unknown as AdvancedTableCellElement).props;
+            Transforms.setNodes(
+              slate,
+              { props: { ...props, backgroundColor: cell.backgroundColor ?? null } } as any,
+              { at: cellPath }
+            );
+          }
+        }
+      }
+    });
+
+    try {
+      Transforms.select(
+        slate,
+        Editor.end(slate, [...tablePath, target.top + outRows - 1, target.left + outCols - 1])
+      );
+    } catch {
+      // no-op
+    }
+  },
+
+  clearCells: (editor, blockId, target) => {
+    const slate = getSlate(editor, blockId);
+    if (!slate) return;
+    clearCellRange(slate, target);
+  },
+
+  /**
+   * Build a new table from pasted data. A header row from another app
+   * (<thead> or a row of <th>) becomes the column names.
+   */
+  buildTableFromClipboard: (editor, grid) => {
+    let rows = grid.cells;
+    let columnNames = grid.columnNames;
+
+    if (!grid.fromPlanneer && grid.hasHeaderRow && rows.length > 1) {
+      columnNames = {};
+      rows[0].forEach((cell, i) => {
+        if (cell.text) columnNames![i] = cell.text.replace(/\s+/g, ' ');
+      });
+      rows = rows.slice(1);
+    }
+
+    const columns = Math.max(1, ...rows.map((row) => row.length));
+    const table = AdvancedTableCommands.buildTableElements(editor, {
+      rows: Math.max(1, rows.length),
+      columns,
+    });
+
+    table.props = {
+      ...table.props,
+      columnTypes: (grid.fromPlanneer && grid.columnTypes) || inferColumnTypes(rows),
+      ...(columnNames && Object.keys(columnNames).length > 0 ? { columnNames } : {}),
+    };
+
+    (table.children as unknown as AdvancedTableRowElement[]).forEach((row, r) => {
+      (row.children as unknown as AdvancedTableCellElement[]).forEach((cell, c) => {
+        const source = rows[r]?.[c];
+        if (!source) return;
+        cell.children = [{ text: source.text }] as any;
+        if (grid.fromPlanneer) cell.props = { ...cell.props, backgroundColor: source.backgroundColor ?? null } as AdvancedTableCellElement['props'];
+      });
+    });
+
+    return table;
   },
 };

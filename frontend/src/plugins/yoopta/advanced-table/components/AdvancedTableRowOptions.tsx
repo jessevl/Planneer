@@ -37,12 +37,20 @@ const AdvancedTableRowOptions = ({ editor, blockId, onClose, tdElement, ...props
   const [showColorPicker, setShowColorPicker] = useState(false);
   const slate = editor.blockEditorsMap[blockId];
 
-  // Get row index - use selection as fallback if path lookup fails
+  // Get row index - use selection as fallback if path lookup fails.
+  // This runs on every render, including renders triggered by Yoopta's change
+  // event before slate-react has re-indexed the tree, so the path can be stale
+  // (e.g. pointing past the end right after a row is removed).
   const tdPath = Elements.getElementPath(editor, { blockId, element: tdElement }) ?? slate.selection;
-  const rowEntry = tdPath ? Editor.above(slate, {
-    at: tdPath,
-    match: (n) => Element.isElement(n) && (n as any).type === 'table-row',
-  }) : null;
+  let rowEntry: ReturnType<typeof Editor.above> = undefined;
+  try {
+    rowEntry = tdPath ? Editor.above(slate, {
+      at: tdPath,
+      match: (n) => Element.isElement(n) && (n as any).type === 'table-row',
+    }) : undefined;
+  } catch {
+    rowEntry = undefined;
+  }
   
   const trElement = rowEntry ? rowEntry[0] as unknown as AdvancedTableRowElement : null;
   const rowPath = rowEntry ? rowEntry[1] : null;

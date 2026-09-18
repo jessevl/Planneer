@@ -6,7 +6,13 @@ import { AdvancedTableDataCell } from './elements/AdvancedTableDataCell';
 import { AdvancedTableRow } from './elements/AdvancedTableRow';
 import { onKeyDown } from './events/onKeyDown';
 import { withAdvancedTable } from './extensions/withAdvancedTable';
-import type { AdvancedTableElementMap } from './types';
+import type { AdvancedTableElement, AdvancedTableElementMap } from './types';
+import {
+  htmlTableToGrid,
+  tableDataToHTML,
+  tableDataToMarkdown,
+  tableToClipboardData,
+} from './utils/clipboard';
 import { TABLE_SLATE_TO_SELECTION_SET } from './utils/weakMaps';
 
 const AdvancedTablePlugin = new YooptaPlugin<AdvancedTableElementMap>({
@@ -63,6 +69,27 @@ const AdvancedTablePlugin = new YooptaPlugin<AdvancedTableElementMap>({
     shortcuts: ['advanced-table', 'atable', 'stable'],
   },
   commands: AdvancedTableCommands,
+  parsers: {
+    html: {
+      deserialize: {
+        nodeNames: ['TABLE'],
+        parse: (el, editor) => {
+          if (el.nodeName !== 'TABLE') return;
+          // Tables used for page layout (emails, newsletters) paste as their contents
+          if (el.getAttribute('role') === 'presentation' || el.querySelector('table')) return;
+
+          const grid = htmlTableToGrid(el as HTMLTableElement);
+          if (grid.cells.length === 0 || grid.cells[0].length === 0) return;
+          return AdvancedTableCommands.buildTableFromClipboard(editor, grid) as any;
+        },
+      },
+      serialize: (element) =>
+        tableDataToHTML(tableToClipboardData(element as unknown as AdvancedTableElement), { includeHeader: true }),
+    },
+    markdown: {
+      serialize: (element) => tableDataToMarkdown(tableToClipboardData(element as unknown as AdvancedTableElement)),
+    },
+  },
 });
 
 export { AdvancedTablePlugin };

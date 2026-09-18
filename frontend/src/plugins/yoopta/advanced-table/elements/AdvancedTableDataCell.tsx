@@ -137,17 +137,6 @@ const AdvancedTableDataCell = ({
     }
   };
 
-  // Handle paste for number columns
-  const onPaste = (e: React.ClipboardEvent) => {
-    if (columnType === 'number') {
-      const pastedText = e.clipboardData.getData('text/plain');
-      // Allow paste only if it's a valid number
-      if (!/^-?\d*\.?\d*$/.test(pastedText)) {
-        e.preventDefault();
-      }
-    }
-  };
-
   // Update cell text for date/tag pickers - safe text replacement
   const updateCellText = useCallback((newText: string) => {
     if (!path) return;
@@ -237,7 +226,9 @@ const AdvancedTableDataCell = ({
         return null; // Allow direct editing, validation overlay added separately
       
       case 'date':
-        const formattedDate = cellText ? dayjs(cellText).format('MMM D, YYYY') : '';
+        // Values that aren't dates (e.g. text kept when the column type changed) show as-is
+        const parsedDate = cellText ? dayjs(cellText) : null;
+        const formattedDate = parsedDate ? (parsedDate.isValid() ? parsedDate.format('MMM D, YYYY') : cellText) : '';
         return (
           <div className="w-full min-h-[28px]" contentEditable={false}>
             <button 
@@ -347,7 +338,6 @@ const AdvancedTableDataCell = ({
       {...htmlAttrs}
       className={`${cellClassName} ${columnType === 'number' ? 'text-right' : ''} ${showNumberError ? 'bg-red-50/50 dark:bg-red-900/10' : ''}`}
       onKeyDown={onKeyDown}
-      onPaste={onPaste}
     >
       <div 
         className="yoopta-advanced-table-data-cell-content relative" 

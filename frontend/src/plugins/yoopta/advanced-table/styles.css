@@ -5,6 +5,9 @@
 /* Table Block Container - position context for absolute block options */
 .yoopta-advanced-table-block {
   @apply w-full pt-0 relative;
+  /* Header is a light tint of the inset surface so it reads as chrome, not content */
+  --yoopta-table-header-bg: color-mix(in srgb, var(--color-surface-inset) 45%, var(--color-surface-primary));
+  --yoopta-table-header-height: 36px;
 }
 
 .yoopta-advanced-table-block .yoopta-advanced-table-options {
@@ -34,15 +37,15 @@
   background-color: color-mix(in srgb, var(--color-surface-inset) 50%, var(--color-surface-primary));
 }
 
-/* Paint top corner arcs with header color (h-10 = 40px) so they don't inherit wrapper body color */
+/* Paint top corner arcs with header color so they don't inherit wrapper body color */
 .yoopta-advanced-table-wrapper::before {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  height: 40px;
-  background-color: var(--color-surface-inset);
+  height: var(--yoopta-table-header-height);
+  background-color: var(--yoopta-table-header-bg);
   pointer-events: none;
   z-index: 0;
 }
@@ -111,7 +114,7 @@
 
 /* Ensure rounded wrapper corners are filled by table section backgrounds */
 .yoopta-advanced-table thead {
-  background-color: var(--color-surface-inset);
+  background-color: var(--yoopta-table-header-bg);
 }
 
 .yoopta-advanced-table tbody {
@@ -190,24 +193,92 @@
   opacity: 1;
 }
 
-/* Metadata Header Row */
-.yoopta-advanced-table-metadata-row {
-  /* Regular row, no sticky */
-}
-
-.yoopta-advanced-table-metadata-row th {
-  background-color: var(--color-surface-inset) !important;
-  border-right-style: solid !important;
+/* ============ Column Header Row ============ */
+/*
+  Header cells are contentEditable={false}, so the global
+  `.yoopta-block [contenteditable] { border-width: 0 !important }` reset matches
+  them. `thead th.class` outranks it; keep that specificity when editing these.
+*/
+.yoopta-advanced-table thead th.yoopta-advanced-table-header {
+  position: relative;
+  height: var(--yoopta-table-header-height);
+  padding: 0 6px 0 10px;
+  text-align: left;
+  vertical-align: middle;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  background-color: var(--yoopta-table-header-bg);
+  border-style: solid !important;
+  border-color: var(--color-border-default) !important;
   border-right-width: 1px !important;
-  border-right-color: var(--color-border-default) !important;
+  border-bottom-width: 1px !important;
 }
 
-.dark .yoopta-advanced-table-metadata-row th {
-  border-right-color: var(--color-border-default) !important;
-}
-
-.yoopta-advanced-table-metadata-row th:last-child {
+.yoopta-advanced-table thead th.yoopta-advanced-table-header:last-child {
   border-right-width: 0 !important;
+}
+
+.yoopta-advanced-table-header-content {
+  @apply flex items-center gap-1.5 min-w-0 h-full;
+}
+
+.yoopta-advanced-table-header-icon {
+  @apply w-3.5 h-3.5 shrink-0;
+  color: var(--color-text-tertiary);
+}
+
+.yoopta-advanced-table-header-icon-button,
+.yoopta-advanced-table-header-menu-button {
+  @apply flex items-center justify-center shrink-0 rounded transition-colors;
+  padding: 3px;
+  color: var(--color-text-tertiary);
+}
+
+.yoopta-advanced-table-header-icon-button:hover,
+.yoopta-advanced-table-header-menu-button:hover {
+  background-color: var(--color-surface-hover);
+  color: var(--color-text-secondary);
+}
+
+/* Menu chevron only shows while hovering the header (always on touch screens) */
+.yoopta-advanced-table-header-menu-button {
+  opacity: 0;
+}
+
+.yoopta-advanced-table-header:hover .yoopta-advanced-table-header-menu-button,
+.yoopta-advanced-table-header:focus-within .yoopta-advanced-table-header-menu-button {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .yoopta-advanced-table-header-menu-button {
+    opacity: 1;
+  }
+}
+
+.yoopta-advanced-table-header-input {
+  @apply flex-1 min-w-0 truncate bg-transparent border-0 outline-none p-0 rounded-sm;
+  /* Inputs have an intrinsic width (~20ch) that would otherwise widen the column */
+  width: 0;
+  font: inherit;
+  color: inherit;
+  cursor: text;
+}
+
+.yoopta-advanced-table-header-input::placeholder {
+  color: var(--color-text-tertiary);
+  font-weight: 400;
+  opacity: 1;
+}
+
+.yoopta-advanced-table-header-input:focus {
+  color: var(--color-text-primary);
+}
+
+.yoopta-advanced-table-header-indicators {
+  @apply flex items-center gap-0.5 shrink-0;
+  color: var(--color-interactive-text-strong);
 }
 
 /* Cell Content */
@@ -263,23 +334,18 @@
   @apply w-4 h-4 mr-2;
 }
 
-/* Resize Handle */
+/* Resize Handle - an 8px hit area centred on the column's right border */
 .yoopta-advanced-table-resize-handle {
-  @apply select-none absolute -right-[2px] w-[4px] top-0 flex-grow-0 h-full z-[10] cursor-col-resize;
+  @apply select-none absolute -right-[4px] w-[8px] top-0 flex-grow-0 h-full z-[10] cursor-col-resize;
 }
 
 .yoopta-advanced-table-resize-handle-inner {
-  @apply select-none absolute w-[2px] left-[1px] top-0 h-full transition-[background] duration-150 delay-[50ms];
+  @apply select-none absolute w-[3px] left-[3px] top-0 h-full transition-[background] duration-150 delay-[50ms];
   background-color: transparent;
 }
 
-.yoopta-advanced-table-resize-handle:hover .yoopta-advanced-table-resize-handle-inner,
-.yoopta-advanced-table:hover .yoopta-advanced-table-resize-handle-inner {
-  background-color: rgba(116, 182, 219, 0.2);
-}
-
 .yoopta-advanced-table-resize-handle:hover .yoopta-advanced-table-resize-handle-inner {
-  background-color: #74b6db;
+  background-color: var(--color-accent-primary);
 }
 
 /* Quick Add Buttons */
